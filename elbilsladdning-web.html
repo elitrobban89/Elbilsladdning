@@ -1,241 +1,225 @@
 <style>
   :root {
-    --bg: #0f1629;
-    --card: #1a2340;
-    --accent: #6366f1;
-    --accent2: #3b82f6;
-    --green: #10b981;
-    --yellow: #f59e0b;
-    --text: #f1f5f9;
-    --muted: rgba(241,245,249,0.55);
-    --border: rgba(99,102,241,0.2);
-    --radius: 16px;
+    --bg:      #060c1a;
+    --card:    #0d1526;
+    --accent:  #3b82f6;
+    --green:   #22c55e;
+    --amber:   #f59e0b;
+    --purple:  #818cf8;
+    --text:    #f0f4ff;
+    --muted:   rgba(200,215,255,0.5);
+    --border:  rgba(59,130,246,0.18);
+    --radius:  14px;
   }
 
   .ev-app {
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
     color: var(--text);
-    max-width: 860px;
+    max-width: 820px;
     margin: 0 auto;
-    padding: 0 12px 40px;
+    padding: 0 14px 48px;
   }
 
-  .ev-hero { text-align: center; padding: 36px 0 28px; }
-  .ev-hero h1 {
-    font-size: clamp(1.6rem, 4vw, 2.4rem);
-    font-weight: 900;
-    margin: 0 0 8px;
-    background: linear-gradient(135deg, #a5b4fc, #60a5fa);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
+  .ev-hero { text-align: center; padding: 40px 0 32px; position: relative; }
+  .ev-hero::before {
+    content: ""; position: absolute; top: 0; left: 50%; transform: translateX(-50%);
+    width: 320px; height: 120px;
+    background: radial-gradient(ellipse, rgba(59,130,246,0.18) 0%, transparent 70%);
+    pointer-events: none;
   }
-  .ev-hero p { color: var(--muted); font-size: 0.95rem; margin: 0; }
+  .ev-hero-icon { font-size: 2.4rem; margin-bottom: 10px; display: block; }
+  .ev-hero h1 {
+    font-size: clamp(1.5rem, 4vw, 2.2rem); font-weight: 900; margin: 0 0 8px;
+    background: linear-gradient(130deg, #93c5fd 0%, #60a5fa 50%, #a5b4fc 100%);
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+    letter-spacing: -0.02em;
+  }
+  .ev-hero p { color: var(--muted); font-size: 0.9rem; margin: 0; }
 
   .ev-controls {
-    background: var(--card);
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
-    padding: 24px;
-    margin-bottom: 24px;
-    display: flex;
-    flex-direction: column;
-    gap: 16px;
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 22px 24px;
+    margin-bottom: 20px; display: flex; flex-direction: column; gap: 18px;
   }
 
   .ev-label {
-    font-size: 0.72rem;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 0.1em;
-    color: rgba(165,180,252,0.85);
-    margin-bottom: 6px;
+    font-size: 0.68rem; font-weight: 700; text-transform: uppercase;
+    letter-spacing: 0.12em; color: rgba(147,197,253,0.7); margin-bottom: 7px;
   }
 
   .ev-select {
-    width: 100%;
-    padding: 12px 16px;
-    background: #0f1629;
-    border: 1.5px solid var(--border);
-    border-radius: 10px;
-    color: var(--text);
-    font-size: 0.95rem;
+    width: 100%; padding: 11px 40px 11px 14px;
+    background: var(--bg); border: 1.5px solid var(--border);
+    border-radius: 10px; color: var(--text); font-size: 0.92rem;
     appearance: none;
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%236366f1' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
-    background-repeat: no-repeat;
-    background-position: right 14px center;
-    cursor: pointer;
-    transition: border-color 0.2s;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%233b82f6' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+    background-repeat: no-repeat; background-position: right 13px center;
+    cursor: pointer; transition: border-color 0.2s, box-shadow 0.2s;
   }
-  .ev-select:focus { outline: none; border-color: var(--accent); }
-  .ev-select option { background: #1a2340; }
+  .ev-select:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px rgba(59,130,246,0.15); }
+  .ev-select option { background: #0d1526; }
 
-  .ev-specs { display: flex; gap: 10px; flex-wrap: wrap; }
-  .ev-spec-badge { font-size: 0.78rem; padding: 4px 10px; border-radius: 20px; font-weight: 600; }
-  .badge-ac  { background: rgba(59,130,246,0.15); color: #60a5fa; border: 1px solid rgba(59,130,246,0.3); }
-  .badge-dc  { background: rgba(16,185,129,0.15); color: #34d399; border: 1px solid rgba(16,185,129,0.3); }
-  .badge-con { background: rgba(99,102,241,0.15); color: #a5b4fc; border: 1px solid rgba(99,102,241,0.2); }
+  .ev-specs { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
+  .ev-spec-badge { font-size: 0.75rem; padding: 3px 10px; border-radius: 20px; font-weight: 600; }
+  .badge-ac  { background: rgba(59,130,246,0.12); color: #93c5fd; border: 1px solid rgba(59,130,246,0.25); }
+  .badge-dc  { background: rgba(34,197,94,0.12);  color: #86efac; border: 1px solid rgba(34,197,94,0.25); }
+  .badge-con { background: rgba(129,140,248,0.12); color: #c7d2fe; border: 1px solid rgba(129,140,248,0.2); }
 
-  .ev-sort-row { display: flex; gap: 8px; flex-wrap: wrap; }
+  .ev-sort-row { display: flex; gap: 8px; }
   .ev-sort-btn {
-    flex: 1; min-width: 100px;
-    padding: 10px 16px;
-    border-radius: 10px;
-    border: 1.5px solid var(--border);
-    background: transparent;
-    color: var(--muted);
-    font-size: 0.85rem; font-weight: 600;
-    cursor: pointer;
-    transition: all 0.2s;
+    flex: 1; padding: 9px 12px; border-radius: 9px;
+    border: 1.5px solid var(--border); background: transparent;
+    color: var(--muted); font-size: 0.82rem; font-weight: 600;
+    cursor: pointer; transition: all 0.18s; white-space: nowrap;
   }
-  .ev-sort-btn:hover { border-color: var(--accent); color: var(--text); }
+  .ev-sort-btn:hover { border-color: var(--accent); color: var(--text); background: rgba(59,130,246,0.06); }
   .ev-sort-btn.active {
-    background: linear-gradient(135deg, #4f46e5, #2563eb);
-    border-color: transparent; color: #fff;
+    background: linear-gradient(135deg, #1d4ed8, #2563eb);
+    border-color: rgba(59,130,246,0.6); color: #fff;
+    box-shadow: 0 2px 12px rgba(37,99,235,0.35);
   }
 
   .ev-location-bar { display: flex; align-items: center; gap: 10px; font-size: 0.85rem; color: var(--muted); }
-  .ev-location-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--green); flex-shrink: 0; animation: pulse 2s infinite; }
-  .ev-location-dot.waiting { background: var(--yellow); }
+  .ev-location-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; background: var(--green); animation: pulse 2s infinite; }
+  .ev-location-dot.waiting { background: var(--amber); animation: pulse 1.5s infinite; }
   .ev-location-dot.error   { background: #ef4444; animation: none; }
-  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
+  @keyframes pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.5;transform:scale(0.85)} }
 
-  .ev-status { text-align: center; padding: 48px 20px; color: var(--muted); font-size: 0.95rem; }
+  .ev-status { text-align: center; padding: 56px 20px; color: var(--muted); font-size: 0.92rem; }
   .ev-spinner {
-    width: 36px; height: 36px;
-    border: 3px solid rgba(99,102,241,0.2);
-    border-top-color: var(--accent);
-    border-radius: 50%;
-    animation: spin 0.8s linear infinite;
-    margin: 0 auto 16px;
+    width: 40px; height: 40px;
+    border: 3px solid rgba(59,130,246,0.15); border-top-color: var(--accent);
+    border-radius: 50%; animation: spin 0.75s linear infinite; margin: 0 auto 18px;
   }
   @keyframes spin { to{transform:rotate(360deg)} }
 
-  .ev-ai-card {
-    background: linear-gradient(135deg, #1e2a4a, #2d1f5e);
-    border: 1px solid rgba(99,102,241,0.4);
-    border-radius: var(--radius);
-    padding: 18px 20px;
-    margin-bottom: 20px;
-    display: flex;
-    gap: 14px;
-    align-items: flex-start;
+  .ev-fast-highlight {
+    background: linear-gradient(135deg, #071a0f 0%, #0a1a20 100%);
+    border: 1.5px solid rgba(34,197,94,0.35); border-radius: var(--radius);
+    padding: 16px 20px; margin-bottom: 16px;
+    display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
   }
-  .ev-ai-icon { font-size: 1.5rem; flex-shrink: 0; margin-top: 2px; }
-  .ev-ai-label { font-size: 0.7rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: rgba(165,180,252,0.8); margin-bottom: 6px; }
-  .ev-ai-text  { font-size: 0.9rem; line-height: 1.6; color: rgba(241,245,249,0.9); }
+  .ev-fast-highlight-icon { font-size: 1.6rem; flex-shrink: 0; }
+  .ev-fast-highlight-body { flex: 1; min-width: 0; }
+  .ev-fast-highlight-label { font-size: 0.65rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.12em; color: var(--green); margin-bottom: 3px; }
+  .ev-fast-highlight-title { font-size: 0.97rem; font-weight: 800; color: #fff; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .ev-fast-highlight-sub   { font-size: 0.78rem; color: rgba(255,255,255,0.45); margin-top: 2px; }
+  .ev-fast-highlight-link {
+    display: inline-flex; align-items: center; gap: 5px; padding: 8px 15px;
+    background: rgba(34,197,94,0.12); border: 1.5px solid rgba(34,197,94,0.35);
+    border-radius: 9px; color: var(--green); font-size: 0.8rem; font-weight: 700;
+    text-decoration: none; white-space: nowrap; flex-shrink: 0; transition: background 0.18s;
+  }
+  .ev-fast-highlight-link:hover { background: rgba(34,197,94,0.22); }
 
-  .ev-results-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; font-size: 0.85rem; color: var(--muted); }
-  .ev-results-header strong { color: var(--text); font-size: 1rem; }
+  .ev-ai-card {
+    background: linear-gradient(135deg, #131530, #1a1440);
+    border: 1px solid rgba(129,140,248,0.3); border-radius: var(--radius);
+    padding: 16px 20px; margin-bottom: 16px;
+    display: flex; gap: 14px; align-items: flex-start;
+  }
+  .ev-ai-icon  { font-size: 1.4rem; flex-shrink: 0; margin-top: 1px; }
+  .ev-ai-label { font-size: 0.65rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.12em; color: rgba(165,180,252,0.75); margin-bottom: 5px; }
+  .ev-ai-text  { font-size: 0.88rem; line-height: 1.65; color: rgba(240,244,255,0.88); }
+
+  .ev-home-tip {
+    background: linear-gradient(135deg, #0f1f0a, #0d1a1a);
+    border: 1.5px solid rgba(34,197,94,0.3); border-radius: var(--radius);
+    padding: 14px 18px; margin-bottom: 16px;
+    display: flex; align-items: center; gap: 12px; font-size: 0.85rem;
+  }
+  .ev-home-tip-icon { font-size: 1.3rem; flex-shrink: 0; }
+  .ev-home-tip strong { color: var(--green); }
+  .ev-home-tip span   { color: var(--muted); }
+
+  .ev-results-header {
+    display: flex; justify-content: space-between; align-items: center;
+    margin-bottom: 12px; font-size: 0.82rem; color: var(--muted);
+  }
+  .ev-results-header strong { color: var(--text); font-size: 0.95rem; }
 
   .ev-station {
-    background: var(--card);
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
-    padding: 18px 20px;
-    margin-bottom: 10px;
-    display: grid;
-    grid-template-columns: 1fr auto;
-    gap: 4px 16px;
-    transition: border-color 0.2s, transform 0.2s;
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: var(--radius); margin-bottom: 9px;
+    overflow: hidden; display: flex;
+    transition: border-color 0.2s, box-shadow 0.2s;
   }
-  .ev-station:hover { border-color: rgba(99,102,241,0.5); transform: translateY(-1px); }
-  .ev-station-name { font-weight: 700; font-size: 0.95rem; grid-column: 1; }
-  .ev-station-dist { font-size: 0.8rem; color: var(--muted); font-weight: 600; grid-column: 2; grid-row: 1/3; align-self: center; text-align: right; white-space: nowrap; }
-  .ev-station-meta { grid-column: 1; display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-top: 4px; }
-  .ev-kw-badge { font-size: 0.8rem; font-weight: 800; padding: 3px 9px; border-radius: 20px; }
-  .kw-fast   { background: rgba(16,185,129,0.15); color: #34d399; border: 1px solid rgba(16,185,129,0.3); }
-  .kw-medium { background: rgba(245,158,11,0.15);  color: #fbbf24; border: 1px solid rgba(245,158,11,0.3); }
-  .kw-slow   { background: rgba(99,102,241,0.12);  color: #a5b4fc; border: 1px solid rgba(99,102,241,0.2); }
-  .ev-connector-tag { font-size: 0.75rem; color: var(--muted); padding: 3px 8px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.08); background: rgba(255,255,255,0.04); }
-  .ev-station-footer { grid-column: 1/3; display: flex; gap: 16px; margin-top: 8px; font-size: 0.78rem; color: var(--muted); flex-wrap: wrap; }
+  .ev-station:hover { border-color: rgba(59,130,246,0.4); box-shadow: 0 4px 24px rgba(0,0,0,0.35); }
+
+  .ev-station-bar { width: 4px; flex-shrink: 0; }
+  .ev-station-bar.fast   { background: linear-gradient(180deg, #22c55e, #16a34a); }
+  .ev-station-bar.medium { background: linear-gradient(180deg, #f59e0b, #d97706); }
+  .ev-station-bar.slow   { background: linear-gradient(180deg, #6366f1, #4338ca); }
+
+  .ev-station-body {
+    flex: 1; padding: 14px 16px;
+    display: grid; grid-template-columns: auto 1fr auto;
+    gap: 0 12px; min-width: 0;
+  }
+
+  .ev-rank {
+    grid-row: 1 / 3; align-self: center;
+    width: 28px; height: 28px; border-radius: 50%;
+    background: rgba(59,130,246,0.12); border: 1.5px solid rgba(59,130,246,0.25);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 0.72rem; font-weight: 800; color: #93c5fd; flex-shrink: 0;
+  }
+
+  .ev-station-main { grid-column: 2; min-width: 0; }
+  .ev-station-name { font-weight: 700; font-size: 0.93rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .ev-station-addr { font-size: 0.75rem; color: var(--muted); margin-top: 1px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+  .ev-station-right { grid-column: 3; grid-row: 1 / 3; display: flex; flex-direction: column; align-items: flex-end; justify-content: center; gap: 5px; flex-shrink: 0; }
+  .ev-dist { font-size: 0.78rem; font-weight: 700; color: var(--muted); white-space: nowrap; }
+  .ev-price-badge {
+    font-size: 0.75rem; font-weight: 700; padding: 3px 9px; border-radius: 20px;
+    background: rgba(245,158,11,0.13); border: 1px solid rgba(245,158,11,0.35);
+    color: #fcd34d; white-space: nowrap;
+  }
+  .ev-price-badge.free { background: rgba(34,197,94,0.12); border-color: rgba(34,197,94,0.3); color: #86efac; }
+
+  .ev-station-tags { grid-column: 2; display: flex; gap: 6px; flex-wrap: wrap; align-items: center; margin-top: 7px; }
+  .ev-kw-badge { font-size: 0.78rem; font-weight: 800; padding: 2px 9px; border-radius: 20px; }
+  .kw-fast   { background: rgba(34,197,94,0.13);  color: #86efac; border: 1px solid rgba(34,197,94,0.3); }
+  .kw-medium { background: rgba(245,158,11,0.13); color: #fcd34d; border: 1px solid rgba(245,158,11,0.3); }
+  .kw-slow   { background: rgba(99,102,241,0.12); color: #c7d2fe; border: 1px solid rgba(99,102,241,0.22); }
+  .ev-connector-tag {
+    font-size: 0.72rem; color: var(--muted); padding: 2px 7px; border-radius: 5px;
+    border: 1px solid rgba(255,255,255,0.07); background: rgba(255,255,255,0.03);
+  }
+  .ev-operator-tag {
+    font-size: 0.72rem; color: rgba(147,197,253,0.7); padding: 2px 7px; border-radius: 5px;
+    border: 1px solid rgba(59,130,246,0.15); background: rgba(59,130,246,0.06);
+  }
 
   .ev-disclaimer {
-    font-size: 0.75rem;
-    color: rgba(241,245,249,0.35);
-    text-align: center;
-    margin-top: 20px;
-    padding: 0 8px;
-    line-height: 1.6;
+    font-size: 0.72rem; color: rgba(200,215,255,0.28);
+    text-align: center; margin-top: 24px; padding: 0 8px; line-height: 1.7;
   }
-  .ev-disclaimer a { color: rgba(165,180,252,0.5); text-decoration: none; }
+  .ev-disclaimer a { color: rgba(147,197,253,0.4); text-decoration: none; }
 
-  .ev-fast-highlight {
-    background: linear-gradient(135deg, #0d2b1f 0%, #0f2d35 100%);
-    border: 1.5px solid rgba(16,185,129,0.45);
-    border-radius: var(--radius);
-    padding: 18px 20px;
-    margin-bottom: 20px;
-    display: flex;
-    align-items: center;
-    gap: 16px;
-    flex-wrap: wrap;
-  }
-  .ev-fast-highlight-icon {
-    font-size: 1.8rem;
-    flex-shrink: 0;
-  }
-  .ev-fast-highlight-body { flex: 1; min-width: 0; }
-  .ev-fast-highlight-label {
-    font-size: 0.68rem;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 0.12em;
-    color: #34d399;
-    margin-bottom: 4px;
-  }
-  .ev-fast-highlight-title {
-    font-size: 1rem;
-    font-weight: 800;
-    color: #fff;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-  }
-  .ev-fast-highlight-sub {
-    font-size: 0.8rem;
-    color: rgba(255,255,255,0.5);
-    margin-top: 2px;
-  }
-  .ev-fast-highlight-link {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    padding: 9px 16px;
-    background: rgba(16,185,129,0.15);
-    border: 1.5px solid rgba(16,185,129,0.4);
-    border-radius: 10px;
-    color: #34d399;
-    font-size: 0.82rem;
-    font-weight: 700;
-    text-decoration: none;
-    white-space: nowrap;
-    transition: background 0.2s;
-    flex-shrink: 0;
-  }
-  .ev-fast-highlight-link:hover { background: rgba(16,185,129,0.28); }
-
-  @media (max-width: 520px) {
+  @media (max-width: 500px) {
     .ev-controls { padding: 16px; }
-    .ev-station  { padding: 14px 16px; }
+    .ev-station-body { padding: 12px 12px; gap: 0 9px; }
+    .ev-sort-btn { padding: 8px 6px; font-size: 0.76rem; }
   }
 </style>
 
 <div class="ev-app">
   <div class="ev-hero">
-    <h1>⚡ EV Laddningsassistent</h1>
-    <p>Hitta rätt laddstation för din bil — med AI-rekommendation baserad på din plats.</p>
+    <span class="ev-hero-icon">⚡</span>
+    <h1>EV Laddningsassistent</h1>
+    <p>Hitta rätt laddstation — filtrerad för din bil, sorterad efter vad du väljer.</p>
   </div>
 
   <div class="ev-controls">
     <div>
       <div class="ev-label">Din elbil</div>
       <select class="ev-select" id="ev-car-select">
-        <option value="">Väljer bilmodell…</option>
+        <option value="">Välj bilmodell…</option>
       </select>
-      <div class="ev-specs" id="ev-specs" style="margin-top:10px;display:none"></div>
+      <div class="ev-specs" id="ev-specs" style="display:none"></div>
     </div>
-
     <div>
       <div class="ev-label">Din position</div>
       <div class="ev-location-bar">
@@ -243,7 +227,6 @@
         <span id="ev-loc-text">Hämtar position…</span>
       </div>
     </div>
-
     <div>
       <div class="ev-label">Sortera på</div>
       <div class="ev-sort-row">
@@ -256,25 +239,19 @@
 
   <div class="ev-disclaimer">
     Stationsdata från <a href="https://openchargemap.io" target="_blank">Open Charge Map</a>.
-    Priser är användarrapporterade och kan vara inaktuella — verifiera alltid hos operatören.
+    Priser är ungefärliga — verifiera alltid hos operatören.
   </div>
 
   <div id="ev-output">
-    <div class="ev-status">
-      <div class="ev-spinner"></div>
-      Hämtar din position…
-    </div>
+    <div class="ev-status"><div class="ev-spinner"></div>Hämtar din position…</div>
   </div>
 </div>
 
 <script>
 (function () {
-  // Byt ut mot din Render-URL efter deploy
   const API = "https://elbilsladdning.onrender.com";
-
   let state = { lat: null, lon: null, city: "", sort: "speed", carIndex: null, cars: [] };
 
-  // ── Hämta bilmodeller från backend ─────────────────────────────
   fetch(API + "/api/cars")
     .then(r => r.json())
     .then(cars => {
@@ -282,14 +259,12 @@
       const sel = document.getElementById("ev-car-select");
       cars.forEach((c, i) => {
         const o = document.createElement("option");
-        o.value = i;
-        o.textContent = `${c.name}  (AC ${c.maxAcKw} kW · DC ${c.maxDcKw} kW)`;
+        o.value = i; o.textContent = `${c.name}  (AC ${c.maxAcKw} kW · DC ${c.maxDcKw} kW)`;
         sel.appendChild(o);
       });
     })
     .catch(() => {
-      document.getElementById("ev-car-select").innerHTML =
-        '<option>Kunde inte hämta bilar — kontrollera backend</option>';
+      document.getElementById("ev-car-select").innerHTML = '<option>Kunde inte hämta bilar</option>';
     });
 
   document.getElementById("ev-car-select").addEventListener("change", function () {
@@ -307,15 +282,11 @@
     box.innerHTML = `
       <span class="ev-spec-badge badge-ac">AC max ${c.maxAcKw} kW</span>
       <span class="ev-spec-badge badge-dc">DC max ${c.maxDcKw} kW</span>
-      ${c.connectors.map(t => `<span class="ev-spec-badge badge-con">${conLabel(t)}</span>`).join("")}
-    `;
+      ${c.connectors.map(t => `<span class="ev-spec-badge badge-con">${conLabel(t)}</span>`).join("")}`;
   }
 
-  function conLabel(t) {
-    return { type2: "Type 2", ccs: "CCS", chademo: "CHAdeMO" }[t] || t;
-  }
+  function conLabel(t) { return { type2:"Type 2", ccs:"CCS", chademo:"CHAdeMO" }[t] || t; }
 
-  // ── Sort ────────────────────────────────────────────────────────
   document.querySelectorAll(".ev-sort-btn").forEach(btn => {
     btn.addEventListener("click", () => {
       document.querySelectorAll(".ev-sort-btn").forEach(b => b.classList.remove("active"));
@@ -325,7 +296,6 @@
     });
   });
 
-  // ── GPS ─────────────────────────────────────────────────────────
   function setLoc(type, text) {
     document.getElementById("ev-loc-dot").className = "ev-location-dot " + type;
     document.getElementById("ev-loc-text").textContent = text;
@@ -337,8 +307,7 @@
   } else {
     navigator.geolocation.getCurrentPosition(
       async pos => {
-        state.lat = pos.coords.latitude;
-        state.lon = pos.coords.longitude;
+        state.lat = pos.coords.latitude; state.lon = pos.coords.longitude;
         setLoc("", "Position hittad");
         reverseGeocode(state.lat, state.lon);
         if (state.carIndex !== null) fetchAndRender();
@@ -362,7 +331,6 @@
     } catch (_) {}
   }
 
-  // ── Fetch backend ───────────────────────────────────────────────
   async function fetchAndRender() {
     setOutput('<div class="ev-status"><div class="ev-spinner"></div>Söker laddstationer och frågar AI…</div>');
     try {
@@ -370,38 +338,42 @@
       const url = `${API}/api/stations?lat=${state.lat}&lon=${state.lon}&carIndex=${state.carIndex}&sort=${state.sort}${cityParam}`;
       const resp = await fetch(url);
       if (!resp.ok) throw new Error("HTTP " + resp.status);
-      const data = await resp.json();
-      renderResults(data);
+      renderResults(await resp.json());
     } catch (e) {
       setOutput(`<div class="ev-status">Fel: ${e.message}</div>`);
     }
   }
 
   const OPERATOR_URLS = {
-    recharge:   { url: "https://recharge.com/se/priser",        label: "Se priser på recharge.com →" },
-    ionity:     { url: "https://ionity.eu/sv/tariffs.html",     label: "Se priser på ionity.eu →" },
-    incharge:   { url: "https://incharge.vattenfall.se/priser", label: "Se priser på incharge.vattenfall.se →" },
-    vattenfall: { url: "https://incharge.vattenfall.se/priser", label: "Se priser på incharge.vattenfall.se →" },
-    circlek:    { url: "https://www.circlek.se/elbil/laddning", label: "Se priser på circlek.se →" },
-    tesla:      { url: "https://www.tesla.com/sv_SE/supercharger", label: "Se priser på tesla.com →" },
-    bee:        { url: "https://bee-charging.com",              label: "Se priser på bee-charging.com →" },
-    eon:        { url: "https://www.eon.se/elbil",              label: "Se priser på eon.se →" },
-    clever:     { url: "https://www.clever.dk/priser",          label: "Se priser på clever.dk →" },
-    mer:        { url: "https://mer.eco/se/",                   label: "Se priser på mer.eco →" },
+    recharge:   "https://recharge.com/se/priser",
+    ionity:     "https://ionity.eu/sv/tariffs.html",
+    incharge:   "https://incharge.vattenfall.se/priser",
+    circlek:    "https://www.circlek.se/elbil/laddning",
+    tesla:      "https://www.tesla.com/sv_SE/supercharger",
+    bee:        "https://bee-charging.com",
+    eon:        "https://www.eon.se/elbil",
+    clever:     "https://www.clever.dk/priser",
+    mer:        "https://mer.eco/se/",
+    allego:     "https://www.allego.eu/sv/",
+    eviny:      "https://www.eviny.no/en/ev-charging/",
+    st1:        "https://www.st1.se/tanka/el",
   };
 
-  function operatorInfo(name) {
+  function operatorUrl(name) {
     if (!name) return null;
     const l = name.toLowerCase();
-    if (l.includes("recharge"))                    return OPERATOR_URLS.recharge;
-    if (l.includes("ionity"))                      return OPERATOR_URLS.ionity;
+    if (l.includes("recharge"))                              return OPERATOR_URLS.recharge;
+    if (l.includes("ionity"))                                return OPERATOR_URLS.ionity;
     if (l.includes("incharge") || l.includes("vattenfall")) return OPERATOR_URLS.incharge;
-    if (l.includes("circle k") || l.includes("shell"))      return OPERATOR_URLS.circlek;
-    if (l.includes("tesla"))                       return OPERATOR_URLS.tesla;
-    if (l.includes("bee"))                         return OPERATOR_URLS.bee;
-    if (l.includes("e.on") || l.includes("eon"))   return OPERATOR_URLS.eon;
-    if (l.includes("clever"))                      return OPERATOR_URLS.clever;
-    if (l.includes("mer "))                        return OPERATOR_URLS.mer;
+    if (l.includes("circle k") || l.includes("circlek"))    return OPERATOR_URLS.circlek;
+    if (l.includes("tesla"))                                 return OPERATOR_URLS.tesla;
+    if (l.includes("bee"))                                   return OPERATOR_URLS.bee;
+    if (l.includes("e.on") || l.includes("eon"))             return OPERATOR_URLS.eon;
+    if (l.includes("clever"))                                return OPERATOR_URLS.clever;
+    if (l.includes("mer"))                                   return OPERATOR_URLS.mer;
+    if (l.includes("allego"))                                return OPERATOR_URLS.allego;
+    if (l.includes("eviny"))                                 return OPERATOR_URLS.eviny;
+    if (l.includes("st1"))                                   return OPERATOR_URLS.st1;
     return null;
   }
 
@@ -410,28 +382,36 @@
     const top = stations.slice(0, 10);
     let html = "";
 
-    // ── Närmaste snabbladdare (DC ≥ 50 kW, sorted by distance) ──
+    // Nearest fast DC charger highlight
     const fastDC = [...stations]
       .filter(s => s.maxEffKw >= 50 && s.connectorType.includes("DC"))
       .sort((a, b) => a.distanceKm - b.distanceKm)[0];
 
     if (fastDC) {
-      const op   = operatorInfo(fastDC.operator);
+      const url  = operatorUrl(fastDC.operator);
       const dist = fastDC.distanceKm.toFixed(1);
       const kw   = Math.round(fastDC.maxEffKw);
-      const name = fastDC.name.length > 40 ? fastDC.name.slice(0, 38) + "…" : fastDC.name;
-      const linkHtml = op
-        ? `<a class="ev-fast-highlight-link" href="${op.url}" target="_blank" rel="noopener">${op.label}</a>`
-        : "";
+      const nm   = fastDC.name.length > 42 ? fastDC.name.slice(0,40)+"…" : fastDC.name;
+      const pris = fastDC.chargepricePerKwh || "";
       html += `
         <div class="ev-fast-highlight">
           <div class="ev-fast-highlight-icon">⚡</div>
           <div class="ev-fast-highlight-body">
             <div class="ev-fast-highlight-label">Närmaste snabbladdare</div>
-            <div class="ev-fast-highlight-title">${name}, ${kw} kW</div>
-            <div class="ev-fast-highlight-sub">${dist} km bort · ${fastDC.connectorType}</div>
+            <div class="ev-fast-highlight-title">${nm} · ${kw} kW</div>
+            <div class="ev-fast-highlight-sub">${dist} km bort · ${fastDC.connectorType}${pris?" · "+pris:""}</div>
           </div>
-          ${linkHtml}
+          ${url ? `<a class="ev-fast-highlight-link" href="${url}" target="_blank" rel="noopener">Se priser →</a>` : ""}
+        </div>`;
+    }
+
+    // Home charging tip when sorting by price
+    if (state.sort === "price") {
+      html += `
+        <div class="ev-home-tip">
+          <div class="ev-home-tip-icon">🏠</div>
+          <div><strong>Billigast: hemmaladdning</strong>
+          <span> · ~1,50–3,50 kr/kWh beroende på elavtal. Ladda hemma om du kan!</span></div>
         </div>`;
     }
 
@@ -440,7 +420,7 @@
         <div class="ev-ai-card">
           <div class="ev-ai-icon">🤖</div>
           <div>
-            <div class="ev-ai-label">AI-rekommendation för ${carName}</div>
+            <div class="ev-ai-label">AI-rekommendation · ${carName}</div>
             <div class="ev-ai-text">${recommendation}</div>
           </div>
         </div>`;
@@ -449,35 +429,44 @@
     html += `
       <div class="ev-results-header">
         <strong>${stations.length} kompatibla stationer inom 25 km</strong>
-        <span>Visar topp ${top.length}</span>
+        <span>Topp ${top.length}</span>
       </div>`;
 
-    top.forEach(s => {
-      const kwClass = s.maxEffKw >= 100 ? "kw-fast" : s.maxEffKw >= 22 ? "kw-medium" : "kw-slow";
-      const opStr   = s.operator && !s.operator.includes("Unknown") ? `<span>🏢 ${s.operator}</span>` : "";
-      const priceLabel = s.chargepricePerKwh?.startsWith("~") ? "(ungefärligt)" : "(Chargeprice)";
-      const priceDisplay = s.chargepricePerKwh
-        ? `<span>💰 ${s.chargepricePerKwh} <small style="opacity:.6">${priceLabel}</small></span>`
-        : s.usageCost
-          ? `<span>💰 ${s.usageCost} <small style="opacity:.6">(ungefärligt)</small></span>`
-          : "";
+    top.forEach((s, i) => {
+      const speedClass = s.maxEffKw >= 100 ? "fast" : s.maxEffKw >= 22 ? "medium" : "slow";
+      const kwClass    = speedClass === "fast" ? "kw-fast" : speedClass === "medium" ? "kw-medium" : "kw-slow";
+      const rawPrice   = s.chargepricePerKwh || s.usageCost || "";
+      const isFree     = rawPrice.toLowerCase().includes("gratis") || rawPrice.toLowerCase().includes("free");
+      const priceBadge = rawPrice ? `<div class="ev-price-badge${isFree?" free":""}">${rawPrice}</div>` : "";
+      const addr       = s.address ? `<div class="ev-station-addr">${s.address}</div>` : "";
+      const opTag      = s.operator && !s.operator.includes("Unknown")
+        ? `<span class="ev-operator-tag">${s.operator}</span>` : "";
+
       html += `
         <div class="ev-station">
-          <div class="ev-station-name">${s.name}</div>
-          <div class="ev-station-dist">${s.distanceKm.toFixed(1)} km</div>
-          <div class="ev-station-meta">
-            <span class="ev-kw-badge ${kwClass}">⚡ ${Math.round(s.maxEffKw)} kW</span>
-            <span class="ev-connector-tag">${s.connectorType}</span>
+          <div class="ev-station-bar ${speedClass}"></div>
+          <div class="ev-station-body">
+            <div class="ev-rank">${i+1}</div>
+            <div class="ev-station-main">
+              <div class="ev-station-name">${s.name}</div>
+              ${addr}
+            </div>
+            <div class="ev-station-right">
+              <div class="ev-dist">${s.distanceKm.toFixed(1)} km</div>
+              ${priceBadge}
+            </div>
+            <div class="ev-station-tags" style="grid-column:2">
+              <span class="ev-kw-badge ${kwClass}">⚡ ${Math.round(s.maxEffKw)} kW</span>
+              <span class="ev-connector-tag">${s.connectorType}</span>
+              ${opTag}
+            </div>
           </div>
-          ${opStr || priceDisplay ? `<div class="ev-station-footer">${opStr}${priceDisplay}</div>` : ""}
         </div>`;
     });
 
     setOutput(html);
   }
 
-  function setOutput(html) {
-    document.getElementById("ev-output").innerHTML = html;
-  }
+  function setOutput(html) { document.getElementById("ev-output").innerHTML = html; }
 })();
 </script>
