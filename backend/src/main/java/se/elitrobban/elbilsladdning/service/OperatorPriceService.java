@@ -33,6 +33,7 @@ public class OperatorPriceService {
         PRICES.put("clever",      "~3,99 kr/kWh");
         PRICES.put("chargenode",            "~5,00 kr/kWh");
         PRICES.put("p-hus kungsgatan 6",    "~5,00 kr/kWh");
+        PRICES.put("kungsmässan",           "~5,00 kr/kWh");
         PRICES.put("bissmarksgatan",        "~4,75 kr/kWh");
         PRICES.put("borgmästaregatan",      "~4,75 kr/kWh");
         PRICES.put("lidl",                "~2,99 kr/kWh");
