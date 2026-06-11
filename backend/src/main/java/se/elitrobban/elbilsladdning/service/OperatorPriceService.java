@@ -18,6 +18,8 @@ public class OperatorPriceService {
 
     static {
         PRICES.put("ionity",      "~0,79 EUR/kWh");
+        PRICES.put("allego",      "~0,79 EUR/kWh");
+        PRICES.put("eviny",       "~3,99 kr/kWh");
         PRICES.put("tesla",       "~4,50 kr/kWh");
         PRICES.put("vattenfall",  "~3,49 kr/kWh");
         PRICES.put("incharge",    "~3,49 kr/kWh");
