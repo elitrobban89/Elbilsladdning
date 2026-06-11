@@ -35,10 +35,21 @@ public class OperatorPriceService {
         PRICES.put("st1",         "~3,49 kr/kWh");
     }
 
-    /** Returns an approximate price string like "~3,49 kr/kWh", or null if operator is unknown. */
-    public String getApproxPrice(String operator) {
-        if (operator == null || operator.isBlank()) return null;
-        String lower = operator.toLowerCase();
+    /**
+     * Returns an approximate price by matching operator name, then station name as fallback.
+     * Returns null if neither matches a known network.
+     */
+    public String getApproxPrice(String operator, String stationName) {
+        String price = matchIn(operator);
+        if (price == null) price = matchIn(stationName);
+        return price;
+    }
+
+    private String matchIn(String text) {
+        if (text == null || text.isBlank()) return null;
+        String lower = text.toLowerCase();
+        // Skip generic OCM placeholder
+        if (lower.contains("unknown operator")) return null;
         for (Map.Entry<String, String> e : PRICES.entrySet()) {
             if (lower.contains(e.getKey())) return e.getValue();
         }

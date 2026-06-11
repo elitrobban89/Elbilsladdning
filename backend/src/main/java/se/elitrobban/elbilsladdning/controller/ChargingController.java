@@ -73,9 +73,9 @@ public class ChargingController {
             if (price == null && apiNinjas.isEnabled() && !city.isBlank())
                 price = apiNinjas.getPricing(city, s.lat(), s.lon());
 
-            // 3. Static operator table (approximate, always available)
+            // 3. Static operator table — match on operator name, then station name
             if (price == null)
-                price = operatorPrices.getApproxPrice(s.operator());
+                price = operatorPrices.getApproxPrice(s.operator(), s.name());
 
             return price != null
                     ? new StationDto(s.name(), s.address(), s.distanceKm(),
