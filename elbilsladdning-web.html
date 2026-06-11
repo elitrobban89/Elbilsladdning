@@ -177,6 +177,7 @@
     color: #fcd34d; white-space: nowrap;
   }
   .ev-price-badge.free { background: rgba(34,197,94,0.12); border-color: rgba(34,197,94,0.3); color: #86efac; }
+  .ev-cost-hint { font-size: 0.68rem; color: var(--muted); text-align: right; margin-top: 2px; white-space: nowrap; }
 
   .ev-station-tags { grid-column: 2; display: flex; gap: 6px; flex-wrap: wrap; align-items: center; margin-top: 7px; }
   .ev-kw-badge { font-size: 0.78rem; font-weight: 800; padding: 2px 9px; border-radius: 20px; }
@@ -436,7 +437,11 @@
       const kwClass    = speedClass === "fast" ? "kw-fast" : speedClass === "medium" ? "kw-medium" : "kw-slow";
       const rawPrice   = s.chargepricePerKwh || s.usageCost || "";
       const isFree     = rawPrice.toLowerCase().includes("gratis") || rawPrice.toLowerCase().includes("free");
-      const priceBadge = rawPrice ? `<div class="ev-price-badge${isFree?" free":""}">${rawPrice}</div>` : "";
+      const battery    = state.carIndex !== null ? state.cars[state.carIndex]?.batteryKwh : null;
+      const priceNum   = rawPrice.match(/[\d,.]+/)?.[0] ? parseFloat(rawPrice.match(/[\d,.]+/)[0].replace(",",".")) : null;
+      const fullCost   = (battery && priceNum && !isFree) ? Math.round(battery * priceNum) : null;
+      const costHint   = fullCost ? `<div class="ev-cost-hint">0→100%: ~${fullCost} kr</div>` : "";
+      const priceBadge = rawPrice ? `<div class="ev-price-badge${isFree?" free":""}">${rawPrice}</div>${costHint}` : "";
       const addr       = s.address ? `<div class="ev-station-addr">${s.address}</div>` : "";
       const opTag      = s.operator && !s.operator.includes("Unknown")
         ? `<span class="ev-operator-tag">${s.operator}</span>` : "";

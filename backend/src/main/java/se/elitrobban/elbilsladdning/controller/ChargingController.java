@@ -42,10 +42,11 @@ public class ChargingController {
     @GetMapping("/cars")
     public List<Map<String, Object>> cars() {
         return CarDatabase.CARS.stream().map(c -> Map.<String, Object>of(
-                "name",       c.name(),
-                "maxAcKw",    c.maxAcKw(),
-                "maxDcKw",    c.maxDcKw(),
-                "connectors", c.connectors()
+                "name",        c.name(),
+                "maxAcKw",     c.maxAcKw(),
+                "maxDcKw",     c.maxDcKw(),
+                "connectors",  c.connectors(),
+                "batteryKwh",  c.batteryKwh()
         )).toList();
     }
 

@@ -6,7 +6,8 @@ public record CarSpec(
         String name,
         double maxAcKw,
         double maxDcKw,
-        List<String> connectors
+        List<String> connectors,
+        double batteryKwh
 ) {
     public double maxKwForType(String type) {
         return "type2".equals(type) ? maxAcKw : maxDcKw;
