@@ -407,11 +407,15 @@
 
     // Home charging tip when sorting by price
     if (state.sort === "price") {
+      const bat = state.carIndex !== null ? state.cars[state.carIndex]?.batteryKwh : null;
+      const homeMin = bat ? Math.round(bat * 1.5) : null;
+      const homeMax = bat ? Math.round(bat * 3.5) : null;
+      const homeCost = homeMin ? ` · 0→100%: ~${homeMin}–${homeMax} kr` : "";
       html += `
         <div class="ev-home-tip">
           <div class="ev-home-tip-icon">🏠</div>
           <div><strong>Billigast: hemmaladdning</strong>
-          <span> · ~1,50–3,50 kr/kWh beroende på elavtal. Ladda hemma om du kan!</span></div>
+          <span> · ~1,50–3,50 kr/kWh beroende på elavtal${homeCost}. Ladda hemma om du kan!</span></div>
         </div>`;
     }
 
@@ -438,8 +442,10 @@
       const rawPrice   = s.chargepricePerKwh || s.usageCost || "";
       const isFree     = rawPrice.toLowerCase().includes("gratis") || rawPrice.toLowerCase().includes("free");
       const battery    = state.carIndex !== null ? state.cars[state.carIndex]?.batteryKwh : null;
+      const isEur      = rawPrice.includes("EUR");
       const priceNum   = rawPrice.match(/[\d,.]+/)?.[0] ? parseFloat(rawPrice.match(/[\d,.]+/)[0].replace(",",".")) : null;
-      const fullCost   = (battery && priceNum && !isFree) ? Math.round(battery * priceNum) : null;
+      const priceKr    = (priceNum && isEur) ? priceNum * 11.5 : priceNum;
+      const fullCost   = (battery && priceKr && !isFree) ? Math.round(battery * priceKr) : null;
       const costHint   = fullCost ? `<div class="ev-cost-hint">0→100%: ~${fullCost} kr</div>` : "";
       const priceBadge = rawPrice ? `<div class="ev-price-badge${isFree?" free":""}">${rawPrice}</div>${costHint}` : "";
       const addr       = s.address ? `<div class="ev-station-addr">${s.address}</div>` : "";
