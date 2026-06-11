@@ -69,7 +69,8 @@ public class GroqService {
         int n = Math.min(5, stations.size());
         for (int i = 0; i < n; i++) {
             StationDto s = stations.get(i);
-            String pris = s.usageCost().isBlank() ? "Pris: okänt" : "Pris: " + s.usageCost();
+            String bp   = s.bestPrice();
+            String pris = bp != null ? "Pris: " + bp : "Pris: okänt";
             sb.append(i + 1).append(". ").append(s.name())
               .append(" – ").append(String.format("%.1f", s.distanceKm())).append(" km")
               .append(" – ").append((int) s.maxEffKw()).append(" kW effektivt")

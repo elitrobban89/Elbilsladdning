@@ -5,6 +5,7 @@ import se.elitrobban.elbilsladdning.data.CarDatabase;
 import se.elitrobban.elbilsladdning.model.CarSpec;
 import se.elitrobban.elbilsladdning.model.StationDto;
 import se.elitrobban.elbilsladdning.model.StationResponse;
+import se.elitrobban.elbilsladdning.service.ChargepriceService;
 import se.elitrobban.elbilsladdning.service.GroqService;
 import se.elitrobban.elbilsladdning.service.OcmService;
 
@@ -16,12 +17,14 @@ import java.util.Map;
 @RequestMapping("/api")
 public class ChargingController {
 
-    private final OcmService  ocm;
-    private final GroqService groq;
+    private final OcmService         ocm;
+    private final GroqService        groq;
+    private final ChargepriceService chargeprice;
 
-    public ChargingController(OcmService ocm, GroqService groq) {
-        this.ocm  = ocm;
-        this.groq = groq;
+    public ChargingController(OcmService ocm, GroqService groq, ChargepriceService chargeprice) {
+        this.ocm         = ocm;
+        this.groq        = groq;
+        this.chargeprice = chargeprice;
     }
 
     @GetMapping("/health")
@@ -54,6 +57,15 @@ public class ChargingController {
         List<StationDto> stations = ocm.findNearby(lat, lon, car);
         stations = sorted(stations, sort);
 
+        // Enrich top 10 with Chargeprice data (cached per operator/power/plug)
+        stations = stations.stream().limit(10).map(s -> {
+            String cpPrice = chargeprice.getPricePerKwh(s, car);
+            return cpPrice != null
+                ? new StationDto(s.name(), s.address(), s.distanceKm(), s.maxEffKw(),
+                                 s.stationKw(), s.connectorType(), s.operator(), s.usageCost(), cpPrice)
+                : s;
+        }).toList();
+
         String recommendation = groq.recommend(car, stations);
 
         return new StationResponse(car.name(), stations, recommendation);
@@ -62,7 +74,7 @@ public class ChargingController {
     private List<StationDto> sorted(List<StationDto> list, String sort) {
         Comparator<StationDto> cmp = switch (sort) {
             case "distance" -> Comparator.comparingDouble(StationDto::distanceKm);
-            case "price"    -> Comparator.comparingDouble(s -> extractPrice(s.usageCost()));
+            case "price"    -> Comparator.comparingDouble(s -> extractPrice(s.bestPrice()));
             default         -> Comparator.comparingDouble((StationDto s) -> -s.maxEffKw());
         };
         return list.stream().sorted(cmp).toList();

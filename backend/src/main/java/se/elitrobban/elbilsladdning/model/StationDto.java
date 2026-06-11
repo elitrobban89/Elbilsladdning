@@ -8,5 +8,12 @@ public record StationDto(
         double stationKw,
         String connectorType,
         String operator,
-        String usageCost
-) {}
+        String usageCost,
+        String chargepricePerKwh
+) {
+    public String bestPrice() {
+        if (chargepricePerKwh != null && !chargepricePerKwh.isBlank()) return chargepricePerKwh;
+        if (usageCost         != null && !usageCost.isBlank())         return usageCost;
+        return null;
+    }
+}

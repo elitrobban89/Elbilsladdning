@@ -346,7 +346,11 @@
     top.forEach(s => {
       const kwClass = s.maxEffKw >= 100 ? "kw-fast" : s.maxEffKw >= 22 ? "kw-medium" : "kw-slow";
       const opStr   = s.operator && !s.operator.includes("Unknown") ? `<span>🏢 ${s.operator}</span>` : "";
-      const costStr = s.usageCost ? `<span>💰 ${s.usageCost}</span>` : "";
+      const priceDisplay = s.chargepricePerKwh
+        ? `<span>💰 ${s.chargepricePerKwh} <small style="opacity:.6">(Chargeprice)</small></span>`
+        : s.usageCost
+          ? `<span>💰 ${s.usageCost} <small style="opacity:.6">(ungefärligt)</small></span>`
+          : "";
       html += `
         <div class="ev-station">
           <div class="ev-station-name">${s.name}</div>
@@ -355,7 +359,7 @@
             <span class="ev-kw-badge ${kwClass}">⚡ ${Math.round(s.maxEffKw)} kW</span>
             <span class="ev-connector-tag">${s.connectorType}</span>
           </div>
-          ${opStr || costStr ? `<div class="ev-station-footer">${opStr}${costStr}</div>` : ""}
+          ${opStr || priceDisplay ? `<div class="ev-station-footer">${opStr}${priceDisplay}</div>` : ""}
         </div>`;
     });
 
