@@ -31,7 +31,10 @@ public class GroqService {
                 "messages", List.of(
                         Map.of("role", "system", "content",
                                 "Du är en expert på elbilsladdning i Sverige. " +
-                                "Ge alltid ett konkret råd på svenska. Svara med 2–3 meningar max."),
+                                "Ge alltid ett konkret råd på svenska i 2–3 meningar. " +
+                                "Om priset för en station är okänt, säg det tydligt och rekommendera " +
+                                "att användaren kollar operatörens app eller webbplats för aktuellt pris. " +
+                                "Hitta aldrig på priser."),
                         Map.of("role", "user", "content", userPrompt)
                 )
         );
@@ -66,15 +69,17 @@ public class GroqService {
         int n = Math.min(5, stations.size());
         for (int i = 0; i < n; i++) {
             StationDto s = stations.get(i);
+            String pris = s.usageCost().isBlank() ? "Pris: okänt" : "Pris: " + s.usageCost();
             sb.append(i + 1).append(". ").append(s.name())
               .append(" – ").append(String.format("%.1f", s.distanceKm())).append(" km")
               .append(" – ").append((int) s.maxEffKw()).append(" kW effektivt")
               .append(" (").append(s.connectorType()).append(")")
-              .append(s.usageCost().isBlank() ? "" : " – " + s.usageCost())
+              .append(" – ").append(pris)
               .append("\n");
         }
 
-        sb.append("\nVilken station rekommenderar du och varför?");
+        sb.append("\nVilken station rekommenderar du och varför? ")
+          .append("Om priset är okänt, nämn det och be användaren kolla operatörens app.");
         return sb.toString();
     }
 }
