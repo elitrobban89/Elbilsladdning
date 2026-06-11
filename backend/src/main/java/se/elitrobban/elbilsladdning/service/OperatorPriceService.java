@@ -28,8 +28,8 @@ public class OperatorPriceService {
         PRICES.put("circlek",     "~3,99 kr/kWh");
         PRICES.put("bee",         "~3,29 kr/kWh");
         PRICES.put("mer",         "~3,49 kr/kWh");
-        PRICES.put("e.on",        "~3,29 kr/kWh");
-        PRICES.put("eon",         "~3,29 kr/kWh");
+        PRICES.put("e.on",        "~4,75 kr/kWh");
+        PRICES.put("eon",         "~4,75 kr/kWh");
         PRICES.put("clever",      "~3,99 kr/kWh");
         PRICES.put("chargenode",            "~5,00 kr/kWh");
         PRICES.put("p-hus kungsgatan 6",    "~5,00 kr/kWh");
