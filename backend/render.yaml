@@ -10,3 +10,5 @@ services:
         sync: false
       - key: CHARGEPRICE_API_KEY
         sync: false
+      - key: APININJAS_API_KEY
+        sync: false

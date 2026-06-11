@@ -63,6 +63,8 @@ public class OcmService {
             String town    = str(addr, "Town", "");
             String address = (street + (town.isBlank() ? "" : ", " + town)).strip();
             double dist    = dbl(addr, "Distance");
+            double stLat   = dbl(addr, "Latitude");
+            double stLon   = dbl(addr, "Longitude");
             String cost    = str(s, "UsageCost", "");
             var    opInfo  = (Map<String, Object>) s.get("OperatorInfo");
             String op      = opInfo != null ? str(opInfo, "Title", "") : "";
@@ -96,7 +98,7 @@ public class OcmService {
                 default        -> bestType;
             };
 
-            return new StationDto(name, address, dist, maxEffKw, bestStationKw, connLabel, op, cost, null);
+            return new StationDto(name, address, dist, stLat, stLon, maxEffKw, bestStationKw, connLabel, op, cost, null);
         } catch (Exception e) {
             return null;
         }

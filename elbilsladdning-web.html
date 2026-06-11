@@ -366,7 +366,8 @@
   async function fetchAndRender() {
     setOutput('<div class="ev-status"><div class="ev-spinner"></div>Söker laddstationer och frågar AI…</div>');
     try {
-      const url = `${API}/api/stations?lat=${state.lat}&lon=${state.lon}&carIndex=${state.carIndex}&sort=${state.sort}`;
+      const cityParam = state.city ? `&city=${encodeURIComponent(state.city)}` : "";
+      const url = `${API}/api/stations?lat=${state.lat}&lon=${state.lon}&carIndex=${state.carIndex}&sort=${state.sort}${cityParam}`;
       const resp = await fetch(url);
       if (!resp.ok) throw new Error("HTTP " + resp.status);
       const data = await resp.json();

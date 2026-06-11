@@ -5,6 +5,7 @@ import se.elitrobban.elbilsladdning.data.CarDatabase;
 import se.elitrobban.elbilsladdning.model.CarSpec;
 import se.elitrobban.elbilsladdning.model.StationDto;
 import se.elitrobban.elbilsladdning.model.StationResponse;
+import se.elitrobban.elbilsladdning.service.ApiNinjasService;
 import se.elitrobban.elbilsladdning.service.ChargepriceService;
 import se.elitrobban.elbilsladdning.service.GroqService;
 import se.elitrobban.elbilsladdning.service.OcmService;
@@ -20,11 +21,14 @@ public class ChargingController {
     private final OcmService         ocm;
     private final GroqService        groq;
     private final ChargepriceService chargeprice;
+    private final ApiNinjasService   apiNinjas;
 
-    public ChargingController(OcmService ocm, GroqService groq, ChargepriceService chargeprice) {
+    public ChargingController(OcmService ocm, GroqService groq,
+                              ChargepriceService chargeprice, ApiNinjasService apiNinjas) {
         this.ocm         = ocm;
         this.groq        = groq;
         this.chargeprice = chargeprice;
+        this.apiNinjas   = apiNinjas;
     }
 
     @GetMapping("/health")
@@ -47,7 +51,8 @@ public class ChargingController {
             @RequestParam double lat,
             @RequestParam double lon,
             @RequestParam int carIndex,
-            @RequestParam(defaultValue = "speed") String sort) {
+            @RequestParam(defaultValue = "speed") String sort,
+            @RequestParam(defaultValue = "") String city) {
 
         if (carIndex < 0 || carIndex >= CarDatabase.CARS.size())
             throw new IllegalArgumentException("Ogiltigt bilindex: " + carIndex);
@@ -57,13 +62,20 @@ public class ChargingController {
         List<StationDto> stations = ocm.findNearby(lat, lon, car);
         stations = sorted(stations, sort);
 
-        // Enrich top 10 with Chargeprice data (cached per operator/power/plug)
+        // Enrich top 10 with pricing data
         stations = stations.stream().limit(10).map(s -> {
-            String cpPrice = chargeprice.getPricePerKwh(s, car);
-            return cpPrice != null
-                ? new StationDto(s.name(), s.address(), s.distanceKm(), s.maxEffKw(),
-                                 s.stationKw(), s.connectorType(), s.operator(), s.usageCost(), cpPrice)
-                : s;
+            // Try Chargeprice first
+            String price = chargeprice.getPricePerKwh(s, car);
+
+            // Fall back to API Ninjas if Chargeprice has no data
+            if (price == null && apiNinjas.isEnabled() && !city.isBlank())
+                price = apiNinjas.getPricing(city, s.lat(), s.lon());
+
+            return price != null
+                    ? new StationDto(s.name(), s.address(), s.distanceKm(),
+                                     s.lat(), s.lon(), s.maxEffKw(), s.stationKw(),
+                                     s.connectorType(), s.operator(), s.usageCost(), price)
+                    : s;
         }).toList();
 
         String recommendation = groq.recommend(car, stations);

@@ -4,6 +4,8 @@ public record StationDto(
         String name,
         String address,
         double distanceKm,
+        double lat,
+        double lon,
         double maxEffKw,
         double stationKw,
         String connectorType,
