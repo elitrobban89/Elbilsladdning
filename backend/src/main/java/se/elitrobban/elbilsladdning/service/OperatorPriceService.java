@@ -31,8 +31,9 @@ public class OperatorPriceService {
         PRICES.put("e.on",        "~3,29 kr/kWh");
         PRICES.put("eon",         "~3,29 kr/kWh");
         PRICES.put("clever",      "~3,99 kr/kWh");
-        PRICES.put("chargenode",          "~5,00 kr/kWh");
-        PRICES.put("kungsbacka parkering","~5,00 kr/kWh");
+        PRICES.put("chargenode",            "~5,00 kr/kWh");
+        PRICES.put("p-hus kungsgatan 6",    "~5,00 kr/kWh");
+        PRICES.put("bissmarksgatan",        "~4,75 kr/kWh");
         PRICES.put("lidl",                "~2,99 kr/kWh");
         PRICES.put("ikea",                "Gratis (för kunder)");
         PRICES.put("preem",               "~3,49 kr/kWh");
