@@ -9,6 +9,7 @@ import se.elitrobban.elbilsladdning.service.ApiNinjasService;
 import se.elitrobban.elbilsladdning.service.ChargepriceService;
 import se.elitrobban.elbilsladdning.service.GroqService;
 import se.elitrobban.elbilsladdning.service.OcmService;
+import se.elitrobban.elbilsladdning.service.OperatorPriceService;
 
 import java.util.Comparator;
 import java.util.List;
@@ -18,17 +19,19 @@ import java.util.Map;
 @RequestMapping("/api")
 public class ChargingController {
 
-    private final OcmService         ocm;
-    private final GroqService        groq;
-    private final ChargepriceService chargeprice;
-    private final ApiNinjasService   apiNinjas;
+    private final OcmService           ocm;
+    private final GroqService          groq;
+    private final ChargepriceService   chargeprice;
+    private final ApiNinjasService     apiNinjas;
+    private final OperatorPriceService operatorPrices;
 
-    public ChargingController(OcmService ocm, GroqService groq,
-                              ChargepriceService chargeprice, ApiNinjasService apiNinjas) {
-        this.ocm         = ocm;
-        this.groq        = groq;
-        this.chargeprice = chargeprice;
-        this.apiNinjas   = apiNinjas;
+    public ChargingController(OcmService ocm, GroqService groq, ChargepriceService chargeprice,
+                              ApiNinjasService apiNinjas, OperatorPriceService operatorPrices) {
+        this.ocm            = ocm;
+        this.groq           = groq;
+        this.chargeprice    = chargeprice;
+        this.apiNinjas      = apiNinjas;
+        this.operatorPrices = operatorPrices;
     }
 
     @GetMapping("/health")
@@ -39,9 +42,9 @@ public class ChargingController {
     @GetMapping("/cars")
     public List<Map<String, Object>> cars() {
         return CarDatabase.CARS.stream().map(c -> Map.<String, Object>of(
-                "name",     c.name(),
-                "maxAcKw",  c.maxAcKw(),
-                "maxDcKw",  c.maxDcKw(),
+                "name",       c.name(),
+                "maxAcKw",    c.maxAcKw(),
+                "maxDcKw",    c.maxDcKw(),
                 "connectors", c.connectors()
         )).toList();
     }
@@ -62,14 +65,17 @@ public class ChargingController {
         List<StationDto> stations = ocm.findNearby(lat, lon, car);
         stations = sorted(stations, sort);
 
-        // Enrich top 10 with pricing data
         stations = stations.stream().limit(10).map(s -> {
-            // Try Chargeprice first
+            // 1. Chargeprice (live, structured)
             String price = chargeprice.getPricePerKwh(s, car);
 
-            // Fall back to API Ninjas if Chargeprice has no data
+            // 2. API Ninjas (live, free-text) — only if Chargeprice has nothing
             if (price == null && apiNinjas.isEnabled() && !city.isBlank())
                 price = apiNinjas.getPricing(city, s.lat(), s.lon());
+
+            // 3. Static operator table (approximate, always available)
+            if (price == null)
+                price = operatorPrices.getApproxPrice(s.operator());
 
             return price != null
                     ? new StationDto(s.name(), s.address(), s.distanceKm(),

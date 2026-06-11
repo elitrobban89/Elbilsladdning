@@ -455,8 +455,9 @@
     top.forEach(s => {
       const kwClass = s.maxEffKw >= 100 ? "kw-fast" : s.maxEffKw >= 22 ? "kw-medium" : "kw-slow";
       const opStr   = s.operator && !s.operator.includes("Unknown") ? `<span>🏢 ${s.operator}</span>` : "";
+      const priceLabel = s.chargepricePerKwh?.startsWith("~") ? "(ungefärligt)" : "(Chargeprice)";
       const priceDisplay = s.chargepricePerKwh
-        ? `<span>💰 ${s.chargepricePerKwh} <small style="opacity:.6">(Chargeprice)</small></span>`
+        ? `<span>💰 ${s.chargepricePerKwh} <small style="opacity:.6">${priceLabel}</small></span>`
         : s.usageCost
           ? `<span>💰 ${s.usageCost} <small style="opacity:.6">(ungefärligt)</small></span>`
           : "";
