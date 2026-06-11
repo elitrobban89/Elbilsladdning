@@ -1,0 +1,10 @@
+target/
+*.class
+*.jar
+!**/src/main/**
+!**/src/test/**
+.idea/
+*.iml
+.mvn/
+mvnw
+mvnw.cmd

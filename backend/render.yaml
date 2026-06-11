@@ -1,0 +1,10 @@
+services:
+  - type: web
+    name: elbilsladdning-backend
+    runtime: docker
+    healthCheckPath: /api/health
+    envVars:
+      - key: OCM_API_KEY
+        sync: false
+      - key: GROQ_API_KEY
+        sync: false
