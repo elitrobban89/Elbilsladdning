@@ -160,6 +160,61 @@
   }
   .ev-disclaimer a { color: rgba(165,180,252,0.5); text-decoration: none; }
 
+  .ev-fast-highlight {
+    background: linear-gradient(135deg, #0d2b1f 0%, #0f2d35 100%);
+    border: 1.5px solid rgba(16,185,129,0.45);
+    border-radius: var(--radius);
+    padding: 18px 20px;
+    margin-bottom: 20px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    flex-wrap: wrap;
+  }
+  .ev-fast-highlight-icon {
+    font-size: 1.8rem;
+    flex-shrink: 0;
+  }
+  .ev-fast-highlight-body { flex: 1; min-width: 0; }
+  .ev-fast-highlight-label {
+    font-size: 0.68rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    color: #34d399;
+    margin-bottom: 4px;
+  }
+  .ev-fast-highlight-title {
+    font-size: 1rem;
+    font-weight: 800;
+    color: #fff;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .ev-fast-highlight-sub {
+    font-size: 0.8rem;
+    color: rgba(255,255,255,0.5);
+    margin-top: 2px;
+  }
+  .ev-fast-highlight-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 9px 16px;
+    background: rgba(16,185,129,0.15);
+    border: 1.5px solid rgba(16,185,129,0.4);
+    border-radius: 10px;
+    color: #34d399;
+    font-size: 0.82rem;
+    font-weight: 700;
+    text-decoration: none;
+    white-space: nowrap;
+    transition: background 0.2s;
+    flex-shrink: 0;
+  }
+  .ev-fast-highlight-link:hover { background: rgba(16,185,129,0.28); }
+
   @media (max-width: 520px) {
     .ev-controls { padding: 16px; }
     .ev-station  { padding: 14px 16px; }
@@ -321,10 +376,63 @@
     }
   }
 
+  const OPERATOR_URLS = {
+    recharge:   { url: "https://recharge.com/se/priser",        label: "Se priser på recharge.com →" },
+    ionity:     { url: "https://ionity.eu/sv/tariffs.html",     label: "Se priser på ionity.eu →" },
+    incharge:   { url: "https://incharge.vattenfall.se/priser", label: "Se priser på incharge.vattenfall.se →" },
+    vattenfall: { url: "https://incharge.vattenfall.se/priser", label: "Se priser på incharge.vattenfall.se →" },
+    circlek:    { url: "https://www.circlek.se/elbil/laddning", label: "Se priser på circlek.se →" },
+    tesla:      { url: "https://www.tesla.com/sv_SE/supercharger", label: "Se priser på tesla.com →" },
+    bee:        { url: "https://bee-charging.com",              label: "Se priser på bee-charging.com →" },
+    eon:        { url: "https://www.eon.se/elbil",              label: "Se priser på eon.se →" },
+    clever:     { url: "https://www.clever.dk/priser",          label: "Se priser på clever.dk →" },
+    mer:        { url: "https://mer.eco/se/",                   label: "Se priser på mer.eco →" },
+  };
+
+  function operatorInfo(name) {
+    if (!name) return null;
+    const l = name.toLowerCase();
+    if (l.includes("recharge"))                    return OPERATOR_URLS.recharge;
+    if (l.includes("ionity"))                      return OPERATOR_URLS.ionity;
+    if (l.includes("incharge") || l.includes("vattenfall")) return OPERATOR_URLS.incharge;
+    if (l.includes("circle k") || l.includes("shell"))      return OPERATOR_URLS.circlek;
+    if (l.includes("tesla"))                       return OPERATOR_URLS.tesla;
+    if (l.includes("bee"))                         return OPERATOR_URLS.bee;
+    if (l.includes("e.on") || l.includes("eon"))   return OPERATOR_URLS.eon;
+    if (l.includes("clever"))                      return OPERATOR_URLS.clever;
+    if (l.includes("mer "))                        return OPERATOR_URLS.mer;
+    return null;
+  }
+
   function renderResults(data) {
     const { carName, stations, recommendation } = data;
     const top = stations.slice(0, 10);
     let html = "";
+
+    // ── Närmaste snabbladdare (DC ≥ 50 kW, sorted by distance) ──
+    const fastDC = [...stations]
+      .filter(s => s.maxEffKw >= 50 && s.connectorType.includes("DC"))
+      .sort((a, b) => a.distanceKm - b.distanceKm)[0];
+
+    if (fastDC) {
+      const op   = operatorInfo(fastDC.operator);
+      const dist = fastDC.distanceKm.toFixed(1);
+      const kw   = Math.round(fastDC.maxEffKw);
+      const name = fastDC.name.length > 40 ? fastDC.name.slice(0, 38) + "…" : fastDC.name;
+      const linkHtml = op
+        ? `<a class="ev-fast-highlight-link" href="${op.url}" target="_blank" rel="noopener">${op.label}</a>`
+        : "";
+      html += `
+        <div class="ev-fast-highlight">
+          <div class="ev-fast-highlight-icon">⚡</div>
+          <div class="ev-fast-highlight-body">
+            <div class="ev-fast-highlight-label">Närmaste snabbladdare</div>
+            <div class="ev-fast-highlight-title">${name}, ${kw} kW</div>
+            <div class="ev-fast-highlight-sub">${dist} km bort · ${fastDC.connectorType}</div>
+          </div>
+          ${linkHtml}
+        </div>`;
+    }
 
     if (recommendation) {
       html += `
