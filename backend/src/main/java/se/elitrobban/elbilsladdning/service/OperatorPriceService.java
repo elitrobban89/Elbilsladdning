@@ -17,10 +17,14 @@ public class OperatorPriceService {
     private static final LinkedHashMap<String, String> PRICES = new LinkedHashMap<>();
 
     static {
-        PRICES.put("ionity",      "~0,79 EUR/kWh");
-        PRICES.put("allego",      "~0,79 EUR/kWh");
-        PRICES.put("eviny",       "~3,99 kr/kWh");
-        PRICES.put("tesla",       "~4,50 kr/kWh");
+        PRICES.put("ionity",         "~0,79 EUR/kWh");
+        PRICES.put("allego",         "~0,79 EUR/kWh");
+        PRICES.put("eviny",          "~3,99 kr/kWh");
+        PRICES.put("nima",           "~5,99 kr/kWh");
+        PRICES.put("northe",         "~5,20 kr/kWh");
+        PRICES.put("hedin",          "~5,20 kr/kWh");
+        PRICES.put("kungsbacka volvo","~6,35 kr/kWh");
+        PRICES.put("tesla",          "~4,50 kr/kWh");
         PRICES.put("vattenfall",  "~3,49 kr/kWh");
         PRICES.put("incharge",    "~3,49 kr/kWh");
         PRICES.put("recharge",    "~3,49 kr/kWh");
