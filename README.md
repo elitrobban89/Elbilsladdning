@@ -36,6 +36,7 @@ Live: [elitrobban.se/elbilsladdning](https://elitrobban.se/elbilsladdning/)
 | Livepriser | [Chargeprice API](https://chargeprice.app) (demo-nyckel) |
 | AI | Groq (llama-3.3-70b-versatile) |
 | Frontend | Vanilla JS + CSS, inbäddat i WordPress |
+| JS-hosting | Render static file (`/ev-app.js`) — serveras separat från WordPress |
 
 ---
 
@@ -80,8 +81,14 @@ backend/                         Spring Boot-backend (Render)
       GroqService.java                   AI-rekommendation och "Visste du att" via Groq
       ApiNinjasService.java              API Ninjas-integration (reserv)
 
-elbilsladdning-web.html                  Frontend — inbäddas i WordPress
+elbilsladdning-web.html                  WordPress-snippet — endast HTML + CSS + <script src>
+  src/main/resources/static/
+    ev-app.js                            All frontend-logik — serveras av Render, aldrig av WordPress
 ```
+
+> **OBS:** JavaScript ligger i `ev-app.js` och serveras av Render som en statisk fil.
+> WordPress-snippeten innehåller inget inline-JS — WordPress HTML-encodar `&&` och andra operatorer
+> i inline scripts vilket bryter JavaScript-syntaxen.
 
 ---
 
