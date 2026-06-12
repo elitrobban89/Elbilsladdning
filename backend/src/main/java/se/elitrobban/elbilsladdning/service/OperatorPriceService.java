@@ -7,8 +7,8 @@ import java.util.Map;
 
 /**
  * Approximate DC prices per major Swedish charging network,
- * sourced from each operator's public pricing page.
- * Updated 2026-06. Always shown with a disclaimer to check the operator's app.
+ * sourced from each operator's public pricing page (utan abonnemang/roaming).
+ * Updated 2026-06-13. Always shown with a disclaimer to check the operator's app.
  */
 @Service
 public class OperatorPriceService {
@@ -17,8 +17,8 @@ public class OperatorPriceService {
     private static final LinkedHashMap<String, String> PRICES = new LinkedHashMap<>();
 
     static {
-        PRICES.put("ionity",         "~0,79 EUR/kWh");
-        PRICES.put("allego",         "~0,79 EUR/kWh");
+        PRICES.put("ionity",         "~6,96 kr/kWh");
+        PRICES.put("allego",         "~6,50 kr/kWh");
         PRICES.put("eviny",          "~3,99 kr/kWh");
         PRICES.put("nima",           "~5,99 kr/kWh");
         PRICES.put("northe",         "~5,20 kr/kWh");
@@ -28,10 +28,10 @@ public class OperatorPriceService {
         PRICES.put("vattenfall",  "~3,49 kr/kWh");
         PRICES.put("incharge",    "~3,49 kr/kWh");
         PRICES.put("recharge",    "~3,49 kr/kWh");
-        PRICES.put("circle k",    "~3,99 kr/kWh");
-        PRICES.put("circlek",     "~3,99 kr/kWh");
+        PRICES.put("circle k",    "~5,99 kr/kWh");
+        PRICES.put("circlek",     "~5,99 kr/kWh");
         PRICES.put("bee",         "~3,29 kr/kWh");
-        PRICES.put("mer",         "~3,49 kr/kWh");
+        PRICES.put("mer",         "~6,24 kr/kWh");
         PRICES.put("e.on",        "~4,75 kr/kWh");
         PRICES.put("eon",         "~4,75 kr/kWh");
         PRICES.put("clever",      "~3,99 kr/kWh");
