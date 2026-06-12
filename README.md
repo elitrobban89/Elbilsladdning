@@ -9,13 +9,17 @@ Live: [elitrobban.se/elbilsladdning](https://elitrobban.se/elbilsladdning/)
 ## Funktioner
 
 - **GPS-baserad sökning** — hittar laddstationer inom 25 km automatiskt
-- **73 bilmodeller** — filtrerar stationer baserat på din bils kontakttyp och laddeffekt
+- **73 bilmodeller** — Volvo, Tesla, BMW, Audi, Kia, Hyundai, MG, BYD m.fl. — filtrerar på kontakttyp och laddeffekt
 - **Snabbast / Billigast** — sortera på DC-effekt eller pris per kWh
-- **Räckvidd** — visar WLTP-räckvidd och uppskattad verklig räckvidd (~85 % av WLTP)
-- **Kostnadskalkyl** — ungefärlig kostnad för 0→100 % samt kr/mil (baserat på verklig räckvidd)
-- **Laddningsfrekvens** — ange årskörsträcka och se hur ofta du behöver ladda (20→80 %, verklig räckvidd)
-- **AI-rekommendation** — Groq LLM ger ett kort råd baserat på din bil och tillgängliga stationer
-- **Hemmaladdningstips** — påminner om att hemmaladdning (1,50–3,50 kr/kWh) alltid är billigast
+- **Filtrera laddtyp** — visa endast snabbladdare DC (≥50 kW) med ett klick
+- **Räckvidd** — WLTP-räckvidd och uppskattad verklig räckvidd (~85 % av WLTP)
+- **Laddtidsestimering** — visar ungefärlig tid för 20→80 % per DC-station baserat på din bil och stationens effektiva kW
+- **Kostnadskalkyl** — kostnad för full laddning och kr/mil vid varje station
+- **Hemjämförelse** — hur mycket dyrare det är att ladda på stationen vs hemma (~2 kr/kWh)
+- **Laddningsfrekvens** — ange årskörsträcka och se hur ofta du behöver ladda
+- **AI-rekommendation + Visste du att** — Groq LLM ger ett konkret råd och ett bilfakta per sökning
+- **Livepriser** — Chargeprice API + statisk operatörstabell täcker de flesta svenska nätverk
+- **NOBIL-integration** — hämtar antal laddpunkter per station (aktiveras med API-nyckel)
 - **Mobilanpassad** — fungerar på iOS och Android
 
 ---
@@ -27,7 +31,7 @@ Live: [elitrobban.se/elbilsladdning](https://elitrobban.se/elbilsladdning/)
 | Backend | Spring Boot 3.2.5 / Java 21 |
 | Hosting backend | Render (free tier, Docker) |
 | Stationsdata | [Open Charge Map API](https://openchargemap.io) |
-| Stationsdata (planerad) | [NOBIL API](https://info.nobil.no/api) — nordisk databas, API-nyckel registrerad |
+| Laddpunkter | [NOBIL API](https://info.nobil.no/api) — nordisk databas, ger antal kontakter per station |
 | Livepriser | [Chargeprice API](https://chargeprice.app) (demo-nyckel) |
 | AI | Groq (llama-3.3-70b-versatile) |
 | Frontend | Vanilla JS + CSS, inbäddat i WordPress |
@@ -42,9 +46,9 @@ Laddpriser hämtas från tre källor i prioritetsordning:
 |-------|--------|-------------|
 | **Chargeprice.app** | ✅ Aktiv | Demo-API-nyckel, täcker stora operatörer (IONITY, Recharge m.fl.) |
 | **OCM UsageCost-fält** | ✅ Används | Finns ibland i Open Charge Map-data |
-| **Statisk operatörstabell** | ✅ Fallback | Manuellt insamlade priser för svenska operatörer |
+| **Statisk operatörstabell** | ✅ Fallback | Priser utan abonnemang, uppdaterade 2026-06-13 |
 
-Den statiska tabellen täcker Recharge, IONITY, InCharge, Circle K, E.ON, Mer, Allego m.fl.
+Statisk tabell (utan abonnemang, avrundade): Recharge ~3,49, InCharge ~3,49, Circle K ~5,99, MER ~6,24, IONITY ~6,96, E.ON ~4,75, Allego ~6,50, Bee ~3,29 kr/kWh m.fl.
 Priser markerade med `~` är ungefärliga — verifiera alltid hos respektive operatör.
 
 ---
@@ -55,17 +59,17 @@ Priser markerade med `~` är ungefärliga — verifiera alltid hos respektive op
 backend/                         Spring Boot-backend (Render)
   src/main/java/se/elitrobban/elbilsladdning/
     controller/ChargingController.java   REST-endpoints /api/cars och /api/stations
-    data/CarDatabase.java                73 bilmodeller med AC/DC-effekt, batteri och WLTP-räckvidd
+    data/CarDatabase.java                73 bilmodeller med AC/DC-effekt, batteri, räckvidd och pris
     model/                               CarSpec, StationDto, StationResponse
     service/
       OcmService.java                    Hämtar stationer från Open Charge Map
+      NobilService.java                  Hämtar laddpunktsdata från NOBIL (nordisk databas)
       ChargepriceService.java            Livepriser via Chargeprice API
       OperatorPriceService.java          Statisk prislista för svenska operatörer (fallback)
-      GroqService.java                   AI-rekommendation via Groq
+      GroqService.java                   AI-rekommendation och "Visste du att" via Groq
       ApiNinjasService.java              API Ninjas-integration (reserv)
 
 elbilsladdning-web.html                  Frontend — inbäddas i WordPress
-src/                                     Konsolapplikation (utvecklingsverktyg)
 ```
 
 ---
@@ -74,7 +78,7 @@ src/                                     Konsolapplikation (utvecklingsverktyg)
 
 ```bash
 cd backend
-./mvnw spring-boot:run
+mvn spring-boot:run
 ```
 
 Kräver miljövariablerna `OCM_API_KEY` och `GROQ_API_KEY`. Se `application.properties`.
@@ -83,10 +87,10 @@ Kräver miljövariablerna `OCM_API_KEY` och `GROQ_API_KEY`. Se `application.prop
 
 ## Miljövariabler (Render)
 
-| Variabel | Beskrivning |
-|----------|-------------|
-| `OCM_API_KEY` | Open Charge Map API-nyckel |
-| `GROQ_API_KEY` | Groq API-nyckel för AI-rekommendationer |
-| `CHARGEPRICE_API_KEY` | Chargeprice API-nyckel (demo-nyckel fungerar) |
-| `APININJAS_API_KEY` | API Ninjas (valfri reservkälla) |
-| `NOBIL_API_KEY` | NOBIL nordisk laddstationsdatabas (planerad integration) |
+| Variabel | Krävs | Beskrivning |
+|----------|-------|-------------|
+| `OCM_API_KEY` | ✅ | Open Charge Map API-nyckel |
+| `GROQ_API_KEY` | ✅ | Groq API-nyckel för AI-rekommendationer |
+| `CHARGEPRICE_API_KEY` | ⚪ | Chargeprice API-nyckel (demo-nyckel fungerar) |
+| `APININJAS_API_KEY` | ⚪ | API Ninjas (valfri reservkälla) |
+| `NOBIL_API_KEY` | ⚪ | NOBIL API-nyckel — aktiverar laddpunktsdata per station |
