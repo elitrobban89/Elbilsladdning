@@ -51,19 +51,34 @@
     width: 100%; padding: 11px 40px 11px 14px;
     background: var(--bg); border: 1.5px solid var(--border);
     border-radius: 10px; color: var(--text); font-size: 0.92rem;
-    appearance: none;
+    -webkit-appearance: none; -moz-appearance: none; appearance: none;
     background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%233b82f6' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
     background-repeat: no-repeat; background-position: right 13px center;
     cursor: pointer; transition: border-color 0.2s, box-shadow 0.2s;
+    pointer-events: auto !important; position: relative; z-index: 10;
+    touch-action: manipulation;
   }
   .ev-select:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px rgba(59,130,246,0.15); }
   .ev-select option { background: #0d1526; }
 
   .ev-specs { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
   .ev-spec-badge { font-size: 0.75rem; padding: 3px 10px; border-radius: 20px; font-weight: 600; }
-  .badge-ac  { background: rgba(59,130,246,0.12); color: #93c5fd; border: 1px solid rgba(59,130,246,0.25); }
-  .badge-dc  { background: rgba(34,197,94,0.12);  color: #86efac; border: 1px solid rgba(34,197,94,0.25); }
-  .badge-con { background: rgba(129,140,248,0.12); color: #c7d2fe; border: 1px solid rgba(129,140,248,0.2); }
+  .badge-ac    { background: rgba(59,130,246,0.12); color: #93c5fd; border: 1px solid rgba(59,130,246,0.25); }
+  .badge-dc    { background: rgba(34,197,94,0.12);  color: #86efac; border: 1px solid rgba(34,197,94,0.25); }
+  .badge-con   { background: rgba(129,140,248,0.12); color: #c7d2fe; border: 1px solid rgba(129,140,248,0.2); }
+  .badge-range { background: rgba(245,158,11,0.12); color: #fcd34d; border: 1px solid rgba(245,158,11,0.28); }
+  .badge-freq  { background: rgba(236,72,153,0.10); color: #f9a8d4; border: 1px solid rgba(236,72,153,0.25); }
+
+  .ev-input {
+    width: 100%; padding: 11px 14px;
+    background: var(--bg); border: 1.5px solid var(--border);
+    border-radius: 10px; color: var(--text); font-size: 0.92rem;
+    transition: border-color 0.2s, box-shadow 0.2s;
+    touch-action: manipulation;
+  }
+  .ev-input:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px rgba(59,130,246,0.15); }
+  .ev-input::placeholder { color: var(--muted); }
+  @media (max-width: 500px) { .ev-input { font-size: 1rem; } }
 
   .ev-sort-row { display: flex; gap: 8px; }
   .ev-sort-btn {
@@ -203,6 +218,7 @@
     .ev-controls { padding: 16px; }
     .ev-station-body { padding: 12px 12px; gap: 0 9px; }
     .ev-sort-btn { padding: 8px 6px; font-size: 0.76rem; }
+    .ev-select { font-size: 1rem; } /* prevent iOS auto-zoom on focus which blocks selection */
   }
 </style>
 
@@ -227,6 +243,11 @@
         <div class="ev-location-dot waiting" id="ev-loc-dot"></div>
         <span id="ev-loc-text">Hämtar position…</span>
       </div>
+    </div>
+    <div>
+      <div class="ev-label">Årlig körsträcka</div>
+      <input type="number" class="ev-input" id="ev-daily-mil"
+             placeholder="Ange mil du kör per år" min="100" max="10000" step="100">
     </div>
     <div>
       <div class="ev-label">Sortera på</div>
@@ -278,14 +299,35 @@
     const box = document.getElementById("ev-specs");
     if (state.carIndex === null) { box.style.display = "none"; return; }
     const c = state.cars[state.carIndex];
+    const rangeMil = c.rangeKm ? Math.round(c.rangeKm / 10) : null;
+    const freqBadge = chargingFreqBadge(rangeMil);
     box.style.display = "flex";
     box.innerHTML = `
       <span class="ev-spec-badge badge-ac">AC max ${c.maxAcKw} kW</span>
       <span class="ev-spec-badge badge-dc">DC max ${c.maxDcKw} kW</span>
+      ${rangeMil ? `<span class="ev-spec-badge badge-range">~${rangeMil} mil räckvidd</span>` : ""}
+      ${freqBadge ? `<span class="ev-spec-badge badge-freq">${freqBadge}</span>` : ""}
       ${c.connectors.map(t => `<span class="ev-spec-badge badge-con">${conLabel(t)}</span>`).join("")}`;
   }
 
   function conLabel(t) { return { type2:"Type 2", ccs:"CCS", chademo:"CHAdeMO" }[t] || t; }
+
+  document.getElementById("ev-daily-mil").addEventListener("input", renderSpecs);
+
+  function chargingFreqBadge(rangeMil) {
+    const annualMil = parseFloat(document.getElementById("ev-daily-mil").value);
+    if (!annualMil || isNaN(annualMil) || !rangeMil) return null;
+    const dailyMil = annualMil / 365;
+    // real-world ~85% of WLTP, typical session 20→80% = 60% of that
+    const usableMil = rangeMil * 0.85 * 0.60;
+    const days = usableMil / dailyMil;
+    let label;
+    if (days < 1)        label = `${Math.ceil(7 / days)} ggr/vecka`;
+    else if (days < 1.5) label = "ladda varje dag";
+    else if (days < 2.5) label = "ladda varannan dag";
+    else                 label = `ladda var ${Math.round(days)}:e dag`;
+    return `🔋 ${label}`;
+  }
 
   document.querySelectorAll(".ev-sort-btn").forEach(btn => {
     btn.addEventListener("click", () => {
@@ -441,12 +483,17 @@
       const kwClass    = speedClass === "fast" ? "kw-fast" : speedClass === "medium" ? "kw-medium" : "kw-slow";
       const rawPrice   = s.chargepricePerKwh || s.usageCost || "";
       const isFree     = rawPrice.toLowerCase().includes("gratis") || rawPrice.toLowerCase().includes("free");
-      const battery    = state.carIndex !== null ? state.cars[state.carIndex]?.batteryKwh : null;
+      const car        = state.carIndex !== null ? state.cars[state.carIndex] : null;
+      const battery    = car?.batteryKwh ?? null;
+      const rangeMil   = car?.rangeKm ? Math.round(car.rangeKm / 10) : null;
       const isEur      = rawPrice.includes("EUR");
       const priceNum   = rawPrice.match(/[\d,.]+/)?.[0] ? parseFloat(rawPrice.match(/[\d,.]+/)[0].replace(",",".")) : null;
       const priceKr    = (priceNum && isEur) ? priceNum * 11.5 : priceNum;
       const fullCost   = (battery && priceKr && !isFree) ? Math.round(battery * priceKr) : null;
-      const costHint   = fullCost ? `<div class="ev-cost-hint">0→100%: ~${fullCost} kr</div>` : "";
+      const krPerMil   = (fullCost && rangeMil) ? Math.round(fullCost / rangeMil) : null;
+      const costHint   = fullCost
+        ? `<div class="ev-cost-hint">0→100%: ~${fullCost} kr${krPerMil ? ` · ~${krPerMil} kr/mil` : ""}</div>`
+        : "";
       const priceBadge = rawPrice ? `<div class="ev-price-badge${isFree?" free":""}">${rawPrice}</div>${costHint}` : "";
       const addr       = s.address ? `<div class="ev-station-addr">${s.address}</div>` : "";
       const opTag      = s.operator && !s.operator.includes("Unknown")
