@@ -222,6 +222,13 @@
     font-size: 0.72rem; color: rgba(34,197,94,0.9); padding: 2px 7px; border-radius: 5px;
     border: 1px solid rgba(34,197,94,0.22); background: rgba(34,197,94,0.06);
   }
+  .ev-time-tag {
+    font-size: 0.72rem; color: rgba(245,158,11,0.9); padding: 2px 7px; border-radius: 5px;
+    border: 1px solid rgba(245,158,11,0.22); background: rgba(245,158,11,0.06);
+  }
+  .ev-home-compare {
+    font-size: 0.65rem; color: rgba(34,197,94,0.65); text-align: right; margin-top: 1px; white-space: nowrap;
+  }
 
   .ev-disclaimer {
     font-size: 0.72rem; color: rgba(200,215,255,0.28);
@@ -271,6 +278,13 @@
         <button class="ev-sort-btn"        data-sort="price">💰 Billigast</button>
       </div>
     </div>
+    <div>
+      <div class="ev-label">Visa</div>
+      <div class="ev-sort-row">
+        <button class="ev-sort-btn ev-filter-btn active" data-filter="all">🔌 Alla laddare</button>
+        <button class="ev-sort-btn ev-filter-btn"        data-filter="fast">⚡ Snabbladdare DC</button>
+      </div>
+    </div>
   </div>
 
   <div class="ev-disclaimer">
@@ -286,7 +300,7 @@
 <script>
 (function () {
   const API = "https://elbilsladdning.onrender.com";
-  let state = { lat: null, lon: null, city: "", sort: "speed", carIndex: null, cars: [] };
+  let state = { lat: null, lon: null, city: "", sort: "speed", carIndex: null, cars: [], filter: "all", lastData: null };
 
   fetch(API + "/api/cars")
     .then(r => r.json())
@@ -347,12 +361,21 @@
     return `🔋 ${label}`;
   }
 
-  document.querySelectorAll(".ev-sort-btn").forEach(btn => {
+  document.querySelectorAll("[data-sort]").forEach(btn => {
     btn.addEventListener("click", () => {
-      document.querySelectorAll(".ev-sort-btn").forEach(b => b.classList.remove("active"));
+      document.querySelectorAll("[data-sort]").forEach(b => b.classList.remove("active"));
       btn.classList.add("active");
       state.sort = btn.dataset.sort;
       if (state.lat !== null && state.carIndex !== null) fetchAndRender();
+    });
+  });
+
+  document.querySelectorAll(".ev-filter-btn").forEach(btn => {
+    btn.addEventListener("click", () => {
+      document.querySelectorAll(".ev-filter-btn").forEach(b => b.classList.remove("active"));
+      btn.classList.add("active");
+      state.filter = btn.dataset.filter;
+      if (state.lastData) renderResults(state.lastData);
     });
   });
 
@@ -438,11 +461,17 @@
   }
 
   function renderResults(data) {
+    state.lastData = data;
     const { carName, stations, recommendation } = data;
-    const top = stations.slice(0, 10);
+
+    // Apply laddtyp-filter
+    const visible = state.filter === "fast"
+        ? stations.filter(s => s.connectorType.includes("DC") && s.maxEffKw >= 50)
+        : stations;
+    const top = visible.slice(0, 10);
     let html = "";
 
-    // Nearest fast DC charger highlight
+    // Nearest fast DC charger highlight (always from full station list)
     const fastDC = [...stations]
       .filter(s => s.maxEffKw >= 50 && s.connectorType.includes("DC"))
       .sort((a, b) => a.distanceKm - b.distanceKm)[0];
@@ -501,11 +530,14 @@
         </div>`;
     }
 
+    const filterNote = state.filter === "fast" ? ` · DC ≥50 kW` : "";
     html += `
       <div class="ev-results-header">
         <strong>${stations.length} kompatibla stationer inom 25 km</strong>
-        <span>Topp ${top.length}</span>
+        <span>Topp ${top.length}${filterNote}</span>
       </div>`;
+
+    const HOME_RATE = 2.0; // kr/kWh, svensk genomsnittskostnad hemma
 
     top.forEach((s, i) => {
       const speedClass = s.maxEffKw >= 100 ? "fast" : s.maxEffKw >= 22 ? "medium" : "slow";
@@ -520,16 +552,30 @@
       const priceKr    = (priceNum && isEur) ? priceNum * 11.5 : priceNum;
       const fullCost   = (battery && priceKr && !isFree) ? Math.round(battery * priceKr) : null;
       const krPerMil   = (fullCost && realMil) ? Math.round(fullCost / realMil) : null;
+      const homeCost   = battery ? Math.round(battery * HOME_RATE) : null;
+      const extraKr    = (fullCost && homeCost && fullCost > homeCost) ? fullCost - homeCost : null;
       const costHint   = fullCost
         ? `<div class="ev-cost-hint">🔋 Full laddning ~${fullCost} kr${krPerMil ? ` · ~${krPerMil} kr/mil` : ""}</div>`
         : "";
+      const homeHint   = extraKr
+        ? `<div class="ev-home-compare">🏠 +${extraKr} kr jämfört med hemmaladdning</div>`
+        : "";
       const displayPrice = (isEur && priceKr) ? `${priceKr.toFixed(2)} kr/kWh` : rawPrice;
-      const priceBadge = rawPrice ? `<div class="ev-price-badge${isFree?" free":""}">${displayPrice}</div>${costHint}` : "";
+      const priceBadge = rawPrice ? `<div class="ev-price-badge${isFree?" free":""}">${displayPrice}</div>${costHint}${homeHint}` : "";
       const addr       = s.address ? `<div class="ev-station-addr">${s.address}</div>` : "";
       const opTag      = s.operator && !s.operator.includes("Unknown")
         ? `<span class="ev-operator-tag">${s.operator}</span>` : "";
       const connTag    = s.connectorCount > 0
         ? `<span class="ev-conncount-tag">🔌 ${s.connectorCount} laddpunkter</span>` : "";
+
+      // Laddtidsestimering DC 20→80%
+      const isDC    = s.connectorType.includes("DC");
+      const timeMin = (battery && isDC && s.maxEffKw > 0)
+          ? Math.round((battery * 0.60) / s.maxEffKw * 60) : null;
+      const timeStr = timeMin === null ? null
+          : timeMin < 60 ? `~${timeMin} min`
+          : `~${Math.floor(timeMin/60)} tim ${timeMin % 60} min`;
+      const timeTag = timeStr ? `<span class="ev-time-tag">⏱ ${timeStr} (20→80%)</span>` : "";
 
       html += `
         <div class="ev-station">
@@ -549,6 +595,7 @@
               <span class="ev-connector-tag">${s.connectorType}</span>
               ${opTag}
               ${connTag}
+              ${timeTag}
             </div>
           </div>
         </div>`;
