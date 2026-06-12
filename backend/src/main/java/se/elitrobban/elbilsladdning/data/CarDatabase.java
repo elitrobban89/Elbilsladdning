@@ -15,11 +15,16 @@ public class CarDatabase {
         new CarSpec("Škoda Enyaq iV 60",               11.0,  135.0, List.of("type2","ccs"),           58.0,  390),
 
         // Volvo
-        new CarSpec("Volvo EX30",                      11.0,  153.0, List.of("type2","ccs"),           62.0,  480),
-        new CarSpec("Volvo EX40",                      11.0,  150.0, List.of("type2","ccs"),           75.0,  530),
-        new CarSpec("Volvo C40",                       11.0,  150.0, List.of("type2","ccs"),           75.0,  530),
+        new CarSpec("Volvo EX30 Single Motor",         11.0,  153.0, List.of("type2","ccs"),           49.0,  344),
+        new CarSpec("Volvo EX30 Extended Range",       11.0,  153.0, List.of("type2","ccs"),           62.0,  480),
+        new CarSpec("Volvo EX30 Twin Motor",           11.0,  200.0, List.of("type2","ccs"),           62.0,  460),
+        new CarSpec("Volvo EX40 Single Motor",         11.0,  150.0, List.of("type2","ccs"),           75.0,  530),
+        new CarSpec("Volvo EX40 Twin Motor",           11.0,  150.0, List.of("type2","ccs"),           75.0,  508),
+        new CarSpec("Volvo C40 Single Motor",          11.0,  150.0, List.of("type2","ccs"),           75.0,  530),
+        new CarSpec("Volvo C40 Twin Motor",            11.0,  150.0, List.of("type2","ccs"),           75.0,  502),
         new CarSpec("Volvo EX60",                      22.0,  250.0, List.of("type2","ccs"),          100.0,  600),
-        new CarSpec("Volvo EX90",                      11.0,  250.0, List.of("type2","ccs"),          111.0,  590),
+        new CarSpec("Volvo EX90 Twin Motor",           11.0,  250.0, List.of("type2","ccs"),          111.0,  580),
+        new CarSpec("Volvo EX90 Twin Motor Performance", 11.0, 250.0, List.of("type2","ccs"),         111.0,  560),
 
         // Tesla
         new CarSpec("Tesla Model Y",                   11.0,  250.0, List.of("type2","ccs"),           75.0,  533),
