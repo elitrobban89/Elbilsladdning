@@ -493,7 +493,7 @@
       const fullCost   = (battery && priceKr && !isFree) ? Math.round(battery * priceKr) : null;
       const krPerMil   = (fullCost && realMil) ? Math.round(fullCost / realMil) : null;
       const costHint   = fullCost
-        ? `<div class="ev-cost-hint">0→100%: ~${fullCost} kr${krPerMil ? ` · ~${krPerMil} kr/mil` : ""}</div>`
+        ? `<div class="ev-cost-hint">🔋 Full laddning ~${fullCost} kr${krPerMil ? ` · ~${krPerMil} kr/mil` : ""}</div>`
         : "";
       const displayPrice = (isEur && priceKr) ? `${priceKr.toFixed(2)} kr/kWh` : rawPrice;
       const priceBadge = rawPrice ? `<div class="ev-price-badge${isFree?" free":""}">${displayPrice}</div>${costHint}` : "";
