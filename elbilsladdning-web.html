@@ -230,6 +230,34 @@
     font-size: 0.65rem; color: rgba(34,197,94,0.65); text-align: right; margin-top: 1px; white-space: nowrap;
   }
 
+  .ev-fav-btn {
+    background: none; border: 1.5px solid rgba(255,255,255,0.12); border-radius: 50%;
+    width: 28px; height: 28px; display: flex; align-items: center; justify-content: center;
+    font-size: 0.85rem; cursor: pointer; color: rgba(255,255,255,0.3);
+    transition: all 0.18s; flex-shrink: 0; padding: 0; margin-top: 4px;
+  }
+  .ev-fav-btn:hover  { border-color: #f43f5e; color: #f43f5e; }
+  .ev-fav-btn.saved  { border-color: #f43f5e; color: #f43f5e; background: rgba(244,63,94,0.1); }
+
+  .ev-favorites-section {
+    background: linear-gradient(135deg, #1a0f1a, #1a0f0f);
+    border: 1px solid rgba(244,63,94,0.25); border-radius: var(--radius);
+    padding: 14px 18px; margin-bottom: 16px;
+  }
+  .ev-favorites-title {
+    font-size: 0.72rem; font-weight: 700; text-transform: uppercase;
+    letter-spacing: 0.1em; color: rgba(244,63,94,0.8); margin-bottom: 10px;
+  }
+  .ev-fav-item {
+    display: flex; align-items: center; gap: 10px; padding: 6px 0;
+    border-bottom: 1px solid rgba(255,255,255,0.05); font-size: 0.82rem;
+  }
+  .ev-fav-item:last-child { border-bottom: none; padding-bottom: 0; }
+  .ev-fav-item-name  { flex: 1; font-weight: 600; color: var(--text); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .ev-fav-item-meta  { font-size: 0.72rem; color: var(--muted); white-space: nowrap; }
+  .ev-fav-remove     { background: none; border: none; color: rgba(244,63,94,0.5); cursor: pointer; font-size: 1rem; padding: 0 4px; flex-shrink: 0; }
+  .ev-fav-remove:hover { color: #f43f5e; }
+
   .ev-disclaimer {
     font-size: 0.72rem; color: rgba(200,215,255,0.28);
     text-align: center; margin-top: 24px; padding: 0 8px; line-height: 1.7;
@@ -300,7 +328,45 @@
 <script>
 (function () {
   const API = "https://elbilsladdning.onrender.com";
-  let state = { lat: null, lon: null, city: "", sort: "speed", carIndex: null, cars: [], filter: "all", lastData: null };
+  let state = { lat: null, lon: null, city: "", sort: "speed", carIndex: null, cars: [], filter: "all", lastData: null, favorites: [] };
+
+  function getUserId() {
+    let uid = localStorage.getItem("ev-user-id");
+    if (!uid) {
+      uid = crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).slice(2) + Date.now().toString(36);
+      localStorage.setItem("ev-user-id", uid);
+    }
+    return uid;
+  }
+
+  async function loadFavorites() {
+    try {
+      const r = await fetch(`${API}/api/favorites/${getUserId()}`);
+      state.favorites = r.ok ? await r.json() : [];
+    } catch(_) { state.favorites = []; }
+  }
+
+  async function toggleFavorite(station) {
+    const existing = state.favorites.find(f => Math.abs(f.lat - station.lat) < 0.0005);
+    if (existing) {
+      await fetch(`${API}/api/favorites/${existing.id}?userId=${getUserId()}`, { method: "DELETE" });
+      state.favorites = state.favorites.filter(f => f.id !== existing.id);
+    } else {
+      const resp = await fetch(`${API}/api/favorites`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          userId: getUserId(), name: station.name, address: station.address,
+          lat: station.lat, lon: station.lon, maxEffKw: station.maxEffKw,
+          connectorType: station.connectorType, operator: station.operator
+        })
+      });
+      if (resp.ok) { const saved = await resp.json(); if (saved) state.favorites.push(saved); }
+    }
+    if (state.lastData) renderResults(state.lastData);
+  }
+
+  loadFavorites();
 
   fetch(API + "/api/cars")
     .then(r => r.json())
@@ -530,6 +596,19 @@
         </div>`;
     }
 
+    // Favoriter-sektion
+    if (state.favorites.length > 0) {
+      html += `<div class="ev-favorites-section">
+        <div class="ev-favorites-title">♥ Mina favoriter (${state.favorites.length})</div>
+        ${state.favorites.map(f => `
+          <div class="ev-fav-item">
+            <span class="ev-fav-item-name">${f.name}</span>
+            <span class="ev-fav-item-meta">⚡ ${Math.round(f.maxEffKw)} kW · ${f.connectorType}</span>
+            <button class="ev-fav-remove" data-id="${f.id}" title="Ta bort">✕</button>
+          </div>`).join("")}
+      </div>`;
+    }
+
     const filterNote = state.filter === "fast" ? ` · DC ≥50 kW` : "";
     html += `
       <div class="ev-results-header">
@@ -567,6 +646,7 @@
         ? `<span class="ev-operator-tag">${s.operator}</span>` : "";
       const connTag    = s.connectorCount > 0
         ? `<span class="ev-conncount-tag">🔌 ${s.connectorCount} laddpunkter</span>` : "";
+      const isFav      = state.favorites.some(f => Math.abs(f.lat - s.lat) < 0.0005);
 
       // Laddtidsestimering DC 20→80%
       const isDC    = s.connectorType.includes("DC");
@@ -589,6 +669,7 @@
             <div class="ev-station-right">
               <div class="ev-dist">${s.distanceKm.toFixed(1)} km</div>
               ${priceBadge}
+              <button class="ev-fav-btn${isFav?' saved':''}" data-lat="${s.lat}" data-lon="${s.lon}" title="${isFav?'Ta bort favorit':'Spara som favorit'}">♥</button>
             </div>
             <div class="ev-station-tags" style="grid-column:2">
               <span class="ev-kw-badge ${kwClass}">⚡ ${Math.round(s.maxEffKw)} kW</span>
@@ -604,6 +685,27 @@
     setOutput(html);
   }
 
-  function setOutput(html) { document.getElementById("ev-output").innerHTML = html; }
+  function setOutput(html) {
+    document.getElementById("ev-output").innerHTML = html;
+
+    // Hjärtknapp — spara/ta bort favorit
+    document.querySelectorAll(".ev-fav-btn").forEach(btn => {
+      btn.addEventListener("click", async () => {
+        const lat = parseFloat(btn.dataset.lat);
+        const lon = parseFloat(btn.dataset.lon);
+        const station = state.lastData?.stations.find(s => Math.abs(s.lat - lat) < 0.0005);
+        if (station) await toggleFavorite(station);
+      });
+    });
+
+    // Ta bort-knappar i favorit-sektionen
+    document.querySelectorAll(".ev-fav-remove").forEach(btn => {
+      btn.addEventListener("click", async () => {
+        const id = parseInt(btn.dataset.id);
+        const fav = state.favorites.find(f => f.id === id);
+        if (fav) await toggleFavorite({ lat: fav.lat, lon: fav.lon, name: fav.name, address: fav.address, maxEffKw: fav.maxEffKw, connectorType: fav.connectorType, operator: fav.operator });
+      });
+    });
+  }
 })();
 </script>
