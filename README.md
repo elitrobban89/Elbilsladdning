@@ -13,10 +13,11 @@ Live: [elitrobban.se/elbilsladdning](https://elitrobban.se/elbilsladdning/)
 - **Snabbast / Billigast** — sortera på DC-effekt eller pris per kWh
 - **Filtrera laddtyp** — visa endast snabbladdare DC (≥50 kW) med ett klick
 - **Räckvidd** — WLTP-räckvidd och uppskattad verklig räckvidd (~85 % av WLTP)
-- **Laddtidsestimering** — visar ungefärlig tid för 20→80 % per DC-station baserat på din bil och stationens effektiva kW
+- **Laddtidsestimering** — ungefärlig tid för 20→80 % per DC-station baserat på din bil och stationens kW
 - **Kostnadskalkyl** — kostnad för full laddning och kr/mil vid varje station
 - **Hemjämförelse** — hur mycket dyrare det är att ladda på stationen vs hemma (~2 kr/kWh)
 - **Laddningsfrekvens** — ange årskörsträcka och se hur ofta du behöver ladda
+- **Favoritstationer** — spara och hantera favoritstationer, lagras i PostgreSQL per webbläsare (anonymt UUID)
 - **AI-rekommendation + Visste du att** — Groq LLM ger ett konkret råd och ett bilfakta per sökning
 - **Livepriser** — Chargeprice API + statisk operatörstabell täcker de flesta svenska nätverk
 - **NOBIL-integration** — hämtar antal laddpunkter per station (aktiveras med API-nyckel)
@@ -58,9 +59,19 @@ Priser markerade med `~` är ungefärliga — verifiera alltid hos respektive op
 ```
 backend/                         Spring Boot-backend (Render)
   src/main/java/se/elitrobban/elbilsladdning/
-    controller/ChargingController.java   REST-endpoints /api/cars och /api/stations
+    config/
+      WebConfig.java                     Global CORS-konfiguration för /api/**
+    controller/
+      ChargingController.java            REST-endpoints /api/cars och /api/stations
+      FavoriteController.java            CRUD /api/favorites — GET, POST, DELETE
     data/CarDatabase.java                73 bilmodeller med AC/DC-effekt, batteri, räckvidd och pris
-    model/                               CarSpec, StationDto, StationResponse
+    model/
+      CarSpec.java                       Record — bilspecifikationer
+      StationDto.java                    Record — laddstation med priser och laddpunktsantal
+      StationResponse.java               Record — API-svar med stationer, AI-råd och funfact
+      FavoriteStation.java               JPA-entity — sparade favoritstationer (ev_favorites)
+    repository/
+      FavoriteStationRepository.java     Spring Data JPA — findByUserId, existsByUserIdAndName
     service/
       OcmService.java                    Hämtar stationer från Open Charge Map
       NobilService.java                  Hämtar laddpunktsdata från NOBIL (nordisk databas)
@@ -91,6 +102,9 @@ Kräver miljövariablerna `OCM_API_KEY` och `GROQ_API_KEY`. Se `application.prop
 |----------|-------|-------------|
 | `OCM_API_KEY` | ✅ | Open Charge Map API-nyckel |
 | `GROQ_API_KEY` | ✅ | Groq API-nyckel för AI-rekommendationer |
+| `DB_URL` | ✅ | JDBC-URL till PostgreSQL, t.ex. `jdbc:postgresql://host/db` |
+| `DB_USER` | ✅ | PostgreSQL-användare |
+| `DB_PASS` | ✅ | PostgreSQL-lösenord |
 | `CHARGEPRICE_API_KEY` | ⚪ | Chargeprice API-nyckel (demo-nyckel fungerar) |
 | `APININJAS_API_KEY` | ⚪ | API Ninjas (valfri reservkälla) |
 | `NOBIL_API_KEY` | ⚪ | NOBIL API-nyckel — aktiverar laddpunktsdata per station |
