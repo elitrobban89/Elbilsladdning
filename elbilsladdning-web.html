@@ -453,7 +453,7 @@
       const bat = state.carIndex !== null ? state.cars[state.carIndex]?.batteryKwh : null;
       const homeMin = bat ? Math.round(bat * 1.5) : null;
       const homeMax = bat ? Math.round(bat * 3.5) : null;
-      const homeCost = homeMin ? ` · 0→100%: ~${homeMin}–${homeMax} kr` : "";
+      const homeCost = homeMin ? ` · 🔋 Full laddning ~${homeMin}–${homeMax} kr` : "";
       html += `
         <div class="ev-home-tip">
           <div class="ev-home-tip-icon">🏠</div>
