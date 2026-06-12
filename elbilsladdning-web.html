@@ -647,6 +647,8 @@
       const connTag    = s.connectorCount > 0
         ? `<span class="ev-conncount-tag">🔌 ${s.connectorCount} laddpunkter</span>` : "";
       const isFav      = state.favorites.some(f => Math.abs(f.lat - s.lat) < 0.0005);
+      const favClass   = isFav ? " saved" : "";
+      const favTitle   = isFav ? "Ta bort favorit" : "Spara som favorit";
 
       // Laddtidsestimering DC 20→80%
       const isDC    = s.connectorType.includes("DC");
@@ -669,7 +671,7 @@
             <div class="ev-station-right">
               <div class="ev-dist">${s.distanceKm.toFixed(1)} km</div>
               ${priceBadge}
-              <button class="ev-fav-btn${isFav?' saved':''}" data-lat="${s.lat}" data-lon="${s.lon}" title="${isFav?'Ta bort favorit':'Spara som favorit'}">♥</button>
+              <button class="ev-fav-btn${favClass}" data-lat="${s.lat}" data-lon="${s.lon}" title="${favTitle}">♥</button>
             </div>
             <div class="ev-station-tags" style="grid-column:2">
               <span class="ev-kw-badge ${kwClass}">⚡ ${Math.round(s.maxEffKw)} kW</span>
