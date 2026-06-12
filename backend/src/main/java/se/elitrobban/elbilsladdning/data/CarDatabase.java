@@ -63,6 +63,8 @@ public class CarDatabase {
 
         // MG
         new CarSpec("MG4 Long Range",                  11.0,  150.0, List.of("type2","ccs"),           77.0,  450),
+        new CarSpec("MG5 Standard Range",              11.0,   87.0, List.of("type2","ccs"),           50.3,  320),
+        new CarSpec("MG5 Long Range",                  11.0,   87.0, List.of("type2","ccs"),           61.1,  400),
 
         // Porsche
         new CarSpec("Porsche Taycan",                  11.0,  270.0, List.of("type2","ccs"),           93.0,  590),

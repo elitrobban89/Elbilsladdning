@@ -300,12 +300,13 @@
     if (state.carIndex === null) { box.style.display = "none"; return; }
     const c = state.cars[state.carIndex];
     const rangeMil = c.rangeKm ? Math.round(c.rangeKm / 10) : null;
+    const realMil  = rangeMil ? Math.round(rangeMil * 0.85) : null;
     const freqBadge = chargingFreqBadge(rangeMil);
     box.style.display = "flex";
     box.innerHTML = `
       <span class="ev-spec-badge badge-ac">AC max ${c.maxAcKw} kW</span>
       <span class="ev-spec-badge badge-dc">DC max ${c.maxDcKw} kW</span>
-      ${rangeMil ? `<span class="ev-spec-badge badge-range">~${rangeMil} mil räckvidd</span>` : ""}
+      ${rangeMil ? `<span class="ev-spec-badge badge-range">~${rangeMil} mil WLTP · ~${realMil} mil verklig</span>` : ""}
       ${freqBadge ? `<span class="ev-spec-badge badge-freq">${freqBadge}</span>` : ""}
       ${c.connectors.map(t => `<span class="ev-spec-badge badge-con">${conLabel(t)}</span>`).join("")}`;
   }
@@ -485,12 +486,12 @@
       const isFree     = rawPrice.toLowerCase().includes("gratis") || rawPrice.toLowerCase().includes("free");
       const car        = state.carIndex !== null ? state.cars[state.carIndex] : null;
       const battery    = car?.batteryKwh ?? null;
-      const rangeMil   = car?.rangeKm ? Math.round(car.rangeKm / 10) : null;
+      const realMil    = car?.rangeKm ? Math.round(car.rangeKm / 10 * 0.85) : null;
       const isEur      = rawPrice.includes("EUR");
       const priceNum   = rawPrice.match(/[\d,.]+/)?.[0] ? parseFloat(rawPrice.match(/[\d,.]+/)[0].replace(",",".")) : null;
       const priceKr    = (priceNum && isEur) ? priceNum * 11.5 : priceNum;
       const fullCost   = (battery && priceKr && !isFree) ? Math.round(battery * priceKr) : null;
-      const krPerMil   = (fullCost && rangeMil) ? Math.round(fullCost / rangeMil) : null;
+      const krPerMil   = (fullCost && realMil) ? Math.round(fullCost / realMil) : null;
       const costHint   = fullCost
         ? `<div class="ev-cost-hint">0→100%: ~${fullCost} kr${krPerMil ? ` · ~${krPerMil} kr/mil` : ""}</div>`
         : "";
