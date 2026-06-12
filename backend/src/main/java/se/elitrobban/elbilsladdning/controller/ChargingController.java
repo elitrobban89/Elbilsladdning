@@ -41,13 +41,16 @@ public class ChargingController {
 
     @GetMapping("/cars")
     public List<Map<String, Object>> cars() {
-        return CarDatabase.CARS.stream().map(c -> Map.<String, Object>of(
-                "name",        c.name(),
-                "maxAcKw",     c.maxAcKw(),
-                "maxDcKw",     c.maxDcKw(),
-                "connectors",  c.connectors(),
-                "batteryKwh",  c.batteryKwh()
-        )).toList();
+        return CarDatabase.CARS.stream().map(c -> {
+            var m = new java.util.LinkedHashMap<String, Object>();
+            m.put("name",       c.name());
+            m.put("maxAcKw",    c.maxAcKw());
+            m.put("maxDcKw",    c.maxDcKw());
+            m.put("connectors", c.connectors());
+            m.put("batteryKwh", c.batteryKwh());
+            m.put("rangeKm",    c.rangeKm());
+            return m;
+        }).toList();
     }
 
     @GetMapping("/stations")
