@@ -88,18 +88,22 @@ public class ChargepriceService {
             List<Map<String, Object>> data = (List<Map<String, Object>>) resp.get("data");
             if (data == null || data.isEmpty()) return null;
 
-            // Pick cheapest price_per_kwh among returned tariffs
+            // Pick tariff with lowest per-kWh price from price_distribution
             return data.stream()
                     .map(d -> (Map<String, Object>) d.get("attributes"))
                     .filter(Objects::nonNull)
-                    .map(a -> (Map<String, Object>) a.get("tariff"))
-                    .filter(Objects::nonNull)
-                    .filter(t -> t.get("price_per_kwh") != null)
-                    .min(Comparator.comparingDouble(t -> toDouble(t.get("price_per_kwh"))))
-                    .map(t -> {
-                        double pkwh     = toDouble(t.get("price_per_kwh"));
-                        String currency = (String) t.getOrDefault("currency", "€");
-                        return String.format("%.2f %s/kWh", pkwh, currency);
+                    .min(Comparator.comparingDouble(a -> {
+                        Map<?, ?> dist = (Map<?, ?>) a.get("price_distribution");
+                        return dist != null ? toDouble(dist.get("per_kwh")) : Double.MAX_VALUE;
+                    }))
+                    .map(a -> {
+                        Map<?, ?> dist     = (Map<?, ?>) a.get("price_distribution");
+                        String currency    = (String) a.getOrDefault("currency", "EUR");
+                        double perKwh      = dist != null ? toDouble(dist.get("per_kwh")) : 0;
+                        double totalPrice  = toDouble(a.get("price"));
+                        if (perKwh > 0)    return String.format("%.2f %s/kWh", perKwh, currency);
+                        if (totalPrice > 0) return String.format("%.2f %s", totalPrice, currency);
+                        return null;
                     })
                     .orElse(null);
 

@@ -9,11 +9,14 @@ Live: [elitrobban.se/elbilsladdning](https://elitrobban.se/elbilsladdning/)
 ## Funktioner
 
 - **GPS-baserad sökning** — hittar laddstationer inom 25 km automatiskt
-- **38 bilmodeller** — filtrerar stationer baserat på din bils kontakttyp och laddeffekt
+- **73 bilmodeller** — filtrerar stationer baserat på din bils kontakttyp och laddeffekt
 - **Snabbast / Billigast** — sortera på DC-effekt eller pris per kWh
-- **Kostnadskalkyl** — visar ungefärlig kostnad för 0→100 % baserat på batterikapacitet
+- **Räckvidd** — visar WLTP-räckvidd och uppskattad verklig räckvidd (~85 % av WLTP)
+- **Kostnadskalkyl** — ungefärlig kostnad för 0→100 % samt kr/mil (baserat på verklig räckvidd)
+- **Laddningsfrekvens** — ange årskörsträcka och se hur ofta du behöver ladda (20→80 %, verklig räckvidd)
 - **AI-rekommendation** — Groq LLM ger ett kort råd baserat på din bil och tillgängliga stationer
 - **Hemmaladdningstips** — påminner om att hemmaladdning (1,50–3,50 kr/kWh) alltid är billigast
+- **Mobilanpassad** — fungerar på iOS och Android
 
 ---
 
@@ -24,27 +27,24 @@ Live: [elitrobban.se/elbilsladdning](https://elitrobban.se/elbilsladdning/)
 | Backend | Spring Boot 3.2.5 / Java 21 |
 | Hosting backend | Render (free tier, Docker) |
 | Stationsdata | [Open Charge Map API](https://openchargemap.io) |
+| Livepriser | [Chargeprice API](https://chargeprice.app) (demo-nyckel) |
 | AI | Groq (llama-3.3-70b-versatile) |
 | Frontend | Vanilla JS + CSS, inbäddat i WordPress |
 
 ---
 
-## Prissättning — en känd begränsning
+## Prissättning
 
-Laddpriser i Sverige är **svåra att hämta automatiskt** eftersom det saknas ett öppet, standardiserat pris-API för laddoperatörer.
+Laddpriser hämtas från tre källor i prioritetsordning:
 
-Vad vi har provat och hur vi löst det:
+| Källa | Status | Beskrivning |
+|-------|--------|-------------|
+| **Chargeprice.app** | ✅ Aktiv | Demo-API-nyckel, täcker stora operatörer (IONITY, Recharge m.fl.) |
+| **OCM UsageCost-fält** | ✅ Används | Finns ibland i Open Charge Map-data |
+| **Statisk operatörstabell** | ✅ Fallback | Manuellt insamlade priser för svenska operatörer |
 
-| Källa | Status |
-|-------|--------|
-| **Chargeprice.app** | Kräver kreditkort även för gratis-tier — ej tillgängligt |
-| **API Ninjas EV Charger** | API-nyckeln returnerade "Invalid API Key" — ej tillgängligt |
-| **OCM UsageCost-fält** | Finns ibland men är sällan uppdaterat |
-| **Statisk operatörstabell** | ✅ Används som fallback — se `OperatorPriceService.java` |
-
-Den statiska tabellen täcker de vanligaste operatörerna i Sverige (Recharge, IONITY, InCharge, Circle K, E.ON, Mer, Allego m.fl.) med priser insamlade manuellt. Priser som kommer från den statiska tabellen markeras med `~` för att visa att de är ungefärliga.
-
-**Priserna kan vara inaktuella** — verifiera alltid hos respektive operatör innan du laddar.
+Den statiska tabellen täcker Recharge, IONITY, InCharge, Circle K, E.ON, Mer, Allego m.fl.
+Priser markerade med `~` är ungefärliga — verifiera alltid hos respektive operatör.
 
 ---
 
@@ -54,14 +54,14 @@ Den statiska tabellen täcker de vanligaste operatörerna i Sverige (Recharge, I
 backend/                         Spring Boot-backend (Render)
   src/main/java/se/elitrobban/elbilsladdning/
     controller/ChargingController.java   REST-endpoints /api/cars och /api/stations
-    data/CarDatabase.java                38 bilmodeller med AC/DC-effekt och batterikapacitet
+    data/CarDatabase.java                73 bilmodeller med AC/DC-effekt, batteri och WLTP-räckvidd
     model/                               CarSpec, StationDto, StationResponse
     service/
       OcmService.java                    Hämtar stationer från Open Charge Map
-      OperatorPriceService.java          Statisk prislista för svenska operatörer
+      ChargepriceService.java            Livepriser via Chargeprice API
+      OperatorPriceService.java          Statisk prislista för svenska operatörer (fallback)
       GroqService.java                   AI-rekommendation via Groq
-      ChargepriceService.java            Chargeprice-integration (inaktiv)
-      ApiNinjasService.java              API Ninjas-integration (inaktiv)
+      ApiNinjasService.java              API Ninjas-integration (reserv)
 
 elbilsladdning-web.html                  Frontend — inbäddas i WordPress
 src/                                     Konsolapplikation (utvecklingsverktyg)
@@ -86,4 +86,5 @@ Kräver miljövariablerna `OCM_API_KEY` och `GROQ_API_KEY`. Se `application.prop
 |----------|-------------|
 | `OCM_API_KEY` | Open Charge Map API-nyckel |
 | `GROQ_API_KEY` | Groq API-nyckel för AI-rekommendationer |
-| `APININJAS_API_KEY` | API Ninjas (inaktiv — nyckel fungerar ej) |
+| `CHARGEPRICE_API_KEY` | Chargeprice API-nyckel (demo-nyckel fungerar) |
+| `APININJAS_API_KEY` | API Ninjas (valfri reservkälla) |
