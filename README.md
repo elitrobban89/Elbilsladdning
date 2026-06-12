@@ -27,6 +27,7 @@ Live: [elitrobban.se/elbilsladdning](https://elitrobban.se/elbilsladdning/)
 | Backend | Spring Boot 3.2.5 / Java 21 |
 | Hosting backend | Render (free tier, Docker) |
 | Stationsdata | [Open Charge Map API](https://openchargemap.io) |
+| Stationsdata (planerad) | [NOBIL API](https://info.nobil.no/api) — nordisk databas, API-nyckel registrerad |
 | Livepriser | [Chargeprice API](https://chargeprice.app) (demo-nyckel) |
 | AI | Groq (llama-3.3-70b-versatile) |
 | Frontend | Vanilla JS + CSS, inbäddat i WordPress |
@@ -88,3 +89,4 @@ Kräver miljövariablerna `OCM_API_KEY` och `GROQ_API_KEY`. Se `application.prop
 | `GROQ_API_KEY` | Groq API-nyckel för AI-rekommendationer |
 | `CHARGEPRICE_API_KEY` | Chargeprice API-nyckel (demo-nyckel fungerar) |
 | `APININJAS_API_KEY` | API Ninjas (valfri reservkälla) |
+| `NOBIL_API_KEY` | NOBIL nordisk laddstationsdatabas (planerad integration) |
