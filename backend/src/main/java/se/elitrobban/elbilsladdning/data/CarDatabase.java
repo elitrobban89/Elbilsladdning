@@ -79,10 +79,14 @@ public class CarDatabase {
 
         // MG
         new CarSpec("MG ZS EV",                        11.0,   92.0, List.of("type2","ccs"),           72.6,  440),
+        new CarSpec("MG Marvel R",                     11.0,   92.0, List.of("type2","ccs"),           75.0,  402),
         new CarSpec("MG4 Standard Range",              11.0,  117.0, List.of("type2","ccs"),           51.0,  350),
-        new CarSpec("MG4 Long Range",                  11.0,  150.0, List.of("type2","ccs"),           77.0,  450),
+        new CarSpec("MG4 Long Range",                  11.0,  150.0, List.of("type2","ccs"),           64.0,  450),
+        new CarSpec("MG4 Extended Range",              11.0,  150.0, List.of("type2","ccs"),           77.0,  520),
+        new CarSpec("MG4 XPower",                      11.0,  140.0, List.of("type2","ccs"),           64.0,  385),
         new CarSpec("MG5 Standard Range",              11.0,   87.0, List.of("type2","ccs"),           50.3,  320),
         new CarSpec("MG5 Long Range",                  11.0,   87.0, List.of("type2","ccs"),           61.1,  400),
+        new CarSpec("MG Cyberster",                    11.0,  144.0, List.of("type2","ccs"),           77.0,  520),
 
         // Porsche
         new CarSpec("Porsche Taycan",                  11.0,  270.0, List.of("type2","ccs"),           93.0,  590),
