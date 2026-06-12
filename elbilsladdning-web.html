@@ -495,7 +495,8 @@
       const costHint   = fullCost
         ? `<div class="ev-cost-hint">0→100%: ~${fullCost} kr${krPerMil ? ` · ~${krPerMil} kr/mil` : ""}</div>`
         : "";
-      const priceBadge = rawPrice ? `<div class="ev-price-badge${isFree?" free":""}">${rawPrice}</div>${costHint}` : "";
+      const displayPrice = (isEur && priceKr) ? `${priceKr.toFixed(2)} kr/kWh` : rawPrice;
+      const priceBadge = rawPrice ? `<div class="ev-price-badge${isFree?" free":""}">${displayPrice}</div>${costHint}` : "";
       const addr       = s.address ? `<div class="ev-station-addr">${s.address}</div>` : "";
       const opTag      = s.operator && !s.operator.includes("Unknown")
         ? `<span class="ev-operator-tag">${s.operator}</span>` : "";
