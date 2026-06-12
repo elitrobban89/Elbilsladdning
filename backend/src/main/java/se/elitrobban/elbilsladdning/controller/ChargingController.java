@@ -8,6 +8,7 @@ import se.elitrobban.elbilsladdning.model.StationResponse;
 import se.elitrobban.elbilsladdning.service.ApiNinjasService;
 import se.elitrobban.elbilsladdning.service.ChargepriceService;
 import se.elitrobban.elbilsladdning.service.GroqService;
+import se.elitrobban.elbilsladdning.service.NobilService;
 import se.elitrobban.elbilsladdning.service.OcmService;
 import se.elitrobban.elbilsladdning.service.OperatorPriceService;
 
@@ -24,14 +25,17 @@ public class ChargingController {
     private final ChargepriceService   chargeprice;
     private final ApiNinjasService     apiNinjas;
     private final OperatorPriceService operatorPrices;
+    private final NobilService         nobil;
 
     public ChargingController(OcmService ocm, GroqService groq, ChargepriceService chargeprice,
-                              ApiNinjasService apiNinjas, OperatorPriceService operatorPrices) {
+                              ApiNinjasService apiNinjas, OperatorPriceService operatorPrices,
+                              NobilService nobil) {
         this.ocm            = ocm;
         this.groq           = groq;
         this.chargeprice    = chargeprice;
         this.apiNinjas      = apiNinjas;
         this.operatorPrices = operatorPrices;
+        this.nobil          = nobil;
     }
 
     @GetMapping("/health")
@@ -70,6 +74,9 @@ public class ChargingController {
         List<StationDto> stations = ocm.findNearby(lat, lon, car);
         stations = sorted(stations, sort);
 
+        // Fetch NOBIL data in parallel with price enrichment (non-blocking fallback)
+        List<NobilService.NobilStation> nobilStations = nobil.getStations(lat, lon);
+
         stations = stations.stream().limit(10).map(s -> {
             // 1. Chargeprice (live, structured)
             String price = chargeprice.getPricePerKwh(s, car);
@@ -82,11 +89,18 @@ public class ChargingController {
             if (price == null)
                 price = operatorPrices.getApproxPrice(s.operator(), s.name());
 
-            return price != null
-                    ? new StationDto(s.name(), s.address(), s.distanceKm(),
-                                     s.lat(), s.lon(), s.maxEffKw(), s.stationKw(),
-                                     s.connectorType(), s.operator(), s.usageCost(), price)
-                    : s;
+            // 4. Match with nearest NOBIL station within 150 m for connector count
+            int connCount = nobilStations.stream()
+                    .filter(n -> NobilService.distanceKm(s.lat(), s.lon(), n.lat(), n.lon()) < 0.15)
+                    .mapToInt(NobilService.NobilStation::connectorCount)
+                    .max()
+                    .orElse(0);
+
+            String finalPrice = price != null ? price : s.chargepricePerKwh();
+            return new StationDto(s.name(), s.address(), s.distanceKm(),
+                                  s.lat(), s.lon(), s.maxEffKw(), s.stationKw(),
+                                  s.connectorType(), s.operator(), s.usageCost(),
+                                  finalPrice, connCount);
         }).toList();
 
         var groqResult = groq.recommend(car, stations, buildCostComparison(car));

@@ -28,7 +28,7 @@ public class GroqService {
 
         Map<String, Object> body = Map.of(
                 "model", MODEL,
-                "max_tokens", 350,
+                "max_tokens", 450,
                 "temperature", 0.8,
                 "messages", List.of(
                         Map.of("role", "system", "content",
@@ -55,8 +55,8 @@ public class GroqService {
             var message = (Map<String, Object>) choices.get(0).get("message");
             String content = (String) message.get("content");
 
-            String recommendation = extractSection(content, "REKOMMENDATION:", "VISSTE DU ATT:");
-            String funFact        = extractSection(content, "VISSTE DU ATT:", null);
+            String recommendation = extractSectionCI(content, "REKOMMENDATION:", "VISSTE DU ATT:");
+            String funFact        = extractSectionCI(content, "VISSTE DU ATT:", null);
             return new GroqResult(recommendation, funFact);
 
         } catch (Exception e) {
@@ -64,11 +64,15 @@ public class GroqService {
         }
     }
 
-    private String extractSection(String text, String startMarker, String endMarker) {
-        int start = text.indexOf(startMarker);
+    /** Case-insensitive section extraction — handles AI variations like "Visste du att:" vs "VISSTE DU ATT:". */
+    private String extractSectionCI(String text, String startMarker, String endMarker) {
+        String upper = text.toUpperCase();
+        int start = upper.indexOf(startMarker.toUpperCase());
         if (start < 0) return null;
         start += startMarker.length();
-        int end = endMarker != null ? text.indexOf(endMarker, start) : text.length();
+        int end = endMarker != null
+                ? upper.indexOf(endMarker.toUpperCase(), start)
+                : text.length();
         if (end < 0) end = text.length();
         return text.substring(start, end).strip();
     }

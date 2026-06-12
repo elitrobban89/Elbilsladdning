@@ -218,6 +218,10 @@
     font-size: 0.72rem; color: rgba(147,197,253,0.7); padding: 2px 7px; border-radius: 5px;
     border: 1px solid rgba(59,130,246,0.15); background: rgba(59,130,246,0.06);
   }
+  .ev-conncount-tag {
+    font-size: 0.72rem; color: rgba(34,197,94,0.9); padding: 2px 7px; border-radius: 5px;
+    border: 1px solid rgba(34,197,94,0.22); background: rgba(34,197,94,0.06);
+  }
 
   .ev-disclaimer {
     font-size: 0.72rem; color: rgba(200,215,255,0.28);
@@ -524,6 +528,8 @@
       const addr       = s.address ? `<div class="ev-station-addr">${s.address}</div>` : "";
       const opTag      = s.operator && !s.operator.includes("Unknown")
         ? `<span class="ev-operator-tag">${s.operator}</span>` : "";
+      const connTag    = s.connectorCount > 0
+        ? `<span class="ev-conncount-tag">🔌 ${s.connectorCount} laddpunkter</span>` : "";
 
       html += `
         <div class="ev-station">
@@ -542,6 +548,7 @@
               <span class="ev-kw-badge ${kwClass}">⚡ ${Math.round(s.maxEffKw)} kW</span>
               <span class="ev-connector-tag">${s.connectorType}</span>
               ${opTag}
+              ${connTag}
             </div>
           </div>
         </div>`;

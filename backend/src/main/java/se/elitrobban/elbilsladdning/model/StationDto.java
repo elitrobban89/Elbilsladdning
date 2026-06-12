@@ -11,7 +11,8 @@ public record StationDto(
         String connectorType,
         String operator,
         String usageCost,
-        String chargepricePerKwh
+        String chargepricePerKwh,
+        int connectorCount          // 0 = unknown; populated from NOBIL when available
 ) {
     public String bestPrice() {
         if (chargepricePerKwh != null && !chargepricePerKwh.isBlank()) return chargepricePerKwh;

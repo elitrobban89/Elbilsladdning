@@ -98,7 +98,7 @@ public class OcmService {
                 default        -> bestType;
             };
 
-            return new StationDto(name, address, dist, stLat, stLon, maxEffKw, bestStationKw, connLabel, op, cost, null);
+            return new StationDto(name, address, dist, stLat, stLon, maxEffKw, bestStationKw, connLabel, op, cost, null, 0);
         } catch (Exception e) {
             return null;
         }
