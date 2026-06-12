@@ -42,7 +42,7 @@ public class ChargingController {
     @GetMapping("/cars")
     public List<Map<String, Object>> cars() {
         return CarDatabase.CARS.stream().map(c -> {
-            var m = new java.util.LinkedHashMap<String, Object>();
+            Map<String, Object> m = new java.util.LinkedHashMap<>();
             m.put("name",       c.name());
             m.put("maxAcKw",    c.maxAcKw());
             m.put("maxDcKw",    c.maxDcKw());
