@@ -23,8 +23,8 @@ public class GroqService {
 
     public record GroqResult(String recommendation, String funFact) {}
 
-    public GroqResult recommend(CarSpec car, List<StationDto> stations) {
-        String userPrompt = buildPrompt(car, stations);
+    public GroqResult recommend(CarSpec car, List<StationDto> stations, String costComparison) {
+        String userPrompt = buildPrompt(car, stations, costComparison);
 
         Map<String, Object> body = Map.of(
                 "model", MODEL,
@@ -73,7 +73,7 @@ public class GroqService {
         return text.substring(start, end).strip();
     }
 
-    private String buildPrompt(CarSpec car, List<StationDto> stations) {
+    private String buildPrompt(CarSpec car, List<StationDto> stations, String costComparison) {
         var sb = new StringBuilder();
         sb.append("Bil: ").append(car.name())
           .append(" (DC max ").append((int) car.maxDcKw())
@@ -91,6 +91,10 @@ public class GroqService {
               .append(" (").append(s.connectorType()).append(")")
               .append(" – ").append(pris)
               .append("\n");
+        }
+
+        if (costComparison != null) {
+            sb.append("\nKostnadsjämförelse med andra elbilar:\n").append(costComparison).append("\n");
         }
 
         sb.append("\nVilken station rekommenderar du och varför? ")

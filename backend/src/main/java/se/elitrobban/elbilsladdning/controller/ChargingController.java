@@ -89,9 +89,39 @@ public class ChargingController {
                     : s;
         }).toList();
 
-        var groqResult = groq.recommend(car, stations);
+        var groqResult = groq.recommend(car, stations, buildCostComparison(car));
 
         return new StationResponse(car.name(), stations, groqResult.recommendation(), groqResult.funFact());
+    }
+
+    private String buildCostComparison(CarSpec selected) {
+        double selCpm = costPerMil(selected);
+        if (selCpm <= 0) return null;
+
+        var others = CarDatabase.CARS.stream()
+                .filter(c -> !c.name().equals(selected.name()) && c.rangeKm() > 0)
+                .sorted(Comparator.comparingDouble(this::costPerMil))
+                .toList();
+
+        CarSpec cheapest  = others.get(0);
+        CarSpec priciest  = others.get(others.size() - 1);
+        CarSpec similar   = others.stream()
+                .min(Comparator.comparingDouble(c -> Math.abs(costPerMil(c) - selCpm)))
+                .orElse(null);
+
+        return String.format(
+            "%s: %.1f kr/mil. Billigast bland alla bilar: %s (%.1f kr/mil). " +
+            "Dyrast: %s (%.1f kr/mil). Närmast i kostnad: %s (%.1f kr/mil).",
+            selected.name(), selCpm,
+            cheapest.name(), costPerMil(cheapest),
+            priciest.name(), costPerMil(priciest),
+            similar != null ? similar.name() : "-",
+            similar != null ? costPerMil(similar) : 0.0);
+    }
+
+    private double costPerMil(CarSpec car) {
+        if (car.rangeKm() <= 0) return Double.MAX_VALUE;
+        return (car.batteryKwh() * 2.5) / (car.rangeKm() * 0.85 / 10.0);
     }
 
     private List<StationDto> sorted(List<StationDto> list, String sort) {
