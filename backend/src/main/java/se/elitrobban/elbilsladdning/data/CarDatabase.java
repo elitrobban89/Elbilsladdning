@@ -18,6 +18,7 @@ public class CarDatabase {
         new CarSpec("Volvo EX30 Single Motor",         11.0,  153.0, List.of("type2","ccs"),           49.0,  344),
         new CarSpec("Volvo EX30 Extended Range",       11.0,  153.0, List.of("type2","ccs"),           62.0,  480),
         new CarSpec("Volvo EX30 Twin Motor",           11.0,  200.0, List.of("type2","ccs"),           62.0,  460),
+        new CarSpec("Volvo EX30 Cross Country",        11.0,  153.0, List.of("type2","ccs"),           62.0,  455),
         new CarSpec("Volvo EX40 Single Motor",         11.0,  150.0, List.of("type2","ccs"),           75.0,  530),
         new CarSpec("Volvo EX40 Twin Motor",           11.0,  150.0, List.of("type2","ccs"),           75.0,  508),
         new CarSpec("Volvo C40 Single Motor",          11.0,  150.0, List.of("type2","ccs"),           75.0,  530),
