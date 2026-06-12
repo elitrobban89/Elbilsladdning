@@ -8,7 +8,8 @@ public record CarSpec(
         double maxDcKw,
         List<String> connectors,
         double batteryKwh,
-        int rangeKm
+        int rangeKm,
+        int priceKr
 ) {
     public double maxKwForType(String type) {
         return "type2".equals(type) ? maxAcKw : maxDcKw;

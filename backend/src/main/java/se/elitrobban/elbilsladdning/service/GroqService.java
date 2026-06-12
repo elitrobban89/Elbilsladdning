@@ -21,20 +21,21 @@ public class GroqService {
 
     private final RestClient http = RestClient.create();
 
-    public String recommend(CarSpec car, List<StationDto> stations) {
+    public record GroqResult(String recommendation, String funFact) {}
+
+    public GroqResult recommend(CarSpec car, List<StationDto> stations) {
         String userPrompt = buildPrompt(car, stations);
 
         Map<String, Object> body = Map.of(
                 "model", MODEL,
-                "max_tokens", 250,
-                "temperature", 0.7,
+                "max_tokens", 350,
+                "temperature", 0.8,
                 "messages", List.of(
                         Map.of("role", "system", "content",
                                 "Du är en expert på elbilsladdning i Sverige. " +
-                                "Ge alltid ett konkret råd på svenska i 2–3 meningar. " +
-                                "Om priset för en station är okänt, säg det tydligt och rekommendera " +
-                                "att användaren kollar operatörens app eller webbplats för aktuellt pris. " +
-                                "Hitta aldrig på priser."),
+                                "Svara alltid på svenska. Svara i exakt detta format:\n" +
+                                "REKOMMENDATION: [2–3 meningar med konkret råd om vilken station som passar bäst. Hitta aldrig på priser.]\n" +
+                                "VISSTE DU ATT: [ett kort, intressant faktum om bilen eller elbilsladdning i allmänhet. Max 1 mening.]"),
                         Map.of("role", "user", "content", userPrompt)
                 )
         );
@@ -52,11 +53,24 @@ public class GroqService {
             @SuppressWarnings("unchecked")
             var choices = (List<Map<String, Object>>) resp.get("choices");
             var message = (Map<String, Object>) choices.get(0).get("message");
-            return (String) message.get("content");
+            String content = (String) message.get("content");
+
+            String recommendation = extractSection(content, "REKOMMENDATION:", "VISSTE DU ATT:");
+            String funFact        = extractSection(content, "VISSTE DU ATT:", null);
+            return new GroqResult(recommendation, funFact);
 
         } catch (Exception e) {
-            return null;
+            return new GroqResult(null, null);
         }
+    }
+
+    private String extractSection(String text, String startMarker, String endMarker) {
+        int start = text.indexOf(startMarker);
+        if (start < 0) return null;
+        start += startMarker.length();
+        int end = endMarker != null ? text.indexOf(endMarker, start) : text.length();
+        if (end < 0) end = text.length();
+        return text.substring(start, end).strip();
     }
 
     private String buildPrompt(CarSpec car, List<StationDto> stations) {

@@ -68,6 +68,7 @@
   .badge-con   { background: rgba(129,140,248,0.12); color: #c7d2fe; border: 1px solid rgba(129,140,248,0.2); }
   .badge-range { background: rgba(245,158,11,0.12); color: #fcd34d; border: 1px solid rgba(245,158,11,0.28); }
   .badge-freq  { background: rgba(236,72,153,0.10); color: #f9a8d4; border: 1px solid rgba(236,72,153,0.25); }
+  .badge-price { background: rgba(16,185,129,0.10); color: #6ee7b7; border: 1px solid rgba(16,185,129,0.25); }
 
   .ev-input {
     width: 100%; padding: 11px 14px;
@@ -136,6 +137,16 @@
   .ev-ai-icon  { font-size: 1.4rem; flex-shrink: 0; margin-top: 1px; }
   .ev-ai-label { font-size: 0.65rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.12em; color: rgba(165,180,252,0.75); margin-bottom: 5px; }
   .ev-ai-text  { font-size: 0.88rem; line-height: 1.65; color: rgba(240,244,255,0.88); }
+
+  .ev-funfact-card {
+    background: linear-gradient(135deg, #0f1a2e, #0a1520);
+    border: 1px solid rgba(59,130,246,0.25); border-radius: var(--radius);
+    padding: 14px 18px; margin-bottom: 16px;
+    display: flex; gap: 12px; align-items: flex-start;
+  }
+  .ev-funfact-icon  { font-size: 1.3rem; flex-shrink: 0; }
+  .ev-funfact-label { font-size: 0.65rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.12em; color: rgba(147,197,253,0.7); margin-bottom: 4px; }
+  .ev-funfact-text  { font-size: 0.85rem; line-height: 1.6; color: rgba(240,244,255,0.8); }
 
   .ev-home-tip {
     background: linear-gradient(135deg, #0f1f0a, #0d1a1a);
@@ -299,14 +310,16 @@
     const box = document.getElementById("ev-specs");
     if (state.carIndex === null) { box.style.display = "none"; return; }
     const c = state.cars[state.carIndex];
-    const rangeMil = c.rangeKm ? Math.round(c.rangeKm / 10) : null;
-    const realMil  = rangeMil ? Math.round(rangeMil * 0.85) : null;
+    const rangeMil  = c.rangeKm ? Math.round(c.rangeKm / 10) : null;
+    const realMil   = rangeMil ? Math.round(rangeMil * 0.85) : null;
     const freqBadge = chargingFreqBadge(rangeMil);
+    const priceStr  = c.priceKr ? `från ${(c.priceKr / 1000).toFixed(0)} tkr` : null;
     box.style.display = "flex";
     box.innerHTML = `
       <span class="ev-spec-badge badge-ac">AC max ${c.maxAcKw} kW</span>
       <span class="ev-spec-badge badge-dc">DC max ${c.maxDcKw} kW</span>
       ${rangeMil ? `<span class="ev-spec-badge badge-range">~${rangeMil} mil WLTP · ~${realMil} mil verklig</span>` : ""}
+      ${priceStr ? `<span class="ev-spec-badge badge-price">${priceStr}</span>` : ""}
       ${freqBadge ? `<span class="ev-spec-badge badge-freq">${freqBadge}</span>` : ""}
       ${c.connectors.map(t => `<span class="ev-spec-badge badge-con">${conLabel(t)}</span>`).join("")}`;
   }
@@ -469,6 +482,17 @@
           <div>
             <div class="ev-ai-label">AI-rekommendation · ${carName}</div>
             <div class="ev-ai-text">${recommendation}</div>
+          </div>
+        </div>`;
+    }
+
+    if (data.funFact) {
+      html += `
+        <div class="ev-funfact-card">
+          <div class="ev-funfact-icon">💡</div>
+          <div>
+            <div class="ev-funfact-label">Visste du att</div>
+            <div class="ev-funfact-text">${data.funFact}</div>
           </div>
         </div>`;
     }

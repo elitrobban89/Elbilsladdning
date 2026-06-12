@@ -49,6 +49,7 @@ public class ChargingController {
             m.put("connectors", c.connectors());
             m.put("batteryKwh", c.batteryKwh());
             m.put("rangeKm",    c.rangeKm());
+            m.put("priceKr",    c.priceKr());
             return m;
         }).toList();
     }
@@ -88,9 +89,9 @@ public class ChargingController {
                     : s;
         }).toList();
 
-        String recommendation = groq.recommend(car, stations);
+        var groqResult = groq.recommend(car, stations);
 
-        return new StationResponse(car.name(), stations, recommendation);
+        return new StationResponse(car.name(), stations, groqResult.recommendation(), groqResult.funFact());
     }
 
     private List<StationDto> sorted(List<StationDto> list, String sort) {

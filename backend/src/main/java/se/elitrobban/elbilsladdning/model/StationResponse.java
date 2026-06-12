@@ -5,5 +5,6 @@ import java.util.List;
 public record StationResponse(
         String carName,
         List<StationDto> stations,
-        String recommendation
+        String recommendation,
+        String funFact
 ) {}
