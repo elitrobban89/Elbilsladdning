@@ -50,7 +50,8 @@ public class ChargepriceService {
     @SuppressWarnings("unchecked")
     private String fetch(StationDto station, CarSpec car, String plug) {
         try {
-            String network = normalizeNetwork(station.operator());
+            String network = normalizeNetwork(station.operator(), station.name());
+            if (network == null) return null;
 
             Map<String, Object> body = Map.of(
                 "data", Map.of(
@@ -112,20 +113,21 @@ public class ChargepriceService {
         }
     }
 
-    private String normalizeNetwork(String operator) {
-        if (operator == null || operator.isBlank()) return "Unknown";
-        // Common Swedish operator mappings to Chargeprice network names
-        String lower = operator.toLowerCase();
-        if (lower.contains("ionity"))    return "IONITY";
-        if (lower.contains("tesla"))     return "Tesla";
-        if (lower.contains("recharge"))  return "Recharge";
-        if (lower.contains("incharge") || lower.contains("vattenfall")) return "InCharge";
-        if (lower.contains("circle k") || lower.contains("shell"))      return "Circle K";
-        if (lower.contains("bee"))       return "Bee Charging";
-        if (lower.contains("e.on") || lower.contains("eon"))            return "E.ON Drive";
-        if (lower.contains("clever"))    return "Clever";
-        // Fall back to the original name and hope Chargeprice recognises it
-        return operator;
+    private String normalizeNetwork(String operator, String stationName) {
+        // Check both operator field and station name — OCM operator metadata is often wrong
+        String combined = ((operator != null ? operator : "") + " " + (stationName != null ? stationName : "")).toLowerCase();
+        if (combined.contains("ionity"))                                  return "IONITY";
+        if (combined.contains("tesla"))                                   return "Tesla";
+        if (combined.contains("recharge"))                                return "Recharge";
+        if (combined.contains("incharge") || combined.contains("vattenfall")) return "InCharge";
+        if (combined.contains("circle k") || combined.contains("shell")) return "Circle K";
+        if (combined.contains("bee"))                                     return "Bee Charging";
+        if (combined.contains("e.on") || combined.contains("eon"))        return "E.ON Drive";
+        if (combined.contains("clever"))                                  return "Clever";
+        if (combined.contains("mer "))                                    return "MER";
+        if (combined.contains("allego"))                                  return "Allego";
+        if (operator != null && !operator.isBlank() && !operator.contains("Unknown")) return operator;
+        return null;
     }
 
     private double toDouble(Object v) {
