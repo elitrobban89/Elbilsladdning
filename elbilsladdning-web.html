@@ -538,7 +538,7 @@
       let html = "";
 
       // Nearest fast DC charger highlight (always from full station list)
-      const fastDC = [...stations]
+      const fastDC = stations
         .filter(s => s.maxEffKw >= 50 && s.connectorType.includes("DC"))
         .sort((a, b) => a.distanceKm - b.distanceKm)[0];
 
