@@ -306,26 +306,25 @@
       const factText = factFn(data[0]);
       const myRank = data.findIndex(c => c.name === selectedName) + 1;
 
-      const rowStyle = 'padding:6px 10px;color:#1f2937;';
-      const hlStyle  = 'font-weight:700;background:rgba(59,130,246,0.12);border-left:3px solid #3b82f6;color:#1f2937;';
-      const stripeStyle = 'background:#d1d5db;color:#1f2937;';
-
       const isWltp = icon === '🎯';
 
       const buildRow = (c, rank, hl, stripe) => {
-        const bg = hl || (stripe ? stripeStyle : '');
+        const rowBg  = hl ? 'background:rgba(59,130,246,0.12);border-left:3px solid #3b82f6;'
+                         : stripe ? 'background:#dbeafe;' : 'background:#ffffff;';
+        const bold   = hl ? 'font-weight:700;' : '';
+        const td     = `padding:6px 10px;color:#111827;${bold}`;
         return isWltp
-          ? `<tr style="${bg}">
-              <td style="${rowStyle}color:#aaa;font-size:12px;">${rank}</td>
-              <td style="${rowStyle}">${c.name}</td>
-              <td style="${rowStyle}text-align:right;color:#555;">${c.wltp} km</td>
-              <td style="${rowStyle}text-align:right;font-weight:700;color:#16a34a;">~${c.real} km</td>
+          ? `<tr style="${rowBg}">
+              <td style="${td}color:#9ca3af;font-size:12px;">${rank}</td>
+              <td style="${td}">${c.name}</td>
+              <td style="${td}text-align:right;color:#374151;">${c.wltp} km</td>
+              <td style="${td}text-align:right;color:#16a34a;">~${c.real} km</td>
             </tr>`
-          : `<tr style="${bg}">
-              <td style="${rowStyle}color:#aaa;font-size:12px;">${rank}</td>
-              <td style="${rowStyle}">${c.name}</td>
-              <td style="${rowStyle}text-align:right;font-weight:700;color:#1d4ed8;">${formatVal(c.val)}</td>
-              <td style="${rowStyle}text-align:right;color:#555;">${(c.price / 1000).toFixed(0)} tkr</td>
+          : `<tr style="${rowBg}">
+              <td style="${td}color:#9ca3af;font-size:12px;">${rank}</td>
+              <td style="${td}">${c.name}</td>
+              <td style="${td}text-align:right;color:#1d4ed8;">${formatVal(c.val)}</td>
+              <td style="${td}text-align:right;color:#374151;">${(c.price / 1000).toFixed(0)} tkr</td>
             </tr>`;
       };
 
