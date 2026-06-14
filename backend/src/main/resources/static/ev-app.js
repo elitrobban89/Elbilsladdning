@@ -305,38 +305,31 @@
       const { icon, label, colHeader, data, formatVal, factFn } = mode;
       const factText = factFn(data[0]);
       const myRank = data.findIndex(c => c.name === selectedName) + 1;
-      const top5   = data.slice(0, 5);
-      const inTop5 = myRank <= 5 || myRank === 0;
 
       const rowStyle = 'padding:6px 10px;';
-      const hlStyle  = 'font-weight:700;background:rgba(59,130,246,0.10);border-left:3px solid #3b82f6;';
+      const hlStyle  = 'font-weight:700;background:rgba(59,130,246,0.12);border-left:3px solid #3b82f6;';
+      const stripeStyle = 'background:#e8eaed;';
 
       const isWltp = icon === '🎯';
 
       const buildRow = (c, rank, hl, stripe) => {
-        const bg = hl || (stripe ? 'background:#f9fafb;' : '');
+        const bg = hl || (stripe ? stripeStyle : '');
         return isWltp
           ? `<tr style="${bg}">
               <td style="${rowStyle}color:#aaa;font-size:12px;">${rank}</td>
               <td style="${rowStyle}">${c.name}</td>
-              <td style="${rowStyle}text-align:right;color:#888;">${c.wltp} km</td>
+              <td style="${rowStyle}text-align:right;color:#555;">${c.wltp} km</td>
               <td style="${rowStyle}text-align:right;font-weight:700;color:#16a34a;">~${c.real} km</td>
             </tr>`
           : `<tr style="${bg}">
               <td style="${rowStyle}color:#aaa;font-size:12px;">${rank}</td>
               <td style="${rowStyle}">${c.name}</td>
               <td style="${rowStyle}text-align:right;font-weight:700;color:#1d4ed8;">${formatVal(c.val)}</td>
-              <td style="${rowStyle}text-align:right;color:#888;">${(c.price / 1000).toFixed(0)} tkr</td>
+              <td style="${rowStyle}text-align:right;color:#555;">${(c.price / 1000).toFixed(0)} tkr</td>
             </tr>`;
       };
 
-      let rows = top5.map((c, i) => buildRow(c, i + 1, c.name === selectedName ? hlStyle : '', i % 2 === 1)).join('');
-
-      if (!inTop5) {
-        const me = data[myRank - 1];
-        rows += `<tr><td colspan="4" style="color:#ccc;text-align:center;font-size:11px;padding:3px;letter-spacing:2px;">···</td></tr>`;
-        rows += buildRow(me, myRank, hlStyle, false);
-      }
+      const rows = data.map((c, i) => buildRow(c, i + 1, c.name === selectedName ? hlStyle : '', i % 2 === 1)).join('');
 
       const th1 = isWltp ? 'WLTP'    : colHeader;
       const th2 = isWltp ? '~Verklig' : 'Pris';
@@ -348,15 +341,17 @@
             <div class="ev-funfact-label">${label}</div>
             <div class="ev-funfact-text" style="margin-bottom:10px;">${factText}</div>
             <div style="border:1px solid #e5e7eb;border-radius:8px;overflow:hidden;margin-top:4px;">
-            <table style="width:100%;border-collapse:collapse;font-size:13px;">
-              <thead><tr style="background:#f3f4f6;border-bottom:1px solid #e5e7eb;">
-                <th style="padding:6px 10px;text-align:left;color:#9ca3af;font-weight:600;font-size:11px;text-transform:uppercase;letter-spacing:0.5px;width:24px;">#</th>
-                <th style="padding:6px 10px;text-align:left;color:#9ca3af;font-weight:600;font-size:11px;text-transform:uppercase;letter-spacing:0.5px;">Bil</th>
-                <th style="padding:6px 10px;text-align:right;color:#9ca3af;font-weight:600;font-size:11px;text-transform:uppercase;letter-spacing:0.5px;">${th1}</th>
-                <th style="padding:6px 10px;text-align:right;color:#9ca3af;font-weight:600;font-size:11px;text-transform:uppercase;letter-spacing:0.5px;">${th2}</th>
-              </tr></thead>
-              <tbody>${rows}</tbody>
-            </table>
+              <div style="overflow-y:auto;max-height:260px;">
+                <table style="width:100%;border-collapse:collapse;font-size:13px;">
+                  <thead style="position:sticky;top:0;z-index:1;"><tr style="background:#f3f4f6;border-bottom:1px solid #e5e7eb;">
+                    <th style="padding:6px 10px;text-align:left;color:#9ca3af;font-weight:600;font-size:11px;text-transform:uppercase;letter-spacing:0.5px;width:24px;">#</th>
+                    <th style="padding:6px 10px;text-align:left;color:#9ca3af;font-weight:600;font-size:11px;text-transform:uppercase;letter-spacing:0.5px;">Bil</th>
+                    <th style="padding:6px 10px;text-align:right;color:#9ca3af;font-weight:600;font-size:11px;text-transform:uppercase;letter-spacing:0.5px;">${th1}</th>
+                    <th style="padding:6px 10px;text-align:right;color:#9ca3af;font-weight:600;font-size:11px;text-transform:uppercase;letter-spacing:0.5px;">${th2}</th>
+                  </tr></thead>
+                  <tbody>${rows}</tbody>
+                </table>
+              </div>
             </div>
           </div>
         </div>`;
