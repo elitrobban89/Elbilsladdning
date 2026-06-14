@@ -105,7 +105,7 @@ public class ChargingController {
 
         var groqResult = groq.recommend(car, stations, buildCostComparison(car));
 
-        return new StationResponse(car.name(), stations, groqResult.recommendation(), groqResult.funFact());
+        return new StationResponse(car.name(), stations, groqResult.recommendation(), groqResult.funFact(), buildCarFact(car));
     }
 
     private String buildCostComparison(CarSpec selected) {
@@ -145,6 +145,25 @@ public class ChargingController {
             default         -> Comparator.comparingDouble((StationDto s) -> -s.maxEffKw());
         };
         return list.stream().sorted(cmp).toList();
+    }
+
+    private String buildCarFact(CarSpec car) {
+        if (car.priceKr() <= 0 || car.rangeKm() <= 0) return null;
+
+        var ranked = CarDatabase.CARS.stream()
+                .filter(c -> c.priceKr() > 0 && c.rangeKm() > 0)
+                .sorted(Comparator.comparingDouble(c -> -(c.rangeKm() * 100_000.0 / c.priceKr())))
+                .toList();
+
+        int    myBfb  = (int) Math.round(car.rangeKm() * 100_000.0 / car.priceKr());
+        int    myRank = ranked.stream().map(CarSpec::name).toList().indexOf(car.name()) + 1;
+        int    total  = ranked.size();
+        CarSpec best  = ranked.get(0);
+        int    bestBfb = (int) Math.round(best.rangeKm() * 100_000.0 / best.priceKr());
+
+        return String.format(
+            "%s ger %d km per 100 000 kr – placering %d av %d bilar. Bäst värde: %s (%d km/100 tkr).",
+            car.name(), myBfb, myRank, total, best.name(), bestBfb);
     }
 
     private double extractPrice(String cost) {

@@ -1,4 +1,4 @@
-# EV Laddningsassistent ⚡
+﻿# EV Laddningsassistent ⚡
 
 En webbaserad laddningsassistent för elbilar i Sverige. Hitta kompatibla laddstationer nära dig, sorterade efter hastighet eller pris.
 
@@ -18,7 +18,9 @@ Live: [elitrobban.se/elbilsladdning](https://elitrobban.se/elbilsladdning/)
 - **Hemjämförelse** — hur mycket dyrare det är att ladda på stationen vs hemma (~2 kr/kWh)
 - **Laddningsfrekvens** — ange årskörsträcka och se hur ofta du behöver ladda
 - **Favoritstationer** — spara och hantera favoritstationer, lagras i PostgreSQL per webbläsare (anonymt UUID)
-- **AI-rekommendation + Visste du att** — Groq LLM ger ett konkret råd och ett bilfakta per sökning
+- **AI-rekommendation** — Groq LLM (llama-3.3-70b) ger ett konkret råd per sökning, märkt med ⚡ GROQ-badge
+- **Visste du att** — AI-genererat bilfakta per sökning
+- **Roterande faktatabeller** — en av fyra tabeller visas slumpmässigt per sökning: värde för pengarna (km/100 tkr), snabbast DC-laddning, längst räckvidd, samt WLTP vs verklig räckvidd — den valda bilen markeras alltid i tabellen
 - **Livepriser** — Chargeprice API + statisk operatörstabell täcker de flesta svenska nätverk
 - **NOBIL-integration** — hämtar antal laddpunkter per station (aktiveras med API-nyckel)
 - **Mobilanpassad** — fungerar på iOS och Android
@@ -69,7 +71,7 @@ backend/                         Spring Boot-backend (Render)
     model/
       CarSpec.java                       Record — bilspecifikationer
       StationDto.java                    Record — laddstation med priser och laddpunktsantal
-      StationResponse.java               Record — API-svar med stationer, AI-råd och funfact
+      StationResponse.java               Record — API-svar med stationer, AI-råd, funfact och carFact (värderanking)
       FavoriteStation.java               JPA-entity — sparade favoritstationer (ev_favorites)
     repository/
       FavoriteStationRepository.java     Spring Data JPA — findByUserId, existsByUserIdAndName

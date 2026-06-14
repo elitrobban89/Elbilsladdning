@@ -6,5 +6,6 @@ public record StationResponse(
         String carName,
         List<StationDto> stations,
         String recommendation,
-        String funFact
+        String funFact,
+        String carFact
 ) {}

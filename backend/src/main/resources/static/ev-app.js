@@ -199,7 +199,7 @@
 
   function renderResults(data) {
     state.lastData = data;
-    const { carName, stations, recommendation } = data;
+    const { carName, stations, recommendation, carFact } = data;
 
     const visible = state.filter === "fast"
         ? stations.filter(s => s.connectorType.includes("DC") && s.maxEffKw >= 50)
@@ -246,8 +246,11 @@
       html += `
         <div class="ev-ai-card">
           <div class="ev-ai-icon">🤖</div>
-          <div>
-            <div class="ev-ai-label">AI-rekommendation · ${carName}</div>
+          <div style="flex:1">
+            <div class="ev-ai-label" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+              AI-rekommendation · ${carName}
+              <span style="font-size:10px;font-weight:700;letter-spacing:0.6px;background:#f55036;color:#fff;border-radius:4px;padding:2px 7px;white-space:nowrap;">⚡ GROQ</span>
+            </div>
             <div class="ev-ai-text">${recommendation}</div>
           </div>
         </div>`;
@@ -260,6 +263,101 @@
           <div>
             <div class="ev-funfact-label">Visste du att</div>
             <div class="ev-funfact-text">${data.funFact}</div>
+          </div>
+        </div>`;
+    }
+
+    if (state.carIndex !== null && state.cars.length > 0) {
+      const selectedName = state.cars[state.carIndex]?.name;
+      const allValid = state.cars.filter(c => c.priceKr > 0 && c.rangeKm > 0);
+
+      const modes = [
+        {
+          icon: '📊', label: 'Räckvidd per 100 000 kr', colHeader: 'km/100 tkr',
+          data: allValid.map(c => ({ name: c.name, val: Math.round(c.rangeKm * 100000 / c.priceKr), price: c.priceKr })).sort((a, b) => b.val - a.val),
+          formatVal: v => `${v} km`,
+          factFn: (best) => carFact || `Bäst värde för pengarna: ${best.name} med ${best.val} km per 100 000 kr.`
+        },
+        {
+          icon: '⚡', label: 'Snabbast DC-laddning', colHeader: 'DC max',
+          data: state.cars.filter(c => c.maxDcKw > 0 && c.priceKr > 0).map(c => ({ name: c.name, val: c.maxDcKw, price: c.priceKr })).sort((a, b) => b.val - a.val),
+          formatVal: v => `${v} kW`,
+          factFn: (best) => `Snabbaste DC-laddning: ${best.name} med ${best.val} kW – kostar ${(best.price / 1000).toFixed(0)} 000 kr.`
+        },
+        {
+          icon: '🛣️', label: 'Längst räckvidd (WLTP)', colHeader: 'Räckvidd',
+          data: allValid.map(c => ({ name: c.name, val: c.rangeKm, price: c.priceKr })).sort((a, b) => b.val - a.val),
+          formatVal: v => `${v} km`,
+          factFn: (best) => `Längst räckvidd: ${best.name} med ${best.val} km WLTP – kostar ${(best.price / 1000).toFixed(0)} 000 kr.`
+        },
+        {
+          icon: '🎯', label: 'WLTP vs verklig räckvidd', colHeader: 'Tappar',
+          data: allValid.map(c => {
+            const real = Math.round(c.rangeKm * 0.85);
+            return { name: c.name, val: c.rangeKm - real, price: c.priceKr, wltp: c.rangeKm, real };
+          }).sort((a, b) => b.val - a.val),
+          formatVal: v => `-${v} km`,
+          factFn: (best) => `Störst skillnad: ${best.name} – WLTP ${best.wltp} km men ~${best.real} km verklig räckvidd (tappar ~${best.val} km). Alla bilar beräknas med 85% av WLTP som tumregel.`
+        }
+      ];
+
+      const mode = modes[Math.floor(Math.random() * modes.length)];
+      const { icon, label, colHeader, data, formatVal, factFn } = mode;
+      const factText = factFn(data[0]);
+      const myRank = data.findIndex(c => c.name === selectedName) + 1;
+      const top5   = data.slice(0, 5);
+      const inTop5 = myRank <= 5 || myRank === 0;
+
+      const rowStyle = 'padding:6px 10px;';
+      const hlStyle  = 'font-weight:700;background:rgba(59,130,246,0.10);border-left:3px solid #3b82f6;';
+
+      const isWltp = icon === '🎯';
+
+      const buildRow = (c, rank, hl, stripe) => {
+        const bg = hl || (stripe ? 'background:#f9fafb;' : '');
+        return isWltp
+          ? `<tr style="${bg}">
+              <td style="${rowStyle}color:#aaa;font-size:12px;">${rank}</td>
+              <td style="${rowStyle}">${c.name}</td>
+              <td style="${rowStyle}text-align:right;color:#888;">${c.wltp} km</td>
+              <td style="${rowStyle}text-align:right;font-weight:700;color:#16a34a;">~${c.real} km</td>
+            </tr>`
+          : `<tr style="${bg}">
+              <td style="${rowStyle}color:#aaa;font-size:12px;">${rank}</td>
+              <td style="${rowStyle}">${c.name}</td>
+              <td style="${rowStyle}text-align:right;font-weight:700;color:#1d4ed8;">${formatVal(c.val)}</td>
+              <td style="${rowStyle}text-align:right;color:#888;">${(c.price / 1000).toFixed(0)} tkr</td>
+            </tr>`;
+      };
+
+      let rows = top5.map((c, i) => buildRow(c, i + 1, c.name === selectedName ? hlStyle : '', i % 2 === 1)).join('');
+
+      if (!inTop5) {
+        const me = data[myRank - 1];
+        rows += `<tr><td colspan="4" style="color:#ccc;text-align:center;font-size:11px;padding:3px;letter-spacing:2px;">···</td></tr>`;
+        rows += buildRow(me, myRank, hlStyle, false);
+      }
+
+      const th1 = isWltp ? 'WLTP'    : colHeader;
+      const th2 = isWltp ? '~Verklig' : 'Pris';
+
+      html += `
+        <div class="ev-funfact-card">
+          <div class="ev-funfact-icon">${icon}</div>
+          <div style="flex:1">
+            <div class="ev-funfact-label">${label}</div>
+            <div class="ev-funfact-text" style="margin-bottom:10px;">${factText}</div>
+            <div style="border:1px solid #e5e7eb;border-radius:8px;overflow:hidden;margin-top:4px;">
+            <table style="width:100%;border-collapse:collapse;font-size:13px;">
+              <thead><tr style="background:#f3f4f6;border-bottom:1px solid #e5e7eb;">
+                <th style="padding:6px 10px;text-align:left;color:#9ca3af;font-weight:600;font-size:11px;text-transform:uppercase;letter-spacing:0.5px;width:24px;">#</th>
+                <th style="padding:6px 10px;text-align:left;color:#9ca3af;font-weight:600;font-size:11px;text-transform:uppercase;letter-spacing:0.5px;">Bil</th>
+                <th style="padding:6px 10px;text-align:right;color:#9ca3af;font-weight:600;font-size:11px;text-transform:uppercase;letter-spacing:0.5px;">${th1}</th>
+                <th style="padding:6px 10px;text-align:right;color:#9ca3af;font-weight:600;font-size:11px;text-transform:uppercase;letter-spacing:0.5px;">${th2}</th>
+              </tr></thead>
+              <tbody>${rows}</tbody>
+            </table>
+            </div>
           </div>
         </div>`;
     }
