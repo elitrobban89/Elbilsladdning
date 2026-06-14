@@ -328,7 +328,7 @@
             </tr>`;
       };
 
-      const rows = data.map((c, i) => buildRow(c, i + 1, c.name === selectedName ? hlStyle : '', i % 2 === 1)).join('');
+      const rows = data.map((c, i) => buildRow(c, i + 1, c.name === selectedName, i % 2 === 1)).join('');
 
       const th1 = isWltp ? 'WLTP'    : colHeader;
       const th2 = isWltp ? '~Verklig' : 'Pris';
