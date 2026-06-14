@@ -306,9 +306,9 @@
       const factText = factFn(data[0]);
       const myRank = data.findIndex(c => c.name === selectedName) + 1;
 
-      const rowStyle = 'padding:6px 10px;';
-      const hlStyle  = 'font-weight:700;background:rgba(59,130,246,0.12);border-left:3px solid #3b82f6;';
-      const stripeStyle = 'background:#e8eaed;';
+      const rowStyle = 'padding:6px 10px;color:#1f2937;';
+      const hlStyle  = 'font-weight:700;background:rgba(59,130,246,0.12);border-left:3px solid #3b82f6;color:#1f2937;';
+      const stripeStyle = 'background:#d1d5db;color:#1f2937;';
 
       const isWltp = icon === '🎯';
 
