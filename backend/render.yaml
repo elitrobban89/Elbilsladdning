@@ -12,3 +12,5 @@ services:
         sync: false
       - key: APININJAS_API_KEY
         sync: false
+      - key: NOBIL_API_KEY
+        sync: false
