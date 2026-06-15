@@ -152,10 +152,13 @@
       Stationsdata från <a href="https://openchargemap.io" target="_blank">Open Charge Map</a>.
       Priser är ungefärliga — verifiera alltid hos operatören.
     </div>
+    <div id="ev-map" style="height:320px;border-radius:14px;overflow:hidden;margin-bottom:16px;display:none;border:1px solid rgba(59,130,246,0.2);"></div>
     <div id="ev-output">
       <div class="ev-status"><div class="ev-spinner"></div>Hämtar din position…</div>
     </div>
   </div>
+  <link rel="stylesheet" href="/leaflet.min.css"/>
+  <script src="/leaflet.min.js"></script>
   <script>window.EV_API_URL = "http://localhost:8080";</script>
   <script src="/ev-app.js" defer></script>
 </body>

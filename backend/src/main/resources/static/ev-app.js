@@ -4,42 +4,23 @@
   let evMap = null;
   let evMapMarkers = [];
 
-  function loadLeaflet(cb) {
-    if (window.L) { cb(); return; }
-    const link = document.createElement("link");
-    link.rel = "stylesheet";
-    link.href = "https://unpkg.com/leaflet@1.9.4/dist/leaflet.min.css";
-    document.head.appendChild(link);
-    const s = document.createElement("script");
-    s.src = "https://unpkg.com/leaflet@1.9.4/dist/leaflet.min.js";
-    s.onload = cb;
-    document.head.appendChild(s);
-  }
-
-  function ensureMapContainer() {
-    if (document.getElementById("ev-map")) return;
-    const el = document.createElement("div");
-    el.id = "ev-map";
-    el.style.cssText = "height:320px;border-radius:14px;overflow:hidden;margin-bottom:16px;display:none;border:1px solid rgba(59,130,246,0.2);";
-    const out = document.getElementById("ev-output");
-    out.parentNode.insertBefore(el, out);
-  }
-
   function renderMap(userLat, userLon, stations) {
-    ensureMapContainer();
+    if (!window.L) return;
     const mapEl = document.getElementById("ev-map");
+    if (!mapEl) return;
     mapEl.style.display = "block";
 
     if (!evMap) {
-      evMap = L.map("ev-map", { zoomControl: true }).setView([userLat, userLon], 12);
+      evMap = L.map("ev-map", { zoomControl: true }).setView([userLat, userLon], 17);
       L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
         attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
         maxZoom: 19
       }).addTo(evMap);
+      evMap.invalidateSize();
     } else {
       evMapMarkers.forEach(m => m.remove());
       evMapMarkers = [];
-      evMap.setView([userLat, userLon], 12);
+      evMap.setView([userLat, userLon], 17);
     }
 
     const userIcon = L.divIcon({
@@ -506,7 +487,7 @@
     setOutput(html);
 
     if (state.lat && state.lon && top.length > 0)
-      loadLeaflet(() => renderMap(state.lat, state.lon, top));
+      setTimeout(() => renderMap(state.lat, state.lon, top), 50);
   }
 
   function setOutput(html) {
