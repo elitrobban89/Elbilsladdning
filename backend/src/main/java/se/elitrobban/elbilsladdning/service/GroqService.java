@@ -1,5 +1,6 @@
 package se.elitrobban.elbilsladdning.service;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
@@ -7,6 +8,11 @@ import org.springframework.web.client.RestClient;
 import se.elitrobban.elbilsladdning.model.CarSpec;
 import se.elitrobban.elbilsladdning.model.StationDto;
 
+import java.io.InputStream;
+import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
 import java.util.List;
 import java.util.Map;
 
@@ -20,6 +26,8 @@ public class GroqService {
     private String apiKey;
 
     private final RestClient http = RestClient.create();
+    private final HttpClient httpClient = HttpClient.newHttpClient();
+    private final ObjectMapper mapper = new ObjectMapper();
 
     public record GroqResult(String recommendation, String funFact) {}
 
@@ -125,6 +133,32 @@ Hitta INTE på recensioner som inte finns i listan ovan.
 """);
 
         return sb.toString();
+    }
+
+    public InputStream chatStream(List<Map<String, String>> history, List<CarSpec> cars, String stationContext) throws Exception {
+        List<Map<String, Object>> messages = new java.util.ArrayList<>();
+        String sysPrompt = buildChatSystemPrompt(cars);
+        if (stationContext != null && !stationContext.isBlank())
+            sysPrompt += "\n\nAktuella laddstationer i sökningen:\n" + stationContext;
+        messages.add(Map.of("role", "system", "content", sysPrompt));
+        history.forEach(m -> messages.add(Map.of("role", (Object) m.get("role"), "content", (Object) m.get("content"))));
+
+        Map<String, Object> body = Map.of(
+                "model", MODEL, "max_tokens", 350, "temperature", 0.7, "stream", true,
+                "messages", messages);
+
+        HttpRequest request = HttpRequest.newBuilder()
+                .uri(URI.create(GROQ_URL))
+                .header("Authorization", "Bearer " + apiKey)
+                .header("Content-Type", "application/json")
+                .POST(HttpRequest.BodyPublishers.ofString(mapper.writeValueAsString(body)))
+                .build();
+
+        HttpResponse<InputStream> response = httpClient.send(request, HttpResponse.BodyHandlers.ofInputStream());
+        if (response.statusCode() == 401) throw new RuntimeException("AI-tjänsten är inte korrekt konfigurerad.");
+        if (response.statusCode() == 429) throw new RuntimeException("För många frågor till AI:n just nu.");
+        if (response.statusCode() != 200) throw new RuntimeException("AI-tjänsten svarade med fel " + response.statusCode() + ".");
+        return response.body();
     }
 
     public GroqResult recommend(CarSpec car, List<StationDto> stations, String costComparison) {

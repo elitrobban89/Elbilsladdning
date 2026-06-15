@@ -860,51 +860,146 @@
     chatSendMessage(msg);
   }
 
+  function evAddFollowupChips(text, outer) {
+    const lower = text.toLowerCase();
+    let chips = [];
+    if (/räckvidd|km|wltp/.test(lower))        chips.push("Vilken elbil har längst räckvidd?", "Räcker det för pendling?");
+    else if (/ladda|laddning|kw/.test(lower))   chips.push("Hur fort laddar den?", "Var hittar jag snabbladdare?");
+    else if (/pris|kr|budget|köpa/.test(lower)) chips.push("Finns billigare alternativ?", "Ny eller begagnad?");
+    else if (/tesla/.test(lower))               chips.push("Tesla vs Kia EV6?", "Har Tesla supercharger i Sverige?");
+    else if (/kia|hyundai|ioniq/.test(lower))   chips.push("Jämför med Tesla?", "Vilken räckvidd har den?");
+    if (/driftkostnad|kostnad|el per mil/.test(lower) && chips.length < 2) chips.push("Vad kostar det per mil?");
+    if (/motor|prestanda|acceleration/.test(lower) && chips.length < 2)    chips.push("Vilken elbil är snabbast?");
+    if (chips.length === 0) chips = ["Vilken elbil passar mig?", "Vad kostar laddning per månad?"];
+    const wrap = document.createElement("div");
+    wrap.style.cssText = "display:flex;flex-wrap:wrap;gap:6px;margin-top:8px;";
+    chips.slice(0, 3).forEach(function(chip) {
+      const btn = document.createElement("button");
+      btn.textContent = chip;
+      btn.style.cssText = "padding:5px 11px;font-size:.72rem;background:rgba(59,130,246,.12);border:1px solid rgba(96,165,250,.25);border-radius:16px;color:#93c5fd;cursor:pointer;transition:background .15s;font-family:inherit;";
+      btn.onmouseenter = function() { btn.style.background = "rgba(59,130,246,.22)"; };
+      btn.onmouseleave = function() { btn.style.background = "rgba(59,130,246,.12)"; };
+      btn.onclick = function() { wrap.remove(); document.getElementById("ev-chat-input").value = chip; chatSend(); };
+      wrap.appendChild(btn);
+    });
+    outer.appendChild(wrap);
+  }
+
   async function chatSendMessage(message) {
     document.getElementById("ev-chat-quick").style.display = "none";
     chatAppendUser(message);
     chatHistory.push({ role: "user", content: message });
     saveChatHistory();
 
-    const msgs = document.getElementById("ev-chat-messages");
+    const msgsEl = document.getElementById("ev-chat-messages");
     const typingDiv = document.createElement("div");
     typingDiv.innerHTML = `<div class="ev-chat-bubble bot"><div class="ev-chat-typing"><span></span><span></span><span></span></div></div>`;
-    msgs.appendChild(typingDiv);
-    msgs.scrollTop = msgs.scrollHeight;
+    msgsEl.appendChild(typingDiv);
+    msgsEl.scrollTop = msgsEl.scrollHeight;
 
     const context = buildStationContext();
     const limited = chatHistory.slice(-10);
 
+    let resp;
     try {
-      const resp = await fetch(`${API}/chat`, {
+      resp = await fetch(`${API}/api/chat/stream`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ messages: limited, context: context })
       });
-      typingDiv.remove();
-      if (resp.status === 429) {
-        chatAppendBot("Du har ställt för många frågor — vänta en minut och försök igen.", false);
-        return;
-      }
-      if (!resp.ok) {
-        const errDiv = chatAppendBot("Något gick fel (fel " + resp.status + ").", false);
-        const btn = document.createElement("button"); btn.className = "ev-chat-retry"; btn.textContent = "↺ Försök igen";
-        btn.onclick = function() { errDiv.remove(); chatHistory.pop(); saveChatHistory(); chatSendMessage(message); };
-        errDiv.appendChild(btn);
-        return;
-      }
-      const data = await resp.json();
-      const reply = data.reply || data.error || "Inget svar.";
-      chatHistory.push({ role: "assistant", content: reply });
-      saveChatHistory();
-      chatAppendBot(reply, true);
     } catch (_) {
       typingDiv.remove();
       const errDiv = chatAppendBot("Kunde inte nå assistenten — kontrollera anslutningen.", false);
       const btn = document.createElement("button"); btn.className = "ev-chat-retry"; btn.textContent = "↺ Försök igen";
       btn.onclick = function() { errDiv.remove(); chatHistory.pop(); saveChatHistory(); chatSendMessage(message); };
       errDiv.appendChild(btn);
+      return;
     }
+
+    typingDiv.remove();
+
+    if (resp.status === 429) {
+      chatAppendBot("Du har ställt för många frågor — vänta en minut och försök igen.", false);
+      return;
+    }
+    if (!resp.ok) {
+      const errDiv = chatAppendBot("Något gick fel (fel " + resp.status + ").", false);
+      const btn = document.createElement("button"); btn.className = "ev-chat-retry"; btn.textContent = "↺ Försök igen";
+      btn.onclick = function() { errDiv.remove(); chatHistory.pop(); saveChatHistory(); chatSendMessage(message); };
+      errDiv.appendChild(btn);
+      return;
+    }
+
+    // Fallback for browsers without streaming support
+    if (!resp.body || typeof resp.body.getReader !== "function") {
+      try {
+        const fb = await fetch(`${API}/api/chat`, {
+          method: "POST", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ messages: limited, context: context })
+        });
+        const fbData = await fb.json();
+        const fbReply = fbData.reply || fbData.error || "Inget svar.";
+        chatHistory.push({ role: "assistant", content: fbReply });
+        saveChatHistory();
+        const fbOuter = chatAppendBot(fbReply, true);
+        evAddFollowupChips(fbReply, fbOuter);
+      } catch (_) { chatAppendBot("Kunde inte nå assistenten.", false); }
+      return;
+    }
+
+    // Streaming bubble
+    const outer = document.createElement("div");
+    const bubble = document.createElement("div");
+    bubble.className = "ev-chat-bubble bot";
+    outer.appendChild(bubble);
+    msgsEl.appendChild(outer);
+
+    let fullText = "";
+    const reader = resp.body.getReader();
+    const decoder = new TextDecoder();
+    let buf = "";
+
+    try {
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buf += decoder.decode(value, { stream: true });
+        const lines = buf.split("\n");
+        buf = lines.pop();
+        for (const line of lines) {
+          const trimmed = line.trim();
+          if (!trimmed.startsWith("data:")) continue;
+          const data = trimmed.slice(5).trim();
+          if (data === "[DONE]") break;
+          try {
+            const token = JSON.parse(data);
+            if (token.startsWith("[ERR]")) throw new Error(token.slice(5));
+            fullText += token;
+            bubble.textContent = fullText;
+            msgsEl.scrollTop = msgsEl.scrollHeight;
+          } catch (parseErr) {
+            if (parseErr.message && !parseErr.message.startsWith("JSON")) throw parseErr;
+          }
+        }
+      }
+    } catch (streamErr) {
+      if (!fullText) {
+        outer.remove();
+        const errDiv = chatAppendBot(streamErr.message || "Kunde inte nå assistenten.", false);
+        const btn = document.createElement("button"); btn.className = "ev-chat-retry"; btn.textContent = "↺ Försök igen";
+        btn.onclick = function() { errDiv.remove(); chatHistory.pop(); saveChatHistory(); chatSendMessage(message); };
+        errDiv.appendChild(btn);
+        return;
+      }
+    }
+
+    bubble.innerHTML = chatMarkdown(fullText);
+    evAddFeedback(outer);
+    evAddFollowupChips(fullText, outer);
+    msgsEl.scrollTop = msgsEl.scrollHeight;
+
+    chatHistory.push({ role: "assistant", content: fullText });
+    saveChatHistory();
   }
 
   initChat();

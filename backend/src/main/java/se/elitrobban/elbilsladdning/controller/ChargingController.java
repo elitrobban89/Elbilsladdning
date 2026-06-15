@@ -1,10 +1,19 @@
 package se.elitrobban.elbilsladdning.controller;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
+import org.springframework.web.servlet.mvc.method.annotation.StreamingResponseBody;
 import se.elitrobban.elbilsladdning.data.CarDatabase;
+
+import java.io.BufferedReader;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.nio.charset.StandardCharsets;
 import se.elitrobban.elbilsladdning.model.CarSpec;
 import se.elitrobban.elbilsladdning.model.StationDto;
 import se.elitrobban.elbilsladdning.model.StationResponse;
@@ -29,6 +38,7 @@ public class ChargingController {
     private static final int CHAT_RATE_LIMIT = 10;
     private static final long WINDOW_MS = 60_000L;
     private final ConcurrentHashMap<String, Deque<Long>> chatTimestamps = new ConcurrentHashMap<>();
+    private final ObjectMapper mapper = new ObjectMapper();
 
     private final OcmService           ocm;
     private final GroqService          groq;
@@ -74,6 +84,57 @@ public class ChargingController {
         if (messages == null || messages.isEmpty()) return Map.of("reply", "Inga meddelanden.");
         String context = (String) req.get("context");
         return Map.of("reply", groq.chat(messages, CarDatabase.CARS, context));
+    }
+
+    @PostMapping(value = "/chat/stream", produces = "text/event-stream")
+    public ResponseEntity<StreamingResponseBody> chatStream(@RequestBody Map<String, Object> req, HttpServletRequest httpReq) {
+        String ip = httpReq.getHeader("X-Forwarded-For");
+        if (ip == null || ip.isBlank()) ip = httpReq.getRemoteAddr();
+        String clientIp = ip.split(",")[0].trim();
+        long now = System.currentTimeMillis();
+        Deque<Long> times = chatTimestamps.computeIfAbsent(clientIp, k -> new ArrayDeque<>());
+        synchronized (times) {
+            while (!times.isEmpty() && now - times.peekFirst() > WINDOW_MS) times.pollFirst();
+            if (times.size() >= CHAT_RATE_LIMIT)
+                return ResponseEntity.status(429).build();
+            times.addLast(now);
+        }
+        @SuppressWarnings("unchecked")
+        List<Map<String, String>> messages = (List<Map<String, String>>) req.get("messages");
+        if (messages == null || messages.isEmpty())
+            return ResponseEntity.badRequest().build();
+        String context = (String) req.get("context");
+
+        StreamingResponseBody body = outputStream -> {
+            try (InputStream is = groq.chatStream(messages, CarDatabase.CARS, context);
+                 BufferedReader reader = new BufferedReader(new InputStreamReader(is, StandardCharsets.UTF_8))) {
+                String line;
+                while ((line = reader.readLine()) != null) {
+                    if (!line.startsWith("data: ")) continue;
+                    String data = line.substring(6).trim();
+                    if ("[DONE]".equals(data)) break;
+                    try {
+                        JsonNode node = mapper.readTree(data);
+                        String token = node.at("/choices/0/delta/content").asText("");
+                        if (!token.isEmpty()) {
+                            outputStream.write(("data: " + mapper.writeValueAsString(token) + "\n\n").getBytes(StandardCharsets.UTF_8));
+                            outputStream.flush();
+                        }
+                    } catch (Exception ignored) {}
+                }
+            } catch (Exception e) {
+                outputStream.write(("data: " + mapper.writeValueAsString("[ERR]" + e.getMessage()) + "\n\n").getBytes(StandardCharsets.UTF_8));
+                outputStream.flush();
+            }
+            outputStream.write("data: [DONE]\n\n".getBytes(StandardCharsets.UTF_8));
+            outputStream.flush();
+        };
+
+        return ResponseEntity.ok()
+                .header("Content-Type", "text/event-stream; charset=UTF-8")
+                .header("Cache-Control", "no-cache")
+                .header("X-Accel-Buffering", "no")
+                .body(body);
     }
 
     @GetMapping("/cars")
