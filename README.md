@@ -23,7 +23,7 @@ Live: [elitrobban.se/elbilsladdning](https://elitrobban.se/elbilsladdning/)
 - **Roterande faktatabeller** — en av fyra tabeller visas slumpmässigt per sökning: värde för pengarna (km/100 tkr), snabbast DC-laddning, längst räckvidd, samt WLTP vs verklig räckvidd — alla 73 bilar visas i en scrollbar tabell med sticky header, den valda bilen markeras alltid med blå highlight
 - **Livepriser** — Chargeprice API + statisk operatörstabell täcker de flesta svenska nätverk
 - **NOBIL-integration** — hämtar antal laddpunkter per station (aktiveras med API-nyckel)
-- **AI-chattbot** ☀️ — flytande chattassistent (gul sol-knapp nere till höger) driven av Groq; svarar på köpfrågor, räckviddsfrågor och laddningsfrågor på svenska; citerar recensioner från Teknikens Värld, Vi Bilägare och Råd & Rön; stödjer flerturskonversation
+- **AI-chattbot** ⚡ — flytande chattassistent (knapp nere till höger med animerade blixtar runt elektrisk maskotgubbe) driven av Groq; svarar ENDAST på frågor om elbilar, laddning, räckvidd och stationer; citerar recensioner från Teknikens Värld, Vi Bilägare och Råd & Rön; stödjer flerturskonversation; vägrar artigt off-topic frågor
 - **Mobilanpassad** — fungerar på iOS och Android
 
 ---
