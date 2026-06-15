@@ -558,70 +558,97 @@
       .ev-chat-fab:hover{transform:scale(1.1);box-shadow:0 6px 22px rgba(29,78,216,.7);}
       .ev-chat-panel {
         position:fixed;bottom:92px;right:24px;z-index:9998;
-        width:340px;max-height:520px;
-        background:#fff;border-radius:16px;
-        box-shadow:0 8px 32px rgba(0,0,0,.18);
+        width:380px;max-height:540px;
+        background:rgba(6,12,26,0.72);
+        backdrop-filter:blur(24px);-webkit-backdrop-filter:blur(24px);
+        border:1px solid rgba(147,197,253,0.18);border-radius:20px;
+        box-shadow:0 8px 48px rgba(0,0,0,.65),0 0 0 1px rgba(255,255,255,0.04) inset;
         display:flex;flex-direction:column;overflow:hidden;
         font-family:inherit;
       }
       .ev-chat-header {
-        background:linear-gradient(135deg,#1e3a8a,#1d4ed8);
-        color:#fff;padding:14px 16px;
+        background:linear-gradient(135deg,rgba(30,58,138,0.85),rgba(29,78,216,0.75));
+        backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);
+        border-bottom:1px solid rgba(147,197,253,0.15);
+        color:#fff;padding:13px 16px;
         display:flex;align-items:center;justify-content:space-between;
-        font-weight:700;font-size:14px;flex-shrink:0;
+        font-weight:700;font-size:14px;flex-shrink:0;gap:8px;
       }
+      .ev-chat-header-actions { display:flex;align-items:center;gap:6px; }
+      .ev-chat-header-clear {
+        background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.18);
+        color:rgba(255,255,255,0.75);font-size:11px;font-weight:600;padding:3px 9px;
+        border-radius:20px;cursor:pointer;transition:all .15s;white-space:nowrap;
+      }
+      .ev-chat-header-clear:hover { background:rgba(255,255,255,0.16);color:#fff; }
       .ev-chat-header-close {
-        background:none;border:none;color:#fff;font-size:20px;
-        cursor:pointer;padding:0 2px;line-height:1;opacity:.8;
+        background:none;border:none;color:rgba(255,255,255,0.7);font-size:20px;
+        cursor:pointer;padding:0 2px;line-height:1;transition:color .12s;
       }
-      .ev-chat-header-close:hover { opacity:1; }
+      .ev-chat-header-close:hover { color:#fff; }
       .ev-chat-messages {
         flex:1;overflow-y:auto;padding:14px 12px;
         display:flex;flex-direction:column;gap:10px;
-        background:#f8fafc;min-height:0;
+        background:transparent;min-height:0;
       }
+      .ev-chat-messages::-webkit-scrollbar { width:4px; }
+      .ev-chat-messages::-webkit-scrollbar-track { background:transparent; }
+      .ev-chat-messages::-webkit-scrollbar-thumb { background:rgba(147,197,253,0.25);border-radius:4px; }
       .ev-chat-bubble {
         max-width:85%;padding:10px 13px;border-radius:14px;
-        font-size:13px;line-height:1.5;word-break:break-word;
+        font-size:13px;line-height:1.6;word-break:break-word;
       }
       .ev-chat-bubble.bot {
-        background:#fff;border:1px solid #e5e7eb;
-        border-radius:4px 14px 14px 14px;align-self:flex-start;color:#111827;
+        background:rgba(13,21,38,0.7);
+        backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);
+        border:1px solid rgba(147,197,253,0.15);
+        border-radius:4px 14px 14px 14px;align-self:flex-start;color:#e2e8f0;
       }
+      .ev-chat-bubble.bot strong { color:#93c5fd; }
+      .ev-chat-bubble.bot ul { margin:6px 0 2px 16px;padding:0;display:flex;flex-direction:column;gap:3px; }
+      .ev-chat-bubble.bot li { list-style:disc; }
       .ev-chat-bubble.user {
-        background:linear-gradient(135deg,#1d4ed8,#3b82f6);
+        background:linear-gradient(135deg,rgba(29,78,216,0.9),rgba(59,130,246,0.85));
+        backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);
+        border:1px solid rgba(147,197,253,0.2);
         color:#fff;border-radius:14px 14px 4px 14px;align-self:flex-end;
       }
       .ev-chat-quick {
         padding:10px 12px 4px;display:flex;flex-wrap:wrap;gap:7px;flex-shrink:0;
-        background:#f8fafc;border-top:1px solid #e5e7eb;
+        background:rgba(6,12,26,0.5);border-top:1px solid rgba(147,197,253,0.1);
       }
       .ev-chat-quick-btn {
-        background:#fff;border:1.5px solid #3b82f6;color:#1d4ed8;
+        background:rgba(59,130,246,0.1);border:1px solid rgba(147,197,253,0.25);color:#93c5fd;
         border-radius:20px;padding:5px 12px;font-size:12px;font-weight:600;
-        cursor:pointer;transition:background .12s,color .12s;white-space:nowrap;
+        cursor:pointer;transition:all .15s;white-space:nowrap;
+        backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px);
       }
-      .ev-chat-quick-btn:hover { background:#3b82f6;color:#fff; }
+      .ev-chat-quick-btn:hover { background:rgba(59,130,246,0.35);color:#fff;border-color:rgba(147,197,253,0.5); }
       .ev-chat-input-row {
         display:flex;gap:8px;padding:10px 12px;
-        border-top:1px solid #e5e7eb;background:#fff;flex-shrink:0;
+        border-top:1px solid rgba(147,197,253,0.1);
+        background:rgba(6,12,26,0.5);flex-shrink:0;
       }
       .ev-chat-input {
-        flex:1;border:1.5px solid #d1d5db;border-radius:22px;
+        flex:1;border:1px solid rgba(147,197,253,0.2);border-radius:22px;
         padding:8px 14px;font-size:13px;outline:none;
-        transition:border-color .12s;
+        background:rgba(13,21,38,0.6);color:#f0f4ff;transition:border-color .15s,box-shadow .15s;
+        backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px);
       }
-      .ev-chat-input:focus { border-color:#3b82f6; }
+      .ev-chat-input::placeholder { color:rgba(200,215,255,0.35); }
+      .ev-chat-input:focus { border-color:rgba(147,197,253,0.5);box-shadow:0 0 0 3px rgba(59,130,246,0.12); }
       .ev-chat-send {
         width:38px;height:38px;border-radius:50%;
-        background:#1d4ed8;color:#fff;border:none;cursor:pointer;
+        background:linear-gradient(135deg,#1d4ed8,#3b82f6);
+        color:#fff;border:none;cursor:pointer;
         font-size:16px;display:flex;align-items:center;justify-content:center;
-        flex-shrink:0;transition:background .12s;
+        flex-shrink:0;transition:all .15s;
+        box-shadow:0 2px 10px rgba(59,130,246,0.35);
       }
-      .ev-chat-send:hover { background:#2563eb; }
+      .ev-chat-send:hover { background:linear-gradient(135deg,#2563eb,#60a5fa);box-shadow:0 4px 14px rgba(59,130,246,0.5); }
       .ev-chat-typing { display:flex;gap:4px;align-items:center;padding:4px 0; }
       .ev-chat-typing span {
-        width:7px;height:7px;border-radius:50%;background:#9ca3af;
+        width:7px;height:7px;border-radius:50%;background:rgba(147,197,253,0.5);
         animation:ev-bounce .9s infinite;display:inline-block;
       }
       .ev-chat-typing span:nth-child(2) { animation-delay:.15s; }
@@ -681,7 +708,10 @@
       <div class="ev-chat-panel" id="ev-chat-panel" style="display:none;">
         <div class="ev-chat-header">
           <span>⚡ EV-Assistenten</span>
-          <button class="ev-chat-header-close" id="ev-chat-close">✕</button>
+          <div class="ev-chat-header-actions">
+            <button class="ev-chat-header-clear" id="ev-chat-clear">Rensa</button>
+            <button class="ev-chat-header-close" id="ev-chat-close">✕</button>
+          </div>
         </div>
         <div class="ev-chat-messages" id="ev-chat-messages"></div>
         <div class="ev-chat-quick" id="ev-chat-quick">
@@ -704,6 +734,7 @@
     document.getElementById("ev-chat-close").addEventListener("click", chatToggle);
     document.getElementById("ev-chat-send").addEventListener("click", chatSend);
     document.getElementById("ev-chat-input").addEventListener("keydown", e => { if (e.key === "Enter") chatSend(); });
+    document.getElementById("ev-chat-clear").addEventListener("click", chatClear);
     document.querySelectorAll(".ev-chat-quick-btn").forEach(btn =>
       btn.addEventListener("click", () => chatSendMessage(btn.dataset.q))
     );
@@ -716,13 +747,31 @@
     if (open) document.getElementById("ev-chat-input").focus();
   }
 
+  function chatMarkdown(text) {
+    return text
+      .replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;")
+      .replace(/\*\*(.+?)\*\*/g,"<strong>$1</strong>")
+      .replace(/\*(.+?)\*/g,"<em>$1</em>")
+      .replace(/^[-•]\s+(.+)$/gm,"<li>$1</li>")
+      .replace(/(<li>.*<\/li>)/s, "<ul>$1</ul>")
+      .replace(/\n/g,"<br>");
+  }
+
   function chatAppendBot(text) {
     const msgs = document.getElementById("ev-chat-messages");
     const div = document.createElement("div");
-    div.innerHTML = `<div class="ev-chat-bubble bot">${text}</div>`;
+    div.innerHTML = `<div class="ev-chat-bubble bot">${chatMarkdown(text)}</div>`;
     msgs.appendChild(div);
     msgs.scrollTop = msgs.scrollHeight;
     return div;
+  }
+
+  function chatClear() {
+    chatHistory = [];
+    const msgs = document.getElementById("ev-chat-messages");
+    msgs.innerHTML = "";
+    document.getElementById("ev-chat-quick").style.display = "flex";
+    chatAppendBot("Undrar du vilken elbil du bör köpa? 🚗 Jag kan ge dig tips! Välj ett ämne nedan eller ställ en egen fråga.");
   }
 
   function chatAppendUser(text) {
