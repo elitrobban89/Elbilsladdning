@@ -23,6 +23,61 @@ public class GroqService {
 
     public record GroqResult(String recommendation, String funFact) {}
 
+    @SuppressWarnings("unchecked")
+    public String chat(List<Map<String, String>> history, List<CarSpec> cars) {
+        List<Map<String, Object>> messages = new java.util.ArrayList<>();
+        messages.add(Map.of("role", "system", "content", buildChatSystemPrompt(cars)));
+        history.forEach(m -> messages.add(Map.of("role", (Object) m.get("role"), "content", (Object) m.get("content"))));
+
+        Map<String, Object> body = Map.of(
+                "model", MODEL, "max_tokens", 350, "temperature", 0.7,
+                "messages", messages);
+        try {
+            Map<String, Object> resp = http.post()
+                    .uri(GROQ_URL)
+                    .header("Authorization", "Bearer " + apiKey)
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .body(body)
+                    .retrieve()
+                    .body(Map.class);
+            var choices = (List<Map<String, Object>>) resp.get("choices");
+            var msg     = (Map<String, Object>) choices.get(0).get("message");
+            return (String) msg.get("content");
+        } catch (Exception e) {
+            return "Tyvärr kunde jag inte svara just nu. Försök igen!";
+        }
+    }
+
+    private String buildChatSystemPrompt(List<CarSpec> cars) {
+        var sb = new StringBuilder();
+        sb.append("Du är en hjälpsam elbilsexpert för Sverige. Svara alltid på svenska. ")
+          .append("Svara kortfattat (max 3–4 meningar) men konkret och specifik med siffror. ")
+          .append("Om någon frågar om elbilsköp och inte angett budget, fråga efter det.\n\n")
+          .append("BILDATA (73 modeller i databasen):\n\n");
+
+        sb.append("Snabbaste DC-laddning:\n");
+        cars.stream().filter(c -> c.maxDcKw() > 0 && c.priceKr() > 0)
+            .sorted((a, b) -> Double.compare(b.maxDcKw(), a.maxDcKw())).limit(10)
+            .forEach(c -> sb.append(String.format("  %s: %d kW DC, %d tkr%n",
+                c.name(), (int) c.maxDcKw(), c.priceKr() / 1000)));
+
+        sb.append("\nLängst räckvidd (WLTP):\n");
+        cars.stream().filter(c -> c.rangeKm() > 0 && c.priceKr() > 0)
+            .sorted((a, b) -> Integer.compare(b.rangeKm(), a.rangeKm())).limit(10)
+            .forEach(c -> sb.append(String.format("  %s: %d km, %d tkr%n",
+                c.name(), c.rangeKm(), c.priceKr() / 1000)));
+
+        sb.append("\nBäst värde (km per 100 000 kr):\n");
+        cars.stream().filter(c -> c.rangeKm() > 0 && c.priceKr() > 0)
+            .sorted((a, b) -> Double.compare(
+                b.rangeKm() * 100_000.0 / b.priceKr(),
+                a.rangeKm() * 100_000.0 / a.priceKr())).limit(10)
+            .forEach(c -> sb.append(String.format("  %s: %d km/100tkr, %d tkr%n",
+                c.name(), (int)(c.rangeKm() * 100_000.0 / c.priceKr()), c.priceKr() / 1000)));
+
+        return sb.toString();
+    }
+
     public GroqResult recommend(CarSpec car, List<StationDto> stations, String costComparison) {
         String userPrompt = buildPrompt(car, stations, costComparison);
 

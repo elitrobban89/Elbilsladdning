@@ -43,6 +43,14 @@ public class ChargingController {
         return Map.of("status", "ok");
     }
 
+    @PostMapping("/chat")
+    public Map<String, String> chat(@RequestBody Map<String, Object> req) {
+        @SuppressWarnings("unchecked")
+        List<Map<String, String>> messages = (List<Map<String, String>>) req.get("messages");
+        if (messages == null || messages.isEmpty()) return Map.of("reply", "Inga meddelanden.");
+        return Map.of("reply", groq.chat(messages, CarDatabase.CARS));
+    }
+
     @GetMapping("/cars")
     public List<Map<String, Object>> cars() {
         return CarDatabase.CARS.stream().map(c -> {
