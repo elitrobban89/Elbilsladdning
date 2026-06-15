@@ -24,7 +24,7 @@ Live: [elitrobban.se/elbilsladdning](https://elitrobban.se/elbilsladdning/)
 - **Livepriser** — Chargeprice API + statisk operatörstabell täcker de flesta svenska nätverk
 - **NOBIL-integration** — hämtar antal laddpunkter per station (aktiveras med API-nyckel)
 - **Interaktiv karta** — Leaflet + OpenStreetMap (gratis, ingen API-nyckel, serveras lokalt utan CDN-beroende) visas ovanför stationslistan; färgkodade markörer: 🟢 grön ≥100 kW, 🟠 orange ≥22 kW, 🟣 lila långsam; din position som blå cirkel; klicka markör för popup med kW, kontakttyp, pris och avstånd; zoomnivå 17
-- **AI-chattbot** ⚡ — flytande chattassistent (knapp nere till höger med animerade blixtar runt elektrisk maskotgubbe) driven av Groq; svarar ENDAST på frågor om elbilar, laddning, räckvidd och stationer; smarta budgetregler (budget under 200 tkr → föreslår begagnade med prisintervall, rekommenderar aldrig ny bil >1,3x budgeten); citerar recensioner från Teknikens Värld, Vi Bilägare och Råd & Rön; stödjer flerturskonversation; max 10 frågor/minut per IP
+- **AI-chattbot** ⚡ — flytande chattassistent (knapp nere till höger med animerade blixtar runt elektrisk maskotgubbe) driven av Groq; glassmorphism-design med backdrop-blur, mörkt tema och halvtransparenta bubblor som matchar appens stil; stödjer markdown i bot-svar (fetstil, listor); rensa-knapp i headern; svarar ENDAST på frågor om elbilar, laddning, räckvidd och stationer; smarta budgetregler (budget under 200 tkr → föreslår begagnade med prisintervall, rekommenderar aldrig ny bil >1,3x budgeten); stödjer flerturskonversation; max 10 frågor/minut per IP
 - **Mobilanpassad** — fungerar på iOS och Android
 
 ---
