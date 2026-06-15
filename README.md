@@ -98,10 +98,12 @@ elbilsladdning-web.html                  WordPress-snippet — endast HTML + CSS
 
 ```bash
 cd backend
-mvn spring-boot:run
+OCM_API_KEY=xxx GROQ_API_KEY=xxx mvn spring-boot:run
 ```
 
-Kräver miljövariablerna `OCM_API_KEY` och `GROQ_API_KEY`. Se `application.properties`.
+Obligatoriska miljövariabler: `OCM_API_KEY`, `GROQ_API_KEY`.  
+Valfria: `NOBIL_API_KEY` (aktiverar laddpunktsantal per station), `CHARGEPRICE_API_KEY`, `APININJAS_API_KEY`.  
+Se `application.properties` för fullständig lista.
 
 ---
 
@@ -116,4 +118,4 @@ Kräver miljövariablerna `OCM_API_KEY` och `GROQ_API_KEY`. Se `application.prop
 | `DB_PASS` | ✅ | PostgreSQL-lösenord |
 | `CHARGEPRICE_API_KEY` | ⚪ | Chargeprice API-nyckel (demo-nyckel fungerar) |
 | `APININJAS_API_KEY` | ⚪ | API Ninjas (valfri reservkälla) |
-| `NOBIL_API_KEY` | ⚪ | NOBIL API-nyckel — aktiverar laddpunktsdata per station |
+| `NOBIL_API_KEY` | ⚪ | NOBIL API-nyckel — aktiverar antal laddpunkter per station (nordisk databas, aktivt konfigurerat) |
