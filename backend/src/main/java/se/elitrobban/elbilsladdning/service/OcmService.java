@@ -74,11 +74,17 @@ public class OcmService {
 
             double maxEffKw = 0, bestStationKw = 0;
             String bestType = "";
+            int ocmConnCount = 0;
 
             for (Object connObj : connsRaw) {
                 var conn   = (Map<String, Object>) connObj;
                 int typeId = (int) lng(conn, "ConnectionTypeID");
                 double kw  = dbl(conn, "PowerKW");
+
+                Object qty = conn.get("Quantity");
+                int q = qty instanceof Integer i ? i : qty instanceof Long lv ? lv.intValue() : 1;
+                ocmConnCount += q;
+
                 if (!allowed.contains(typeId) || kw <= 0) continue;
 
                 String ctype = OCM_IDS.entrySet().stream()
@@ -91,6 +97,10 @@ public class OcmService {
 
             if (maxEffKw == 0) return null;
 
+            Object nop = s.get("NumberOfPoints");
+            if (nop instanceof Integer n && n > ocmConnCount) ocmConnCount = n;
+            else if (nop instanceof Long lv && lv > ocmConnCount) ocmConnCount = lv.intValue();
+
             String connLabel = switch (bestType) {
                 case "type2"   -> "Type 2 (AC)";
                 case "ccs"     -> "CCS Combo 2 (DC)";
@@ -98,7 +108,7 @@ public class OcmService {
                 default        -> bestType;
             };
 
-            return new StationDto(name, address, dist, stLat, stLon, maxEffKw, bestStationKw, connLabel, op, cost, null, 0);
+            return new StationDto(name, address, dist, stLat, stLon, maxEffKw, bestStationKw, connLabel, op, cost, null, ocmConnCount);
         } catch (Exception e) {
             return null;
         }

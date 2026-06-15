@@ -89,12 +89,12 @@ public class ChargingController {
             if (price == null)
                 price = operatorPrices.getApproxPrice(s.operator(), s.name());
 
-            // 4. Match with nearest NOBIL station within 150 m for connector count
+            // 4. Match with nearest NOBIL station within 150 m for connector count; fall back to OCM count
             int connCount = nobilStations.stream()
                     .filter(n -> NobilService.distanceKm(s.lat(), s.lon(), n.lat(), n.lon()) < 0.15)
                     .mapToInt(NobilService.NobilStation::connectorCount)
                     .max()
-                    .orElse(0);
+                    .orElse(s.connectorCount());
 
             String finalPrice = price != null ? price : s.chargepricePerKwh();
             return new StationDto(s.name(), s.address(), s.distanceKm(),
