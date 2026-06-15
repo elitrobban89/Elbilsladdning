@@ -23,7 +23,8 @@ Live: [elitrobban.se/elbilsladdning](https://elitrobban.se/elbilsladdning/)
 - **Roterande faktatabeller** — en av fyra tabeller visas slumpmässigt per sökning: värde för pengarna (km/100 tkr), snabbast DC-laddning, längst räckvidd, samt WLTP vs verklig räckvidd — alla 73 bilar visas i en scrollbar tabell med sticky header, den valda bilen markeras alltid med blå highlight
 - **Livepriser** — Chargeprice API + statisk operatörstabell täcker de flesta svenska nätverk
 - **NOBIL-integration** — hämtar antal laddpunkter per station (aktiveras med API-nyckel)
-- **AI-chattbot** ⚡ — flytande chattassistent (knapp nere till höger med animerade blixtar runt elektrisk maskotgubbe) driven av Groq; svarar ENDAST på frågor om elbilar, laddning, räckvidd och stationer; citerar recensioner från Teknikens Värld, Vi Bilägare och Råd & Rön; stödjer flerturskonversation; vägrar artigt off-topic frågor
+- **Interaktiv karta** — Leaflet + OpenStreetMap (gratis, ingen API-nyckel) visar laddstationer som färgkodade markörer ovanför stationslistan: 🟢 grön ≥100 kW, 🟠 orange ≥22 kW, 🟣 lila långsam; din position som blå cirkel; klicka markör för popup med kW, kontakttyp, pris och avstånd
+- **AI-chattbot** ⚡ — flytande chattassistent (knapp nere till höger med animerade blixtar runt elektrisk maskotgubbe) driven av Groq; svarar ENDAST på frågor om elbilar, laddning, räckvidd och stationer; smarta budgetregler (budget under 200 tkr → föreslår begagnade med prisintervall, rekommenderar aldrig ny bil >1,3x budgeten); citerar recensioner från Teknikens Värld, Vi Bilägare och Råd & Rön; stödjer flerturskonversation; max 10 frågor/minut per IP
 - **Mobilanpassad** — fungerar på iOS och Android
 
 ---
@@ -38,6 +39,7 @@ Live: [elitrobban.se/elbilsladdning](https://elitrobban.se/elbilsladdning/)
 | Laddpunkter | [NOBIL API](https://info.nobil.no/api) — nordisk databas, ger antal kontakter per station |
 | Livepriser | [Chargeprice API](https://chargeprice.app) (demo-nyckel) |
 | AI | Groq (llama-3.3-70b-versatile) |
+| Karta | [Leaflet](https://leafletjs.com) + [OpenStreetMap](https://www.openstreetmap.org) — gratis, ingen API-nyckel |
 | Frontend | Vanilla JS + CSS, inbäddat i WordPress |
 | JS-hosting | Render static file (`/ev-app.js`) — serveras separat från WordPress |
 
