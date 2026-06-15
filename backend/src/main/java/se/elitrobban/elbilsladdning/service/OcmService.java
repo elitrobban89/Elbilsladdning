@@ -26,7 +26,7 @@ public class OcmService {
     public List<StationDto> findNearby(double lat, double lon, CarSpec car) {
         String url = OCM_URL +
                 "?output=json&latitude=" + lat + "&longitude=" + lon +
-                "&distance=25&distanceunit=KM&maxresults=30" +
+                "&distance=15&distanceunit=KM&maxresults=15" +
                 "&compact=false&verbose=false&key=" + apiKey;
 
         @SuppressWarnings("unchecked")

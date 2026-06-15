@@ -413,7 +413,7 @@
     const filterNote = state.filter === "fast" ? " · DC ≥50 kW" : "";
     html += `
       <div class="ev-results-header">
-        <strong>${stations.length} kompatibla stationer inom 25 km</strong>
+        <strong>${stations.length} kompatibla stationer inom 15 km</strong>
         <span>Topp ${top.length}${filterNote}</span>
       </div>`;
 

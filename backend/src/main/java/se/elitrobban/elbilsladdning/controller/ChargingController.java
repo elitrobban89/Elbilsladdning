@@ -109,7 +109,7 @@ public class ChargingController {
         // Fetch NOBIL data in parallel with price enrichment (non-blocking fallback)
         List<NobilService.NobilStation> nobilStations = nobil.getStations(lat, lon);
 
-        stations = stations.stream().limit(10).map(s -> {
+        stations = stations.stream().limit(5).map(s -> {
             // 1. Chargeprice (live, structured)
             String price = chargeprice.getPricePerKwh(s, car);
 
