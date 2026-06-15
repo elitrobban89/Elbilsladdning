@@ -1,6 +1,67 @@
 (function () {
   const API = window.EV_API_URL || "https://elbilsladdning.onrender.com";
   let state = { lat: null, lon: null, city: "", sort: "speed", carIndex: null, cars: [], filter: "all", lastData: null, favorites: [] };
+  let evMap = null;
+  let evMapMarkers = [];
+
+  function loadLeaflet(cb) {
+    if (window.L) { cb(); return; }
+    const link = document.createElement("link");
+    link.rel = "stylesheet";
+    link.href = "https://unpkg.com/leaflet@1.9.4/dist/leaflet.min.css";
+    document.head.appendChild(link);
+    const s = document.createElement("script");
+    s.src = "https://unpkg.com/leaflet@1.9.4/dist/leaflet.min.js";
+    s.onload = cb;
+    document.head.appendChild(s);
+  }
+
+  function ensureMapContainer() {
+    if (document.getElementById("ev-map")) return;
+    const el = document.createElement("div");
+    el.id = "ev-map";
+    el.style.cssText = "height:320px;border-radius:14px;overflow:hidden;margin-bottom:16px;display:none;border:1px solid rgba(59,130,246,0.2);";
+    const out = document.getElementById("ev-output");
+    out.parentNode.insertBefore(el, out);
+  }
+
+  function renderMap(userLat, userLon, stations) {
+    ensureMapContainer();
+    const mapEl = document.getElementById("ev-map");
+    mapEl.style.display = "block";
+
+    if (!evMap) {
+      evMap = L.map("ev-map", { zoomControl: true }).setView([userLat, userLon], 12);
+      L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+        attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+        maxZoom: 19
+      }).addTo(evMap);
+    } else {
+      evMapMarkers.forEach(m => m.remove());
+      evMapMarkers = [];
+      evMap.setView([userLat, userLon], 12);
+    }
+
+    const userIcon = L.divIcon({
+      className: "",
+      html: '<div style="width:18px;height:18px;border-radius:50%;background:#3b82f6;border:3px solid #fff;box-shadow:0 0 0 3px rgba(59,130,246,0.35),0 2px 8px rgba(0,0,0,0.4)"></div>',
+      iconSize: [18, 18], iconAnchor: [9, 9]
+    });
+    evMapMarkers.push(L.marker([userLat, userLon], { icon: userIcon }).addTo(evMap).bindPopup("📍 Din position"));
+
+    stations.forEach((s, i) => {
+      if (!s.lat || !s.lon) return;
+      const color = s.maxEffKw >= 100 ? "#22c55e" : s.maxEffKw >= 22 ? "#f59e0b" : "#818cf8";
+      const icon = L.divIcon({
+        className: "",
+        html: `<div style="width:30px;height:30px;border-radius:50%;background:${color};border:2.5px solid #fff;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;color:#111;box-shadow:0 2px 8px rgba(0,0,0,0.45)">${i + 1}</div>`,
+        iconSize: [30, 30], iconAnchor: [15, 15], popupAnchor: [0, -15]
+      });
+      const price = s.chargepricePerKwh || s.usageCost || "okänt pris";
+      const popup = `<b>${s.name}</b><br>⚡ ${Math.round(s.maxEffKw)} kW · ${s.connectorType}<br>📍 ${s.distanceKm.toFixed(1)} km bort<br>💰 ${price}`;
+      evMapMarkers.push(L.marker([s.lat, s.lon], { icon }).addTo(evMap).bindPopup(popup));
+    });
+  }
 
   function getUserId() {
     let uid = localStorage.getItem("ev-user-id");
@@ -443,6 +504,9 @@
     });
 
     setOutput(html);
+
+    if (state.lat && state.lon && top.length > 0)
+      loadLeaflet(() => renderMap(state.lat, state.lon, top));
   }
 
   function setOutput(html) {

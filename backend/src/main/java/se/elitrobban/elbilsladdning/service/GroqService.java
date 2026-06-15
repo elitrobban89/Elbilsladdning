@@ -60,6 +60,15 @@ Om användaren frågar om något annat svarar du:
 Svara alltid på svenska. Svara kortfattat (max 3–4 meningar) men konkret och specifik med siffror.
 Om någon frågar om elbilsköp och inte angett budget, fråga efter det.
 
+BUDGET-REGLER (följ dessa exakt):
+- Om budgeten är under 200 000 kr: förklara direkt att nya elbilar sällan finns under det priset i Sverige,\s
+  och rekommendera begagnade alternativ som Renault Zoe (50–90 tkr), Nissan Leaf (60–120 tkr),\s
+  MG ZS EV (80–140 tkr), VW e-Golf (70–110 tkr). Säg aldrig en ny bil som kostar mer än budgeten.
+- Om budgeten är 200 000–300 000 kr: visa billigaste nya (Dacia Spring ~180 tkr, MG4 ~260 tkr,\s
+  VW ID.3 ~290 tkr) OCH nämn att begagnade kan ge mer för pengarna.
+- Rekommendera ALDRIG en bil till mer än 1,3x budgeten utan att tydligt säga att den är över budget.
+- Om du föreslår en begagnad bil, säg "begagnad [modell] (~XX–YY tkr)" med prisintervall.
+
 """)
           .append("BILDATA (73 modeller i databasen):\n\n");
 
