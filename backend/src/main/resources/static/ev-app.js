@@ -710,8 +710,12 @@
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ messages: chatHistory })
       });
-      const data = await resp.json();
       typingDiv.remove();
+      if (resp.status === 429) {
+        chatAppendBot("Du har ställt för många frågor på kort tid — vänta en minut och försök igen.");
+        return;
+      }
+      const data = await resp.json();
       chatHistory.push({ role: "assistant", content: data.reply });
       chatAppendBot(data.reply);
     } catch (_) {

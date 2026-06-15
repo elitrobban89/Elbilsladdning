@@ -1,6 +1,9 @@
 package se.elitrobban.elbilsladdning.controller;
 
+import jakarta.servlet.http.HttpServletRequest;
+import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.server.ResponseStatusException;
 import se.elitrobban.elbilsladdning.data.CarDatabase;
 import se.elitrobban.elbilsladdning.model.CarSpec;
 import se.elitrobban.elbilsladdning.model.StationDto;
@@ -12,13 +15,20 @@ import se.elitrobban.elbilsladdning.service.NobilService;
 import se.elitrobban.elbilsladdning.service.OcmService;
 import se.elitrobban.elbilsladdning.service.OperatorPriceService;
 
+import java.util.ArrayDeque;
 import java.util.Comparator;
+import java.util.Deque;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 @RestController
 @RequestMapping("/api")
 public class ChargingController {
+
+    private static final int CHAT_RATE_LIMIT = 10;
+    private static final long WINDOW_MS = 60_000L;
+    private final ConcurrentHashMap<String, Deque<Long>> chatTimestamps = new ConcurrentHashMap<>();
 
     private final OcmService           ocm;
     private final GroqService          groq;
@@ -44,7 +54,21 @@ public class ChargingController {
     }
 
     @PostMapping("/chat")
-    public Map<String, String> chat(@RequestBody Map<String, Object> req) {
+    public Map<String, String> chat(@RequestBody Map<String, Object> req, HttpServletRequest httpReq) {
+        String ip = httpReq.getHeader("X-Forwarded-For");
+        if (ip == null || ip.isBlank()) ip = httpReq.getRemoteAddr();
+        String clientIp = ip.split(",")[0].trim();
+
+        long now = System.currentTimeMillis();
+        Deque<Long> times = chatTimestamps.computeIfAbsent(clientIp, k -> new ArrayDeque<>());
+        synchronized (times) {
+            while (!times.isEmpty() && now - times.peekFirst() > WINDOW_MS) times.pollFirst();
+            if (times.size() >= CHAT_RATE_LIMIT)
+                throw new ResponseStatusException(HttpStatus.TOO_MANY_REQUESTS,
+                        "För många frågor — vänta lite och försök igen.");
+            times.addLast(now);
+        }
+
         @SuppressWarnings("unchecked")
         List<Map<String, String>> messages = (List<Map<String, String>>) req.get("messages");
         if (messages == null || messages.isEmpty()) return Map.of("reply", "Inga meddelanden.");
