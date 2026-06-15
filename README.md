@@ -8,9 +8,9 @@ Live: [elitrobban.se/elbilsladdning](https://elitrobban.se/elbilsladdning/)
 
 ## Funktioner
 
-- **GPS-baserad sökning** — hittar laddstationer inom 25 km automatiskt
+- **GPS-baserad sökning** — hittar laddstationer inom 15 km automatiskt
 - **73 bilmodeller** — Volvo, Tesla, BMW, Audi, Kia, Hyundai, MG, BYD m.fl. — filtrerar på kontakttyp och laddeffekt
-- **Snabbast / Billigast** — sortera på DC-effekt eller pris per kWh
+- **Top 5 stationer** — visar de 5 bästa kompatibla stationerna inom 15 km; sortera på DC-effekt eller pris per kWh
 - **Filtrera laddtyp** — visa endast snabbladdare DC (≥50 kW) med ett klick
 - **Räckvidd** — WLTP-räckvidd och uppskattad verklig räckvidd (~85 % av WLTP)
 - **Laddtidsestimering** — ungefärlig tid för 20→80 % per DC-station baserat på din bil och stationens kW
@@ -20,10 +20,10 @@ Live: [elitrobban.se/elbilsladdning](https://elitrobban.se/elbilsladdning/)
 - **Favoritstationer** — spara och hantera favoritstationer, lagras i PostgreSQL per webbläsare (anonymt UUID)
 - **AI-rekommendation** — Groq LLM (llama-3.3-70b) ger ett konkret råd per sökning, märkt med ⚡ GROQ-badge
 - **Visste du att** — AI-genererat bilfakta per sökning
-- **Roterande faktatabeller** — en av fyra tabeller visas slumpmässigt per sökning: värde för pengarna (km/100 tkr), snabbast DC-laddning, längst räckvidd, samt WLTP vs verklig räckvidd — alla 73 bilar visas i en scrollbar tabell med sticky header, den valda bilen markeras alltid med blå highlight
+- **Roterande faktatabeller** — en av fyra tabeller visas slumpmässigt per sökning: värde för pengarna (km/100 tkr), snabbast DC-laddning, längst räckvidd, samt WLTP vs verklig räckvidd — alla 73 bilar visas i en scrollbar tabell med sticky header, den valda bilen markeras alltid med blå highlight; placeras under stationslistan
 - **Livepriser** — Chargeprice API + statisk operatörstabell täcker de flesta svenska nätverk
 - **NOBIL-integration** — hämtar antal laddpunkter per station (aktiveras med API-nyckel)
-- **Interaktiv karta** — Leaflet + OpenStreetMap (gratis, ingen API-nyckel, serveras lokalt utan CDN-beroende) visar laddstationer som färgkodade markörer ovanför stationslistan: 🟢 grön ≥100 kW, 🟠 orange ≥22 kW, 🟣 lila långsam; din position som blå cirkel; klicka markör för popup med kW, kontakttyp, pris och avstånd; zoomnivå 17 som standard
+- **Interaktiv karta** — Leaflet + OpenStreetMap (gratis, ingen API-nyckel, serveras lokalt utan CDN-beroende) visas ovanför stationslistan; färgkodade markörer: 🟢 grön ≥100 kW, 🟠 orange ≥22 kW, 🟣 lila långsam; din position som blå cirkel; klicka markör för popup med kW, kontakttyp, pris och avstånd; zoomnivå 17
 - **AI-chattbot** ⚡ — flytande chattassistent (knapp nere till höger med animerade blixtar runt elektrisk maskotgubbe) driven av Groq; svarar ENDAST på frågor om elbilar, laddning, räckvidd och stationer; smarta budgetregler (budget under 200 tkr → föreslår begagnade med prisintervall, rekommenderar aldrig ny bil >1,3x budgeten); citerar recensioner från Teknikens Värld, Vi Bilägare och Råd & Rön; stödjer flerturskonversation; max 10 frågor/minut per IP
 - **Mobilanpassad** — fungerar på iOS och Android
 
