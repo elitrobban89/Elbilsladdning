@@ -75,6 +75,35 @@ public class GroqService {
             .forEach(c -> sb.append(String.format("  %s: %d km/100tkr, %d tkr%n",
                 c.name(), (int)(c.rangeKm() * 100_000.0 / c.priceKr()), c.priceKr() / 1000)));
 
+        sb.append("""
+
+RECENSIONER & UTMÄRKELSER (svenska källor — citera dessa när relevant):
+
+Teknikens Värld:
+  Kia EV6: "Bästa elbil under 600 000 kr" – vann årets elbildstest 2022
+  Hyundai IONIQ 6: "Räckviddsmästaren" – slog rekord i deras förbrukningstest
+  MG4: "Bäst i test budget-elbil 2023" – prisvärd och rymlig
+  Tesla Model 3: Konsekvent topplacering, utmärkt driftekonomi
+  Volvo EX30: Lyfts fram som "kompakt och prisvärd" för stadskörning
+  BMW i4: "Bäst köregenskaper bland elbilar" i körtester
+  Polestar 2: "Premiumkänsla till rimligare pris än tyska konkurrenter"
+
+Vi Bilägare:
+  Tesla Model Y: "Mest praktiska elbilen för barnfamiljen"
+  Kia EV6: Rekommenderas som "bästa köp" i mellanklassen
+  Volkswagen ID.3: "Stabilt och tryggt val" för kompaktsegmentet
+  Dacia Spring: "Billigast att äga och ladda" i sin klass
+  Hyundai IONIQ 5: "Bäst i test" stor elbil – betyg 5/5 interiör
+
+Råd & Rön:
+  Tesla Model 3: Rekommenderas för lägst driftkostnad per mil
+  MG4: Prisvärd med bra ägarbetyg från svenska ägare
+
+Instruktion: När du rekommenderar en bil, nämn kort om den fått bra recensioner från dessa källor.
+Säg alltid vilken källa du refererar till (t.ex. "Enligt Teknikens Värld...").
+Hitta INTE på recensioner som inte finns i listan ovan.
+""");
+
         return sb.toString();
     }
 

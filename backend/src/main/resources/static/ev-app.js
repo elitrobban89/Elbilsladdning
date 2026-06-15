@@ -1,5 +1,5 @@
 (function () {
-  const API = "https://elbilsladdning.onrender.com";
+  const API = window.EV_API_URL || "https://elbilsladdning.onrender.com";
   let state = { lat: null, lon: null, city: "", sort: "speed", carIndex: null, cars: [], filter: "all", lastData: null, favorites: [] };
 
   function getUserId() {
@@ -472,16 +472,34 @@
   function initChat() {
     const style = document.createElement("style");
     style.textContent = `
-      .ev-chat-fab {
+      .ev-chat-fab-wrap {
         position:fixed;bottom:24px;right:24px;z-index:9999;
-        width:56px;height:56px;border-radius:50%;
-        background:linear-gradient(135deg,#1d4ed8,#3b82f6);
-        color:#fff;font-size:24px;border:none;cursor:pointer;
-        box-shadow:0 4px 16px rgba(29,78,216,.45);
+        display:flex;flex-direction:column;align-items:center;gap:6px;
+      }
+      .ev-chat-fab-label {
+        background:rgba(251,191,36,0.15);border:1px solid rgba(251,191,36,0.35);
+        color:#fbbf24;font-size:11px;font-weight:700;padding:3px 10px;
+        border-radius:20px;white-space:nowrap;letter-spacing:0.04em;
+        animation:ev-label-pulse 3s ease-in-out infinite;
+      }
+      @keyframes ev-label-pulse {
+        0%,100%{opacity:.7;transform:translateY(0)}
+        50%{opacity:1;transform:translateY(-2px)}
+      }
+      .ev-chat-fab {
+        width:52px;height:52px;border-radius:50%;
+        background:radial-gradient(circle at 35% 35%,#fde68a,#f59e0b 60%,#d97706);
+        color:#78350f;font-size:22px;border:none;cursor:pointer;
+        box-shadow:0 2px 12px rgba(245,158,11,.4),0 0 0 0 rgba(245,158,11,.3);
         display:flex;align-items:center;justify-content:center;
         transition:transform .15s,box-shadow .15s;
+        animation:ev-fab-glow 4s ease-in-out infinite;
       }
-      .ev-chat-fab:hover { transform:scale(1.08);box-shadow:0 6px 20px rgba(29,78,216,.55); }
+      @keyframes ev-fab-glow {
+        0%,100%{box-shadow:0 2px 12px rgba(245,158,11,.4),0 0 0 0 rgba(245,158,11,.25)}
+        50%{box-shadow:0 4px 18px rgba(245,158,11,.55),0 0 0 8px rgba(245,158,11,.06)}
+      }
+      .ev-chat-fab:hover { transform:scale(1.08);box-shadow:0 6px 20px rgba(245,158,11,.6); }
       .ev-chat-panel {
         position:fixed;bottom:92px;right:24px;z-index:9998;
         width:340px;max-height:520px;
@@ -554,15 +572,18 @@
       .ev-chat-typing span:nth-child(3) { animation-delay:.3s; }
       @keyframes ev-bounce { 0%,80%,100%{transform:translateY(0)} 40%{transform:translateY(-6px)} }
       @media(max-width:400px){
-        .ev-chat-panel{width:calc(100vw - 16px);right:8px;bottom:80px;}
-        .ev-chat-fab{right:12px;bottom:12px;}
+        .ev-chat-panel{width:calc(100vw - 16px);right:8px;bottom:88px;}
+        .ev-chat-fab-wrap{right:12px;bottom:12px;}
       }
     `;
     document.head.appendChild(style);
 
     const root = document.createElement("div");
     root.innerHTML = `
-      <button class="ev-chat-fab" id="ev-chat-fab" title="Fråga EV-assistenten">💬</button>
+      <div class="ev-chat-fab-wrap">
+        <span class="ev-chat-fab-label">✨ Fråga AI</span>
+        <button class="ev-chat-fab" id="ev-chat-fab" title="Fråga EV-assistenten">☀️</button>
+      </div>
       <div class="ev-chat-panel" id="ev-chat-panel" style="display:none;">
         <div class="ev-chat-header">
           <span>⚡ EV-Assistenten</span>
