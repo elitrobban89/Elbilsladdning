@@ -248,6 +248,8 @@
         : stations;
     const top = visible.slice(0, 10);
     let html = "";
+    let stationsHtml = "";
+    let factHtml = "";
 
     const fastDC = stations
       .filter(s => s.maxEffKw >= 50 && s.connectorType.includes("DC"))
@@ -259,7 +261,7 @@
       const kw   = Math.round(fastDC.maxEffKw);
       const nm   = fastDC.name.length > 42 ? fastDC.name.slice(0,40)+"…" : fastDC.name;
       const pris = fastDC.chargepricePerKwh || "";
-      html += `
+      stationsHtml += `
         <div class="ev-fast-highlight">
           <div class="ev-fast-highlight-icon">⚡</div>
           <div class="ev-fast-highlight-body">
@@ -375,7 +377,7 @@
       const th1 = isWltp ? 'WLTP'    : colHeader;
       const th2 = isWltp ? '~Verklig' : 'Pris';
 
-      html += `
+      factHtml += `
         <div class="ev-funfact-card">
           <div class="ev-funfact-icon">${icon}</div>
           <div style="flex:1">
@@ -411,7 +413,7 @@
     }
 
     const filterNote = state.filter === "fast" ? " · DC ≥50 kW" : "";
-    html += `
+    stationsHtml += `
       <div class="ev-results-header">
         <strong>${stations.length} kompatibla stationer inom 15 km</strong>
         <span>Topp ${top.length}${filterNote}</span>
@@ -459,7 +461,7 @@
           : `~${Math.floor(timeMin/60)} tim ${timeMin % 60} min`;
       const timeTag    = timeStr ? `<span class="ev-time-tag">⏱ ${timeStr} (20→80%)</span>` : "";
 
-      html += `
+      stationsHtml += `
         <div class="ev-station">
           <div class="ev-station-bar ${speedClass}"></div>
           <div class="ev-station-body">
@@ -484,7 +486,7 @@
         </div>`;
     });
 
-    setOutput(html);
+    setOutput(html + stationsHtml + factHtml);
 
     if (state.lat && state.lon && top.length > 0)
       setTimeout(() => renderMap(state.lat, state.lon, top), 50);
