@@ -486,7 +486,39 @@
         </div>`;
     });
 
-    setOutput(html + stationsHtml + factHtml);
+    // Laddtidskalkylator
+    let calcHtml = '';
+    if (state.carIndex !== null && state.cars.length > 0) {
+      const car = state.cars[state.carIndex];
+      const dcStation = top.find(s => s.connectorType.includes('DC') && s.maxEffKw > 0);
+      if (car && car.batteryKwh > 0) {
+        const effKw = dcStation ? Math.min(car.maxDcKw || 50, dcStation.maxEffKw) : (car.maxDcKw || 50);
+        const stLabel = dcStation
+          ? (dcStation.name.length > 32 ? dcStation.name.slice(0, 30) + '…' : dcStation.name) + ' · ' + Math.round(dcStation.maxEffKw) + ' kW'
+          : 'Ingen DC-station hittad';
+        calcHtml = `
+          <div class="ev-funfact-card" id="ev-calc-card" style="align-items:flex-start">
+            <div class="ev-funfact-icon">⏱</div>
+            <div style="flex:1">
+              <div class="ev-funfact-label">Laddtidskalkylator — ${car.name}</div>
+              <div style="margin:10px 0 12px;display:flex;gap:20px;flex-wrap:wrap;">
+                <label style="flex:1;min-width:120px">
+                  <div style="font-size:12px;color:rgba(147,197,253,0.7);margin-bottom:4px">Ladda från <span id="ev-calc-from-val">20</span>%</div>
+                  <input type="range" id="ev-calc-from" min="0" max="90" value="20" oninput="evCalcUpdate()" style="width:100%;accent-color:#3b82f6">
+                </label>
+                <label style="flex:1;min-width:120px">
+                  <div style="font-size:12px;color:rgba(147,197,253,0.7);margin-bottom:4px">Till <span id="ev-calc-to-val">80</span>%</div>
+                  <input type="range" id="ev-calc-to" min="10" max="100" value="80" oninput="evCalcUpdate()" style="width:100%;accent-color:#3b82f6">
+                </label>
+              </div>
+              <div id="ev-calc-result" style="background:rgba(255,255,255,0.04);border:1px solid rgba(59,130,246,0.2);border-radius:8px;padding:10px 14px;"></div>
+              <div style="font-size:11px;color:rgba(147,197,253,0.45);margin-top:8px">Station: ${stLabel} · Effektiv laddning: ${Math.round(effKw)} kW</div>
+            </div>
+          </div>`;
+      }
+    }
+
+    setOutput(html + stationsHtml + factHtml + calcHtml);
 
     if (state.lat && state.lon && top.length > 0)
       setTimeout(() => renderMap(state.lat, state.lon, top), 50);
@@ -494,6 +526,8 @@
 
   function setOutput(html) {
     document.getElementById("ev-output").innerHTML = html;
+
+    if (document.getElementById('ev-calc-card')) evCalcUpdate();
 
     document.querySelectorAll(".ev-fav-btn").forEach(btn => {
       btn.addEventListener("click", async () => {
@@ -1001,6 +1035,51 @@
     chatHistory.push({ role: "assistant", content: fullText });
     saveChatHistory();
   }
+
+  window.evCalcUpdate = function evCalcUpdate() {
+    if (state.carIndex === null || !state.cars.length) return;
+    const car = state.cars[state.carIndex];
+    const fromEl   = document.getElementById('ev-calc-from');
+    const toEl     = document.getElementById('ev-calc-to');
+    const resultEl = document.getElementById('ev-calc-result');
+    if (!fromEl || !toEl || !resultEl) return;
+    let fromPct = parseInt(fromEl.value);
+    let toPct   = parseInt(toEl.value);
+    if (toPct <= fromPct) { toPct = Math.min(fromPct + 10, 100); toEl.value = toPct; }
+    document.getElementById('ev-calc-from-val').textContent = fromPct;
+    document.getElementById('ev-calc-to-val').textContent   = toPct;
+
+    const kwhCharge  = car.batteryKwh * (toPct - fromPct) / 100;
+    const dcStation  = state.lastData?.stations.find(s => s.connectorType.includes('DC') && s.maxEffKw > 0);
+    const effKw      = dcStation ? Math.min(car.maxDcKw || 50, dcStation.maxEffKw) : (car.maxDcKw || 50);
+    const timeMin    = effKw > 0 ? Math.round(kwhCharge / effKw * 60) : 0;
+    const timeStr    = timeMin < 60 ? `${timeMin} min` : `${Math.floor(timeMin / 60)} tim ${timeMin % 60} min`;
+
+    const rawPrice   = dcStation?.chargepricePerKwh || dcStation?.usageCost || '';
+    const isEur      = rawPrice.includes('EUR');
+    const priceNum   = rawPrice.match(/[\d,.]+/)?.[0] ? parseFloat(rawPrice.match(/[\d,.]+/)[0].replace(',', '.')) : null;
+    const priceKr    = priceNum ? (isEur ? priceNum * 11.5 : priceNum) : null;
+    const cost       = priceKr ? Math.round(kwhCharge * priceKr) : null;
+
+    const realRange  = car.rangeKm ? Math.round(car.rangeKm * 0.85) : null;
+    const rangeAdded = realRange   ? Math.round(realRange * (toPct - fromPct) / 100) : null;
+
+    const cols = rangeAdded ? 3 : 2;
+    resultEl.innerHTML = `<div style="display:grid;grid-template-columns:repeat(${cols},1fr);gap:10px;text-align:center;">
+      <div>
+        <div style="font-size:1.35rem;font-weight:800;color:#93c5fd">${timeStr}</div>
+        <div style="font-size:11px;color:rgba(147,197,253,0.5);margin-top:2px">Tid</div>
+      </div>
+      <div>
+        <div style="font-size:1.35rem;font-weight:800;color:${cost ? '#86efac' : '#6b7280'}">${cost ? '~' + cost + ' kr' : 'Pris saknas'}</div>
+        <div style="font-size:11px;color:rgba(147,197,253,0.5);margin-top:2px">Kostnad</div>
+      </div>
+      ${rangeAdded ? `<div>
+        <div style="font-size:1.35rem;font-weight:800;color:#c4b5fd">~${rangeAdded} km</div>
+        <div style="font-size:11px;color:rgba(147,197,253,0.5);margin-top:2px">Räckvidd</div>
+      </div>` : ''}
+    </div>`;
+  };
 
   initChat();
 })();

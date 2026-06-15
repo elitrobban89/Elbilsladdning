@@ -1,0 +1,11 @@
+{
+  "name": "EV Laddningsassistent",
+  "short_name": "Laddning",
+  "description": "Hitta kompatibla laddstationer för din elbil i Sverige",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0a1628",
+  "theme_color": "#10b981",
+  "lang": "sv",
+  "icons": []
+}
