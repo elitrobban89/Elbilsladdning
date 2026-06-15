@@ -23,6 +23,7 @@ Live: [elitrobban.se/elbilsladdning](https://elitrobban.se/elbilsladdning/)
 - **Roterande faktatabeller** — en av fyra tabeller visas slumpmässigt per sökning: värde för pengarna (km/100 tkr), snabbast DC-laddning, längst räckvidd, samt WLTP vs verklig räckvidd — alla 73 bilar visas i en scrollbar tabell med sticky header, den valda bilen markeras alltid med blå highlight
 - **Livepriser** — Chargeprice API + statisk operatörstabell täcker de flesta svenska nätverk
 - **NOBIL-integration** — hämtar antal laddpunkter per station (aktiveras med API-nyckel)
+- **AI-chattbot** ☀️ — flytande chattassistent (gul sol-knapp nere till höger) driven av Groq; svarar på köpfrågor, räckviddsfrågor och laddningsfrågor på svenska; citerar recensioner från Teknikens Värld, Vi Bilägare och Råd & Rön; stödjer flerturskonversation
 - **Mobilanpassad** — fungerar på iOS och Android
 
 ---
@@ -80,12 +81,13 @@ backend/                         Spring Boot-backend (Render)
       NobilService.java                  Hämtar laddpunktsdata från NOBIL (nordisk databas)
       ChargepriceService.java            Livepriser via Chargeprice API
       OperatorPriceService.java          Statisk prislista för svenska operatörer (fallback)
-      GroqService.java                   AI-rekommendation och "Visste du att" via Groq
+      GroqService.java                   AI-rekommendation, "Visste du att" och chattbot via Groq
       ApiNinjasService.java              API Ninjas-integration (reserv)
 
 elbilsladdning-web.html                  WordPress-snippet — endast HTML + CSS + <script src>
   src/main/resources/static/
     ev-app.js                            All frontend-logik — serveras av Render, aldrig av WordPress
+    test.html                            Lokal testmiljö — öppnas via http://localhost:8080/test.html
 ```
 
 > **OBS:** JavaScript ligger i `ev-app.js` och serveras av Render som en statisk fil.
@@ -104,6 +106,17 @@ OCM_API_KEY=xxx GROQ_API_KEY=xxx mvn spring-boot:run
 Obligatoriska miljövariabler: `OCM_API_KEY`, `GROQ_API_KEY`.  
 Valfria: `NOBIL_API_KEY` (aktiverar laddpunktsantal per station), `CHARGEPRICE_API_KEY`, `APININJAS_API_KEY`.  
 Se `application.properties` för fullständig lista.
+
+Öppna sedan `http://localhost:8080/test.html` i webbläsaren — samma app som på live-siten men mot lokal backend.
+
+### Chattbotten lokalt
+
+`POST /api/chat` accepterar en konversationshistorik och returnerar ett AI-svar:
+
+```json
+POST http://localhost:8080/api/chat
+{ "messages": [{ "role": "user", "content": "Vilken elbil laddar snabbast?" }] }
+```
 
 ---
 
