@@ -24,9 +24,12 @@ public class GroqService {
     public record GroqResult(String recommendation, String funFact) {}
 
     @SuppressWarnings("unchecked")
-    public String chat(List<Map<String, String>> history, List<CarSpec> cars) {
+    public String chat(List<Map<String, String>> history, List<CarSpec> cars, String stationContext) {
         List<Map<String, Object>> messages = new java.util.ArrayList<>();
-        messages.add(Map.of("role", "system", "content", buildChatSystemPrompt(cars)));
+        String sysPrompt = buildChatSystemPrompt(cars);
+        if (stationContext != null && !stationContext.isBlank())
+            sysPrompt += "\n\nAktuella laddstationer i sökningen:\n" + stationContext;
+        messages.add(Map.of("role", "system", "content", sysPrompt));
         history.forEach(m -> messages.add(Map.of("role", (Object) m.get("role"), "content", (Object) m.get("content"))));
 
         Map<String, Object> body = Map.of(

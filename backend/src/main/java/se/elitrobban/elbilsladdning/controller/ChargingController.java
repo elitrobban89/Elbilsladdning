@@ -72,7 +72,8 @@ public class ChargingController {
         @SuppressWarnings("unchecked")
         List<Map<String, String>> messages = (List<Map<String, String>>) req.get("messages");
         if (messages == null || messages.isEmpty()) return Map.of("reply", "Inga meddelanden.");
-        return Map.of("reply", groq.chat(messages, CarDatabase.CARS));
+        String context = (String) req.get("context");
+        return Map.of("reply", groq.chat(messages, CarDatabase.CARS, context));
     }
 
     @GetMapping("/cars")

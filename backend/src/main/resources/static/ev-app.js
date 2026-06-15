@@ -514,7 +514,7 @@
   }
 
   // ===== CHATTBOT =====
-  const chatHistory = [];
+  let chatHistory = (function(){ try{ return JSON.parse(localStorage.getItem('ev-chat')||'[]'); }catch(e){ return []; } })();
 
   function initChat() {
     const style = document.createElement("style");
@@ -654,6 +654,14 @@
       .ev-chat-typing span:nth-child(2) { animation-delay:.15s; }
       .ev-chat-typing span:nth-child(3) { animation-delay:.3s; }
       @keyframes ev-bounce { 0%,80%,100%{transform:translateY(0)} 40%{transform:translateY(-6px)} }
+      .ev-chat-cursor{display:inline-block;width:2px;height:13px;background:#93c5fd;margin-left:2px;border-radius:1px;animation:ev-cursor-blink .55s steps(1) infinite;vertical-align:middle;}
+      @keyframes ev-cursor-blink{0%,100%{opacity:1}50%{opacity:0}}
+      .ev-chat-feedback{display:flex;gap:6px;margin-top:6px;padding-left:2px;align-items:center;}
+      .ev-chat-thumb{background:none;border:1px solid rgba(147,197,253,0.18);color:rgba(147,197,253,0.38);font-size:12px;padding:2px 8px;border-radius:10px;cursor:pointer;transition:all .15s;line-height:1.5;}
+      .ev-chat-thumb:hover{border-color:rgba(147,197,253,0.5);color:#93c5fd;}
+      .ev-chat-thumb.voted{border-color:rgba(147,197,253,0.6);color:#93c5fd;background:rgba(147,197,253,0.08);}
+      .ev-chat-retry{background:none;border:1px solid rgba(239,68,68,0.3);color:rgba(239,68,68,0.65);font-size:11px;font-weight:600;padding:4px 11px;border-radius:20px;cursor:pointer;margin-top:7px;display:inline-block;transition:all .15s;}
+      .ev-chat-retry:hover{border-color:rgba(239,68,68,0.6);color:#ef4444;}
       @media(max-width:400px){
         .ev-chat-panel{width:calc(100vw - 16px);right:8px;bottom:88px;}
         .ev-chat-fab-wrap{right:12px;bottom:12px;}
@@ -728,7 +736,15 @@
     `;
     document.body.appendChild(root);
 
-    chatAppendBot("Undrar du vilken elbil du bör köpa? 🚗 Jag kan ge dig tips! Välj ett ämne nedan eller ställ en egen fråga.");
+    chatAppendBot("Undrar du vilken elbil du bör köpa? 🚗 Jag kan ge dig tips! Välj ett ämne nedan eller ställ en egen fråga.", false);
+
+    if (chatHistory.length > 0) {
+      document.getElementById("ev-chat-quick").style.display = "none";
+      chatHistory.forEach(function(m) {
+        if (m.role === "user") chatAppendUser(m.content);
+        else if (m.role === "assistant") chatAppendBot(m.content, false);
+      });
+    }
 
     document.getElementById("ev-chat-fab").addEventListener("click", chatToggle);
     document.getElementById("ev-chat-close").addEventListener("click", chatToggle);
@@ -757,21 +773,75 @@
       .replace(/\n/g,"<br>");
   }
 
-  function chatAppendBot(text) {
+  function chatAppendBot(text, animate) {
     const msgs = document.getElementById("ev-chat-messages");
-    const div = document.createElement("div");
-    div.innerHTML = `<div class="ev-chat-bubble bot">${chatMarkdown(text)}</div>`;
-    msgs.appendChild(div);
+    const outer = document.createElement("div");
+    const bubble = document.createElement("div");
+    bubble.className = "ev-chat-bubble bot";
+    outer.appendChild(bubble);
+    msgs.appendChild(outer);
     msgs.scrollTop = msgs.scrollHeight;
-    return div;
+    if (animate !== false && text.length > 0) {
+      let i = 0;
+      const speed = Math.max(6, Math.min(20, 2600 / text.length));
+      (function tick() {
+        i += 3;
+        if (i >= text.length) {
+          bubble.innerHTML = chatMarkdown(text);
+          evAddFeedback(outer);
+          msgs.scrollTop = msgs.scrollHeight;
+        } else {
+          bubble.textContent = text.slice(0, i);
+          const cur = document.createElement("span");
+          cur.className = "ev-chat-cursor";
+          bubble.appendChild(cur);
+          msgs.scrollTop = msgs.scrollHeight;
+          setTimeout(tick, speed);
+        }
+      })();
+    } else {
+      bubble.innerHTML = chatMarkdown(text);
+      if (animate !== false) evAddFeedback(outer);
+    }
+    return outer;
+  }
+
+  function evAddFeedback(outer) {
+    const fb = document.createElement("div");
+    fb.className = "ev-chat-feedback";
+    fb.innerHTML = '<button class="ev-chat-thumb">👍</button><button class="ev-chat-thumb">👎</button>';
+    fb.querySelectorAll(".ev-chat-thumb").forEach(function(btn) {
+      btn.addEventListener("click", function() {
+        fb.querySelectorAll(".ev-chat-thumb").forEach(function(b) { b.classList.remove("voted"); });
+        btn.classList.add("voted");
+        setTimeout(function() { fb.innerHTML = '<span style="font-size:11px;color:rgba(147,197,253,0.45)">Tack!</span>'; }, 350);
+      });
+    });
+    outer.appendChild(fb);
+  }
+
+  function buildStationContext() {
+    const d = state.lastData;
+    if (!d || !d.stations || d.stations.length === 0) return null;
+    const lines = ["Laddstationssökning för " + d.carName + (state.city ? " nära " + state.city : "") + ":"];
+    d.stations.slice(0, 5).forEach(function(s, i) {
+      lines.push((i+1) + ". " + s.name + " — " + s.distanceKm.toFixed(1) + " km — " + Math.round(s.maxEffKw) + " kW " + s.connectorType + " — " + (s.chargepricePerKwh || s.usageCost || "okänt pris"));
+    });
+    if (d.recommendation) lines.push("\nAI-rekommendation: " + d.recommendation);
+    return lines.join("\n");
+  }
+
+  function saveChatHistory() {
+    try { localStorage.setItem("ev-chat", JSON.stringify(chatHistory.slice(-20))); } catch(e) {}
   }
 
   function chatClear() {
     chatHistory = [];
+    try { localStorage.removeItem("ev-chat"); } catch(e) {}
     const msgs = document.getElementById("ev-chat-messages");
     msgs.innerHTML = "";
     document.getElementById("ev-chat-quick").style.display = "flex";
-    chatAppendBot("Undrar du vilken elbil du bör köpa? 🚗 Jag kan ge dig tips! Välj ett ämne nedan eller ställ en egen fråga.");
+    chatAppendBot("Undrar du vilken elbil du bör köpa? 🚗 Jag kan ge dig tips! Välj ett ämne nedan eller ställ en egen fråga.", false);
   }
 
   function chatAppendUser(text) {
@@ -791,8 +861,10 @@
   }
 
   async function chatSendMessage(message) {
+    document.getElementById("ev-chat-quick").style.display = "none";
     chatAppendUser(message);
     chatHistory.push({ role: "user", content: message });
+    saveChatHistory();
 
     const msgs = document.getElementById("ev-chat-messages");
     const typingDiv = document.createElement("div");
@@ -800,23 +872,38 @@
     msgs.appendChild(typingDiv);
     msgs.scrollTop = msgs.scrollHeight;
 
+    const context = buildStationContext();
+    const limited = chatHistory.slice(-10);
+
     try {
-      const resp = await fetch(`${API}/api/chat`, {
+      const resp = await fetch(`${API}/chat`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ messages: chatHistory })
+        body: JSON.stringify({ messages: limited, context: context })
       });
       typingDiv.remove();
       if (resp.status === 429) {
-        chatAppendBot("Du har ställt för många frågor på kort tid — vänta en minut och försök igen.");
+        chatAppendBot("Du har ställt för många frågor — vänta en minut och försök igen.", false);
+        return;
+      }
+      if (!resp.ok) {
+        const errDiv = chatAppendBot("Något gick fel (fel " + resp.status + ").", false);
+        const btn = document.createElement("button"); btn.className = "ev-chat-retry"; btn.textContent = "↺ Försök igen";
+        btn.onclick = function() { errDiv.remove(); chatHistory.pop(); saveChatHistory(); chatSendMessage(message); };
+        errDiv.appendChild(btn);
         return;
       }
       const data = await resp.json();
-      chatHistory.push({ role: "assistant", content: data.reply });
-      chatAppendBot(data.reply);
+      const reply = data.reply || data.error || "Inget svar.";
+      chatHistory.push({ role: "assistant", content: reply });
+      saveChatHistory();
+      chatAppendBot(reply, true);
     } catch (_) {
       typingDiv.remove();
-      chatAppendBot("Kunde inte nå assistenten just nu – försök igen om en stund.");
+      const errDiv = chatAppendBot("Kunde inte nå assistenten — kontrollera anslutningen.", false);
+      const btn = document.createElement("button"); btn.className = "ev-chat-retry"; btn.textContent = "↺ Försök igen";
+      btn.onclick = function() { errDiv.remove(); chatHistory.pop(); saveChatHistory(); chatSendMessage(message); };
+      errDiv.appendChild(btn);
     }
   }
 
