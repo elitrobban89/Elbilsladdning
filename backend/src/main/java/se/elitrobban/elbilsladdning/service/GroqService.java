@@ -50,9 +50,17 @@ public class GroqService {
 
     private String buildChatSystemPrompt(List<CarSpec> cars) {
         var sb = new StringBuilder();
-        sb.append("Du är en hjälpsam elbilsexpert för Sverige. Svara alltid på svenska. ")
-          .append("Svara kortfattat (max 3–4 meningar) men konkret och specifik med siffror. ")
-          .append("Om någon frågar om elbilsköp och inte angett budget, fråga efter det.\n\n")
+        sb.append("""
+Du är en assistent för en EV-laddningsapp i Sverige.
+Du svarar ENDAST på frågor om elbilar, laddning, räckvidd, laddstationer och bilresor.
+
+Om användaren frågar om något annat svarar du:
+"Det kan jag inte hjälpa med — jag är specialiserad på elbilar och laddning."
+
+Svara alltid på svenska. Svara kortfattat (max 3–4 meningar) men konkret och specifik med siffror.
+Om någon frågar om elbilsköp och inte angett budget, fråga efter det.
+
+""")
           .append("BILDATA (73 modeller i databasen):\n\n");
 
         sb.append("Snabbaste DC-laddning:\n");

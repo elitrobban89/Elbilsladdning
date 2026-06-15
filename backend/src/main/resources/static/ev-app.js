@@ -486,20 +486,29 @@
         0%,100%{opacity:.7;transform:translateY(0)}
         50%{opacity:1;transform:translateY(-2px)}
       }
+      .ev-chat-fab-ring {
+        position:relative;display:flex;align-items:center;justify-content:center;
+      }
+      .ev-chat-spark {
+        position:absolute;font-size:14px;line-height:1;pointer-events:none;
+        animation:ev-spark 2.4s ease-in-out infinite;
+      }
+      .ev-chat-spark:nth-child(1){top:-18px;left:50%;transform:translateX(-50%);animation-delay:0s;}
+      .ev-chat-spark:nth-child(2){top:18px;left:-20px;animation-delay:.8s;}
+      .ev-chat-spark:nth-child(3){top:18px;right:-20px;animation-delay:1.6s;}
+      @keyframes ev-spark {
+        0%,100%{opacity:.3;transform:scale(.8) translateY(0);}
+        50%{opacity:1;transform:scale(1.2) translateY(-4px);}
+      }
       .ev-chat-fab {
-        width:52px;height:52px;border-radius:50%;
-        background:radial-gradient(circle at 35% 35%,#fde68a,#f59e0b 60%,#d97706);
-        color:#78350f;font-size:22px;border:none;cursor:pointer;
-        box-shadow:0 2px 12px rgba(245,158,11,.4),0 0 0 0 rgba(245,158,11,.3);
+        width:56px;height:56px;border-radius:18px;
+        background:linear-gradient(145deg,#1e3a8a,#2563eb);
+        border:none;cursor:pointer;
+        box-shadow:0 4px 16px rgba(29,78,216,.55);
         display:flex;align-items:center;justify-content:center;
         transition:transform .15s,box-shadow .15s;
-        animation:ev-fab-glow 4s ease-in-out infinite;
       }
-      @keyframes ev-fab-glow {
-        0%,100%{box-shadow:0 2px 12px rgba(245,158,11,.4),0 0 0 0 rgba(245,158,11,.25)}
-        50%{box-shadow:0 4px 18px rgba(245,158,11,.55),0 0 0 8px rgba(245,158,11,.06)}
-      }
-      .ev-chat-fab:hover { transform:scale(1.08);box-shadow:0 6px 20px rgba(245,158,11,.6); }
+      .ev-chat-fab:hover{transform:scale(1.1);box-shadow:0 6px 22px rgba(29,78,216,.7);}
       .ev-chat-panel {
         position:fixed;bottom:92px;right:24px;z-index:9998;
         width:340px;max-height:520px;
@@ -582,7 +591,45 @@
     root.innerHTML = `
       <div class="ev-chat-fab-wrap">
         <span class="ev-chat-fab-label">✨ Fråga AI</span>
-        <button class="ev-chat-fab" id="ev-chat-fab" title="Fråga EV-assistenten">☀️</button>
+        <div class="ev-chat-fab-ring">
+          <span class="ev-chat-spark">⚡</span>
+          <span class="ev-chat-spark">⚡</span>
+          <span class="ev-chat-spark">⚡</span>
+        <button class="ev-chat-fab" id="ev-chat-fab" title="Fråga EV-assistenten">
+          <svg viewBox="0 0 44 52" width="34" height="40" xmlns="http://www.w3.org/2000/svg">
+            <defs>
+              <radialGradient id="hg" cx="38%" cy="32%"><stop offset="0%" stop-color="#fef3c7"/><stop offset="100%" stop-color="#f59e0b"/></radialGradient>
+              <radialGradient id="bg" cx="38%" cy="30%"><stop offset="0%" stop-color="#fde68a"/><stop offset="100%" stop-color="#d97706"/></radialGradient>
+            </defs>
+            <!-- antenna -->
+            <line x1="22" y1="1" x2="22" y2="6" stroke="#92400e" stroke-width="1.8" stroke-linecap="round"/>
+            <circle cx="22" cy="1" r="2" fill="#fbbf24"/>
+            <!-- head -->
+            <ellipse cx="22" cy="13" rx="10" ry="9" fill="url(#hg)" stroke="#d97706" stroke-width="0.8"/>
+            <!-- eyes -->
+            <ellipse cx="18.5" cy="12" rx="2" ry="2.2" fill="#1e3a8a"/>
+            <ellipse cx="25.5" cy="12" rx="2" ry="2.2" fill="#1e3a8a"/>
+            <circle cx="19.2" cy="11.2" r="0.7" fill="#fff"/>
+            <circle cx="26.2" cy="11.2" r="0.7" fill="#fff"/>
+            <!-- smile -->
+            <path d="M17.5 16.5 Q22 20.5 26.5 16.5" stroke="#92400e" stroke-width="1.4" fill="none" stroke-linecap="round"/>
+            <!-- neck -->
+            <rect x="19.5" y="21" width="5" height="3" rx="1" fill="#f59e0b"/>
+            <!-- body (3 rolls like michelin) -->
+            <ellipse cx="22" cy="29" rx="12" ry="7" fill="url(#bg)" stroke="#d97706" stroke-width="0.7"/>
+            <ellipse cx="22" cy="37" rx="10" ry="6" fill="url(#bg)" stroke="#d97706" stroke-width="0.7"/>
+            <ellipse cx="22" cy="44" rx="8" ry="5" fill="url(#bg)" stroke="#d97706" stroke-width="0.7"/>
+            <!-- arms -->
+            <ellipse cx="9" cy="31" rx="4.5" ry="6.5" fill="url(#bg)" stroke="#d97706" stroke-width="0.7" transform="rotate(-25 9 31)"/>
+            <ellipse cx="35" cy="31" rx="4.5" ry="6.5" fill="url(#bg)" stroke="#d97706" stroke-width="0.7" transform="rotate(25 35 31)"/>
+            <!-- lightning bolt on chest -->
+            <path d="M20 26 L17 33 L21.5 31 L19 38" fill="#1e3a8a" stroke="#1e3a8a" stroke-width="0.5" stroke-linejoin="round"/>
+            <!-- sparks on arms -->
+            <text x="4" y="28" font-size="7" fill="#fef08a">⚡</text>
+            <text x="32" y="28" font-size="7" fill="#fef08a">⚡</text>
+          </svg>
+        </button>
+        </div>
       </div>
       <div class="ev-chat-panel" id="ev-chat-panel" style="display:none;">
         <div class="ev-chat-header">
