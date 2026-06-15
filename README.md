@@ -115,11 +115,23 @@ Se `application.properties` för fullständig lista.
 
 ### Chattbotten lokalt
 
-`POST /api/chat` accepterar en konversationshistorik och returnerar ett AI-svar:
+`POST /api/chat` accepterar en konversationshistorik och returnerar ett AI-svar (JSON):
 
 ```json
 POST http://localhost:8080/api/chat
 { "messages": [{ "role": "user", "content": "Vilken elbil laddar snabbast?" }] }
+```
+
+`POST /api/chat/stream` returnerar samma svar som SSE (token för token):
+
+```
+POST http://localhost:8080/api/chat/stream
+→ Content-Type: text/event-stream
+data: "Hyundai"
+data: " IONIQ"
+data: " 6"
+...
+data: [DONE]
 ```
 
 ---
