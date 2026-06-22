@@ -477,29 +477,56 @@
           : `~${Math.floor(timeMin/60)} tim ${timeMin % 60} min`;
       const timeTag    = timeStr ? `<span class="ev-time-tag">⏱ ${timeStr} (20→80%)</span>` : "";
 
-      stationsHtml += `
-        <div class="ev-station">
-          <div class="ev-station-bar ${speedClass}"></div>
-          <div class="ev-station-body">
-            <div class="ev-rank">${i+1}</div>
-            <div class="ev-station-main">
-              <div class="ev-station-name">${s.name}</div>
-              ${addr}
+      const isMob = window.innerWidth <= 560;
+      if (isMob) {
+        const priceBadgeMob = rawPrice ? `<span class="ev-price-badge${priceBadgeCls}" style="font-size:.7rem;padding:2px 6px;">${displayPrice}</span>` : "";
+        stationsHtml += `
+          <div class="ev-station">
+            <div class="ev-station-bar ${speedClass}"></div>
+            <div style="flex:1;padding:10px 12px;min-width:0;">
+              <div style="display:flex;align-items:flex-start;gap:8px;min-width:0;">
+                <div class="ev-rank" style="flex-shrink:0;margin-top:2px;">${i+1}</div>
+                <div style="flex:1;min-width:0;">
+                  <div class="ev-station-name" style="white-space:normal;line-height:1.35;">${s.name}</div>
+                  ${addr}
+                  <div style="display:flex;flex-wrap:wrap;gap:5px;align-items:center;margin-top:6px;">
+                    <span class="ev-kw-badge ${kwClass}">⚡ ${Math.round(s.maxEffKw)} kW</span>
+                    <span class="ev-connector-tag">${s.connectorType}</span>
+                    ${opTag}
+                    <span class="ev-dist" style="font-size:.73rem;font-weight:700;color:var(--muted);">${s.distanceKm.toFixed(1)} km</span>
+                    ${priceBadgeMob}
+                    ${connTag}${timeTag}
+                    <button class="ev-fav-btn${favClass}" data-lat="${s.lat}" data-lon="${s.lon}" title="${favTitle}" style="margin-left:auto;">♥</button>
+                  </div>
+                </div>
+              </div>
             </div>
-            <div class="ev-station-right">
-              <div class="ev-dist">${s.distanceKm.toFixed(1)} km</div>
-              ${priceBadge}
-              <button class="ev-fav-btn${favClass}" data-lat="${s.lat}" data-lon="${s.lon}" title="${favTitle}">♥</button>
+          </div>`;
+      } else {
+        stationsHtml += `
+          <div class="ev-station">
+            <div class="ev-station-bar ${speedClass}"></div>
+            <div class="ev-station-body">
+              <div class="ev-rank">${i+1}</div>
+              <div class="ev-station-main">
+                <div class="ev-station-name">${s.name}</div>
+                ${addr}
+              </div>
+              <div class="ev-station-right">
+                <div class="ev-dist">${s.distanceKm.toFixed(1)} km</div>
+                ${priceBadge}
+                <button class="ev-fav-btn${favClass}" data-lat="${s.lat}" data-lon="${s.lon}" title="${favTitle}">♥</button>
+              </div>
+              <div class="ev-station-tags" style="grid-column:2">
+                <span class="ev-kw-badge ${kwClass}">⚡ ${Math.round(s.maxEffKw)} kW</span>
+                <span class="ev-connector-tag">${s.connectorType}</span>
+                ${opTag}
+                ${connTag}
+                ${timeTag}
+              </div>
             </div>
-            <div class="ev-station-tags" style="grid-column:2">
-              <span class="ev-kw-badge ${kwClass}">⚡ ${Math.round(s.maxEffKw)} kW</span>
-              <span class="ev-connector-tag">${s.connectorType}</span>
-              ${opTag}
-              ${connTag}
-              ${timeTag}
-            </div>
-          </div>
-        </div>`;
+          </div>`;
+      }
     });
 
     // Laddtidskalkylator
