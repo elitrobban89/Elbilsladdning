@@ -477,7 +477,8 @@
           : `~${Math.floor(timeMin/60)} tim ${timeMin % 60} min`;
       const timeTag    = timeStr ? `<span class="ev-time-tag">⏱ ${timeStr} (20→80%)</span>` : "";
 
-      const isMob = window.innerWidth <= 560;
+      const _appEl = document.querySelector('.ev-app') || document.getElementById('ev-output');
+      const isMob = (_appEl ? _appEl.offsetWidth : window.innerWidth) <= 600;
       if (isMob) {
         const priceBadgeMob = rawPrice ? `<span class="ev-price-badge${priceBadgeCls}" style="font-size:.7rem;padding:2px 6px;">${displayPrice}</span>` : "";
         stationsHtml += `
