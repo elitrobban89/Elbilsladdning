@@ -4,6 +4,22 @@
   let evMap = null;
   let evMapMarkers = [];
 
+  (function injectMobileStyles() {
+    const s = document.createElement("style");
+    s.textContent = "@media(max-width:500px){" +
+      ".ev-station-body{padding:10px!important;gap:0 8px!important;}" +
+      ".ev-station-name{white-space:normal!important;font-size:.88rem!important;line-height:1.3!important;}" +
+      ".ev-station-addr{white-space:normal!important;font-size:.72rem!important;line-height:1.3!important;}" +
+      ".ev-station-right{gap:4px!important;}" +
+      ".ev-price-badge{font-size:.7rem!important;padding:2px 6px!important;}" +
+      ".ev-dist{font-size:.73rem!important;}" +
+      ".ev-rank{width:24px!important;height:24px!important;font-size:.68rem!important;}" +
+      ".ev-kw-badge{font-size:.72rem!important;padding:2px 7px!important;}" +
+      ".ev-station-tags{gap:4px!important;margin-top:5px!important;}" +
+    "}";
+    document.head.appendChild(s);
+  })();
+
   function renderMap(userLat, userLon, stations) {
     if (!window.L) return;
     const mapEl = document.getElementById("ev-map");
