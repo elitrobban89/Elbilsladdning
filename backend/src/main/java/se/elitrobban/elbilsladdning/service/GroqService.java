@@ -40,8 +40,14 @@ public class GroqService {
 
     public record GroqResult(String recommendation, String funFact) {}
 
+    public boolean isQuotaExceeded() {
+        return System.currentTimeMillis() < quotaExceededUntil;
+    }
+
     @SuppressWarnings("unchecked")
     public String chat(List<Map<String, String>> history, List<CarSpec> cars, String stationContext) {
+        if (isQuotaExceeded()) return "AI-assistenten är tillfälligt otillgänglig — dagsgränsen är nådd. Försök igen imorgon!";
+
         List<Map<String, Object>> messages = new java.util.ArrayList<>();
         String sysPrompt = buildChatSystemPrompt(cars);
         if (stationContext != null && !stationContext.isBlank())
@@ -62,7 +68,12 @@ public class GroqService {
                     .body(Map.class);
             var choices = (List<Map<String, Object>>) resp.get("choices");
             var msg     = (Map<String, Object>) choices.get(0).get("message");
+            quotaExceededUntil = 0;
             return (String) msg.get("content");
+        } catch (HttpClientErrorException e) {
+            if (e.getStatusCode().value() == 429)
+                quotaExceededUntil = System.currentTimeMillis() + parseRetryMs(e.getResponseBodyAsString());
+            return "AI-assistenten är tillfälligt otillgänglig — dagsgränsen är nådd. Försök igen imorgon!";
         } catch (Exception e) {
             return "Tyvärr kunde jag inte svara just nu. Försök igen!";
         }
@@ -145,6 +156,7 @@ Hitta INTE på recensioner som inte finns i listan ovan.
     }
 
     public InputStream chatStream(List<Map<String, String>> history, List<CarSpec> cars, String stationContext) throws Exception {
+        if (isQuotaExceeded()) throw new RuntimeException("AI-assistenten är tillfälligt otillgänglig — dagsgränsen är nådd. Försök igen imorgon!");
         List<Map<String, Object>> messages = new java.util.ArrayList<>();
         String sysPrompt = buildChatSystemPrompt(cars);
         if (stationContext != null && !stationContext.isBlank())
@@ -165,7 +177,11 @@ Hitta INTE på recensioner som inte finns i listan ovan.
 
         HttpResponse<InputStream> response = httpClient.send(request, HttpResponse.BodyHandlers.ofInputStream());
         if (response.statusCode() == 401) throw new RuntimeException("AI-tjänsten är inte korrekt konfigurerad.");
-        if (response.statusCode() == 429) throw new RuntimeException("För många frågor till AI:n just nu.");
+        if (response.statusCode() == 429) {
+            String body429 = new String(response.body().readAllBytes(), java.nio.charset.StandardCharsets.UTF_8);
+            quotaExceededUntil = System.currentTimeMillis() + parseRetryMs(body429);
+            throw new RuntimeException("AI-assistenten är tillfälligt otillgänglig — dagsgränsen är nådd. Försök igen imorgon!");
+        }
         if (response.statusCode() != 200) throw new RuntimeException("AI-tjänsten svarade med fel " + response.statusCode() + ".");
         return response.body();
     }
