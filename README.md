@@ -19,8 +19,9 @@ Live: [elitrobban.se/elbilsladdning](https://elitrobban.se/elbilsladdning/)
 - **Laddningsfrekvens** — ange årskörsträcka och se hur ofta du behöver ladda
 - **Favoritstationer** — spara och hantera favoritstationer, lagras i PostgreSQL per webbläsare (anonymt UUID)
 - **AI-rekommendation** — Groq LLM (llama-3.3-70b) ger ett konkret råd per sökning, märkt med ⚡ GROQ-badge; 30 min cache per bil+stationskombination sparar tokens och ger snabbare svar
-- **Groq 429-fallback** — vid dagsgräns returneras regelbaserat svar (bästa stationen med km/kW) direkt utan AI-anrop; `quotaExceededUntil`-backoff nollställs automatiskt vid nästa lyckade anrop
-- **IP-begränsning på stationssök** — max 10 förfrågningar per timme och IP (sliding window), 429 med svensk feltext vid överskridning
+- **Groq 429-fallback** — vid dagsgräns returneras regelbaserat svar (bästa stationen med km/kW) direkt utan AI-anrop; `quotaExceededUntil`-backoff nollställs automatiskt vid nästa lyckade anrop; chat-endpointen kontrollerar samma backoff-flagga
+- **Rekommendations-cache** — 30 min TTL per bil+stationskombination; rensas automatiskt vid >200 entries för att hålla minnesanvändningen i schack
+- **IP-begränsning på stationssök** — max 10 förfrågningar per timme och IP (sliding window), 429 med svensk feltext vid överskridning; IP-poster rensas i schemalagd task varje timme
 - **Visste du att** — AI-genererat bilfakta per sökning
 - **Roterande faktatabeller** — en av fyra tabeller visas slumpmässigt per sökning: värde för pengarna (km/100 tkr), snabbast DC-laddning, längst räckvidd, samt WLTP vs verklig räckvidd — alla 73 bilar visas i en scrollbar tabell med sticky header, den valda bilen markeras alltid med blå highlight; placeras under stationslistan
 - **Livepriser** — Chargeprice API + statisk operatörstabell täcker de flesta svenska nätverk
