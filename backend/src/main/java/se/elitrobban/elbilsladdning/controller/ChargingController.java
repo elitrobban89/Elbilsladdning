@@ -35,9 +35,13 @@ import java.util.concurrent.ConcurrentHashMap;
 @RequestMapping("/api")
 public class ChargingController {
 
-    private static final int CHAT_RATE_LIMIT = 10;
-    private static final long WINDOW_MS = 60_000L;
-    private final ConcurrentHashMap<String, Deque<Long>> chatTimestamps = new ConcurrentHashMap<>();
+    private static final int  CHAT_RATE_LIMIT     = 10;
+    private static final long WINDOW_MS            = 60_000L;
+    private static final int  STATIONS_RATE_LIMIT  = 10;
+    private static final long STATIONS_WINDOW_MS   = 3_600_000L;
+
+    private final ConcurrentHashMap<String, Deque<Long>> chatTimestamps     = new ConcurrentHashMap<>();
+    private final ConcurrentHashMap<String, Deque<Long>> stationTimestamps  = new ConcurrentHashMap<>();
     private final ObjectMapper mapper = new ObjectMapper();
 
     private final OcmService           ocm;
@@ -153,15 +157,28 @@ public class ChargingController {
     }
 
     @GetMapping("/stations")
-    public StationResponse stations(
+    public ResponseEntity<?> stations(
             @RequestParam double lat,
             @RequestParam double lon,
             @RequestParam int carIndex,
             @RequestParam(defaultValue = "speed") String sort,
-            @RequestParam(defaultValue = "") String city) {
+            @RequestParam(defaultValue = "") String city,
+            HttpServletRequest httpReq) {
+
+        String ip = httpReq.getHeader("X-Forwarded-For");
+        if (ip == null || ip.isBlank()) ip = httpReq.getRemoteAddr();
+        String clientIp = ip.split(",")[0].trim();
+        long now = System.currentTimeMillis();
+        Deque<Long> times = stationTimestamps.computeIfAbsent(clientIp, k -> new ArrayDeque<>());
+        synchronized (times) {
+            while (!times.isEmpty() && now - times.peekFirst() > STATIONS_WINDOW_MS) times.pollFirst();
+            if (times.size() >= STATIONS_RATE_LIMIT)
+                return ResponseEntity.status(429).body(Map.of("error", "För många förfrågningar. Försök igen om en stund."));
+            times.addLast(now);
+        }
 
         if (carIndex < 0 || carIndex >= CarDatabase.CARS.size())
-            throw new IllegalArgumentException("Ogiltigt bilindex: " + carIndex);
+            return ResponseEntity.badRequest().body(Map.of("error", "Ogiltigt bilindex: " + carIndex));
 
         CarSpec car = CarDatabase.CARS.get(carIndex);
 
@@ -199,7 +216,7 @@ public class ChargingController {
 
         var groqResult = groq.recommend(car, stations, buildCostComparison(car));
 
-        return new StationResponse(car.name(), stations, groqResult.recommendation(), groqResult.funFact(), buildCarFact(car));
+        return ResponseEntity.ok(new StationResponse(car.name(), stations, groqResult.recommendation(), groqResult.funFact(), buildCarFact(car)));
     }
 
     private String buildCostComparison(CarSpec selected) {

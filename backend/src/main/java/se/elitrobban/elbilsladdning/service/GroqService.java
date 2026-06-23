@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
+import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestClient;
 import se.elitrobban.elbilsladdning.model.CarSpec;
 import se.elitrobban.elbilsladdning.model.StationDto;
@@ -15,12 +16,16 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 @Service
 public class GroqService {
 
-    private static final String GROQ_URL = "https://api.groq.com/openai/v1/chat/completions";
-    private static final String MODEL    = "llama-3.3-70b-versatile";
+    private static final String GROQ_URL  = "https://api.groq.com/openai/v1/chat/completions";
+    private static final String MODEL     = "llama-3.3-70b-versatile";
+    private static final long   CACHE_TTL = 30 * 60 * 1000L;
 
     @Value("${groq.api.key}")
     private String apiKey;
@@ -28,6 +33,10 @@ public class GroqService {
     private final RestClient http = RestClient.create();
     private final HttpClient httpClient = HttpClient.newHttpClient();
     private final ObjectMapper mapper = new ObjectMapper();
+
+    private record CacheEntry(GroqResult result, long timestamp) {}
+    private final Map<String, CacheEntry> recommendCache = new ConcurrentHashMap<>();
+    private volatile long quotaExceededUntil = 0;
 
     public record GroqResult(String recommendation, String funFact) {}
 
@@ -162,8 +171,13 @@ Hitta INTE på recensioner som inte finns i listan ovan.
     }
 
     public GroqResult recommend(CarSpec car, List<StationDto> stations, String costComparison) {
-        String userPrompt = buildPrompt(car, stations, costComparison);
+        String key = car.name() + stations.stream().limit(3).map(StationDto::name).reduce("", (a, b) -> a + "|" + b);
+        CacheEntry hit = recommendCache.get(key);
+        if (hit != null && System.currentTimeMillis() - hit.timestamp() < CACHE_TTL) return hit.result();
 
+        if (System.currentTimeMillis() < quotaExceededUntil) return buildFallback(car, stations);
+
+        String userPrompt = buildPrompt(car, stations, costComparison);
         Map<String, Object> body = Map.of(
                 "model", MODEL,
                 "max_tokens", 450,
@@ -195,10 +209,43 @@ Hitta INTE på recensioner som inte finns i listan ovan.
 
             String recommendation = extractSectionCI(content, "REKOMMENDATION:", "VISSTE DU ATT:");
             String funFact        = extractSectionCI(content, "VISSTE DU ATT:", null);
-            return new GroqResult(recommendation, funFact);
+            quotaExceededUntil = 0;
+            GroqResult result = new GroqResult(recommendation, funFact);
+            recommendCache.put(key, new CacheEntry(result, System.currentTimeMillis()));
+            return result;
 
+        } catch (HttpClientErrorException e) {
+            if (e.getStatusCode().value() == 429) {
+                quotaExceededUntil = System.currentTimeMillis() + parseRetryMs(e.getResponseBodyAsString());
+            }
+            GroqResult fallback = buildFallback(car, stations);
+            recommendCache.put(key, new CacheEntry(fallback, System.currentTimeMillis()));
+            return fallback;
         } catch (Exception e) {
-            return new GroqResult(null, null);
+            return buildFallback(car, stations);
+        }
+    }
+
+    private GroqResult buildFallback(CarSpec car, List<StationDto> stations) {
+        if (stations.isEmpty()) return new GroqResult("Inga laddstationer hittades i närheten.", null);
+        StationDto best = stations.get(0);
+        String rec = String.format("%s (%.1f km, %d kW %s) passar bäst för din %s.",
+                best.name(), best.distanceKm(), (int) best.maxEffKw(), best.connectorType(), car.name());
+        return new GroqResult(rec, null);
+    }
+
+    private long parseRetryMs(String body) {
+        try {
+            Matcher m = Pattern.compile("try again in ([\\d]+m[\\d.]+s|[\\d.]+s)").matcher(body);
+            if (!m.find()) return 15 * 60 * 1000L;
+            String t = m.group(1);
+            Matcher min = Pattern.compile("(\\d+)m").matcher(t);
+            Matcher sec = Pattern.compile("([\\d.]+)s").matcher(t);
+            int minutes = min.find() ? Integer.parseInt(min.group(1)) : 0;
+            double seconds = sec.find() ? Double.parseDouble(sec.group(1)) : 0;
+            return (long) ((minutes * 60 + seconds) * 1000);
+        } catch (Exception e) {
+            return 15 * 60 * 1000L;
         }
     }
 
