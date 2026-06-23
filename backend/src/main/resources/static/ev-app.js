@@ -1224,6 +1224,19 @@
     return { lat: parseFloat(d[0].lat), lon: parseFloat(d[0].lon), display: d[0].display_name.split(',')[0] };
   }
 
+  async function getOsrmRoute(startLat, startLon, endLat, endLon) {
+    const url = `https://router.project-osrm.org/route/v1/driving/${startLon},${startLat};${endLon},${endLat}?geometries=geojson&overview=full`;
+    const r = await fetch(url, { headers: { 'User-Agent': 'EV-Laddning-App/1.0' } });
+    if (!r.ok) return null;
+    const d = await r.json();
+    if (!d.routes?.length) return null;
+    return {
+      coordinates: d.routes[0].geometry.coordinates,   // [[lon,lat], ...]
+      distanceKm:  Math.round(d.routes[0].distance / 100) / 10,
+      durationMin: Math.round(d.routes[0].duration / 60)
+    };
+  }
+
   async function planRoute() {
     const endCity  = document.getElementById('ev-route-end')?.value?.trim();
     const resultEl = document.getElementById('ev-route-result');
@@ -1242,17 +1255,21 @@
     }
     const btn = document.getElementById('ev-route-go');
     btn.disabled = true; btn.textContent = 'Söker…';
-    resultEl.innerHTML = '<div style="color:rgba(147,197,253,.55);font-size:.82rem;margin-top:8px">Geocodar destination…</div>';
+    resultEl.innerHTML = '<div style="color:rgba(147,197,253,.55);font-size:.82rem;margin-top:8px">Hämtar rutt och laddstationer…</div>';
     try {
       const eg = await geocodeCity(endCity);
-      const sg = { lat: state.lat, lon: state.lon, display: state.city || 'Din position' };
-      resultEl.innerHTML = '<div style="color:rgba(147,197,253,.55);font-size:.82rem;margin-top:8px">Söker laddstationer längs vägen…</div>';
-      const url = `${API}/api/route-stations?startLat=${sg.lat}&startLon=${sg.lon}&endLat=${eg.lat}&endLon=${eg.lon}&carIndex=${state.carIndex}`;
-      const resp = await fetch(url);
+      const sg  = { lat: state.lat, lon: state.lon, display: state.city || 'Din position' };
+      const stopsUrl = `${API}/api/route-stations?startLat=${sg.lat}&startLon=${sg.lon}&endLat=${eg.lat}&endLon=${eg.lon}&carIndex=${state.carIndex}`;
+
+      // Fetch OSRM route + charging stops in parallel
+      const [osrm, resp] = await Promise.all([
+        getOsrmRoute(sg.lat, sg.lon, eg.lat, eg.lon).catch(() => null),
+        fetch(stopsUrl)
+      ]);
       if (!resp.ok) throw new Error('HTTP ' + resp.status);
       const data = await resp.json();
-      renderRouteResult(data, sg, eg);
-      setTimeout(() => renderRouteMap(sg, data.stops, eg), 80);
+      renderRouteResult(data, sg, eg, osrm);
+      setTimeout(() => renderRouteMap(sg, data.stops, eg, osrm?.coordinates), 80);
     } catch (e) {
       resultEl.innerHTML = `<p style="color:#ef4444;font-size:.82rem;margin:8px 0">Fel: ${e.message}</p>`;
     } finally {
@@ -1260,7 +1277,7 @@
     }
   }
 
-  function renderRouteMap(sg, stops, eg) {
+  function renderRouteMap(sg, stops, eg, osrmCoords) {
     if (!window.L) return;
     const mapEl = document.getElementById('ev-map');
     if (!mapEl) return;
@@ -1270,22 +1287,30 @@
     if (evRoutePolyline) { evRoutePolyline.remove(); evRoutePolyline = null; }
     evMapMarkers.forEach(m => m.remove()); evMapMarkers = [];
 
-    const allPoints = [
+    const markerPoints = [
       [sg.lat, sg.lon],
       ...stops.map(s => [s.station.lat, s.station.lon]),
       [eg.lat, eg.lon]
     ];
 
+    // Use real road geometry from OSRM if available, otherwise straight line
+    const polylinePoints = osrmCoords
+      ? osrmCoords.map(([lon, lat]) => [lat, lon])
+      : markerPoints;
+
     if (!evMap) {
-      evMap = L.map('ev-map', { zoomControl: true }).setView(allPoints[0], 7);
+      evMap = L.map('ev-map', { zoomControl: true }).setView(markerPoints[0], 7);
       L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
         attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>', maxZoom: 19
       }).addTo(evMap);
     }
-    evMap.fitBounds(L.latLngBounds(allPoints).pad(0.12));
+    evMap.fitBounds(L.latLngBounds(polylinePoints).pad(0.07));
 
-    // Dashed route line
-    evRoutePolyline = L.polyline(allPoints, { color: '#3b82f6', weight: 3, dashArray: '8 6', opacity: 0.7 }).addTo(evMap);
+    // Road route line — solid if real OSRM geometry, dashed if straight-line fallback
+    evRoutePolyline = L.polyline(polylinePoints, {
+      color: '#3b82f6', weight: 4, opacity: 0.75,
+      dashArray: osrmCoords ? null : '8 6'
+    }).addTo(evMap);
 
     const makeIcon = (color, label) => L.divIcon({
       className: '',
@@ -1306,13 +1331,17 @@
     setTimeout(() => evMap && evMap.invalidateSize(), 100);
   }
 
-  function renderRouteResult(data, sg, eg) {
+  function renderRouteResult(data, sg, eg, osrm) {
     const resultEl = document.getElementById('ev-route-result');
     const { totalDistanceKm, stopsNeeded, carName, stops } = data;
+    const displayKm   = osrm?.distanceKm ?? Math.round(totalDistanceKm);
+    const driveStr    = osrm?.durationMin
+      ? ` · ~${Math.floor(osrm.durationMin / 60)} tim ${osrm.durationMin % 60} min`
+      : '';
 
     if (stopsNeeded === 0) {
       resultEl.innerHTML = `<div style="color:#86efac;font-size:.85rem;padding:10px 14px;background:rgba(34,197,94,.07);border:1px solid rgba(34,197,94,.2);border-radius:10px;margin-top:10px;">
-        ✅ Din ${carName} klarar ${Math.round(totalDistanceKm)} km utan laddning!
+        ✅ Din ${carName} klarar ${displayKm} km utan laddning!${driveStr ? ' Körtid' + driveStr + '.' : ''}
       </div>`;
       return;
     }
@@ -1323,7 +1352,7 @@
       return;
     }
 
-    let html = `<div style="font-size:.72rem;color:rgba(147,197,253,.5);margin:10px 0 12px;">${Math.round(totalDistanceKm)} km · ${stopsNeeded} laddning${stopsNeeded !== 1 ? 'ar' : ''} rekommenderat · ${carName}</div>`;
+    let html = `<div style="font-size:.72rem;color:rgba(147,197,253,.5);margin:10px 0 12px;">${displayKm} km${driveStr} · ${stopsNeeded} laddning${stopsNeeded !== 1 ? 'ar' : ''} rekommenderat · ${carName}</div>`;
     html += '<div class="ev-route-timeline">';
 
     const dot = (cls, label) =>
