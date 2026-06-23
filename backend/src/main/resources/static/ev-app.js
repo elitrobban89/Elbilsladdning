@@ -1,12 +1,34 @@
 (function () {
   const API = window.EV_API_URL || "https://elbilsladdning.onrender.com";
-  let state = { lat: null, lon: null, city: "", sort: "speed", carIndex: null, cars: [], filter: "all", lastData: null, favorites: [] };
+  let state = { lat: null, lon: null, city: "", sort: "speed", carIndex: null, cars: [], filter: "all", operatorFilter: null, lastData: null, favorites: [] };
   let evMap = null;
   let evMapMarkers = [];
 
-  (function injectMobileStyles() {
+  (function injectStyles() {
     const s = document.createElement("style");
-    s.textContent = "@media(max-width:500px){" +
+    s.textContent =
+      ".ev-op-chip{padding:4px 11px;border-radius:20px;border:1.5px solid rgba(59,130,246,0.2);background:rgba(59,130,246,0.06);color:rgba(147,197,253,0.7);font-size:.72rem;font-weight:600;cursor:pointer;transition:all .15s;white-space:nowrap;}" +
+      ".ev-op-chip:hover{border-color:rgba(59,130,246,0.5);color:#93c5fd;background:rgba(59,130,246,0.12);}" +
+      ".ev-op-chip.ev-op-active{border-color:rgba(59,130,246,0.6);color:#fff;background:linear-gradient(135deg,#1d4ed8,#2563eb);}" +
+      ".ev-route-panel{background:#0d1526;border:1px solid rgba(59,130,246,0.2);border-radius:14px;padding:20px;margin-bottom:16px;}" +
+      ".ev-route-title{font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:rgba(147,197,253,.7);margin-bottom:14px;}" +
+      ".ev-route-row{display:flex;gap:8px;align-items:center;margin-bottom:10px;}" +
+      ".ev-route-input{flex:1;padding:10px 13px;background:#060c1a;border:1.5px solid rgba(59,130,246,.2);border-radius:9px;color:#f0f4ff;font-size:.88rem;}" +
+      ".ev-route-input:focus{outline:none;border-color:#3b82f6;}" +
+      ".ev-route-input::placeholder{color:rgba(200,215,255,.35);}" +
+      ".ev-route-btn{padding:10px 18px;background:linear-gradient(135deg,#1d4ed8,#2563eb);border:none;border-radius:9px;color:#fff;font-size:.82rem;font-weight:700;cursor:pointer;white-space:nowrap;}" +
+      ".ev-route-btn:hover{opacity:.88;}" +
+      ".ev-route-btn:disabled{opacity:.45;cursor:default;}" +
+      ".ev-route-timeline{margin-top:14px;}" +
+      ".ev-route-stop{display:flex;gap:12px;align-items:flex-start;margin-bottom:12px;}" +
+      ".ev-route-dot{width:28px;height:28px;border-radius:50%;background:linear-gradient(135deg,#1d4ed8,#2563eb);border:2px solid #3b82f6;display:flex;align-items:center;justify-content:center;font-size:.7rem;font-weight:800;color:#fff;flex-shrink:0;margin-top:2px;}" +
+      ".ev-route-dot.start{background:linear-gradient(135deg,#16a34a,#22c55e);border-color:#22c55e;}" +
+      ".ev-route-dot.end{background:linear-gradient(135deg,#dc2626,#ef4444);border-color:#ef4444;}" +
+      ".ev-route-line{width:2px;background:rgba(59,130,246,.25);margin:0 13px;flex-shrink:0;align-self:stretch;min-height:12px;}" +
+      ".ev-route-info{flex:1;min-width:0;}" +
+      ".ev-route-name{font-size:.88rem;font-weight:700;color:#f0f4ff;margin-bottom:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}" +
+      ".ev-route-meta{font-size:.75rem;color:rgba(200,215,255,.55);}" +
+      "@media(max-width:500px){" +
       ".ev-station-body{padding:10px 10px!important;gap:0 8px!important;grid-template-columns:auto 1fr!important;}" +
       ".ev-rank{grid-row:1/4!important;width:24px!important;height:24px!important;font-size:.68rem!important;}" +
       ".ev-station-name{white-space:normal!important;font-size:.9rem!important;line-height:1.3!important;}" +
@@ -210,6 +232,7 @@
   }
 
   async function fetchAndRender() {
+    state.operatorFilter = null;
     setOutput('<div class="ev-status"><div class="ev-spinner"></div>Söker laddstationer och frågar AI…</div>');
     try {
       const cityParam = state.city ? `&city=${encodeURIComponent(state.city)}` : "";
@@ -259,9 +282,16 @@
     state.lastData = data;
     const { carName, stations, recommendation, carFact } = data;
 
-    const visible = state.filter === "fast"
+    const uniqueOps = [...new Set(
+      stations
+        .filter(s => s.operator && !s.operator.includes("Unknown") && s.operator.trim() !== "")
+        .map(s => s.operator)
+    )].sort();
+
+    let visible = state.filter === "fast"
         ? stations.filter(s => s.connectorType.includes("DC") && s.maxEffKw >= 50)
         : stations;
+    if (state.operatorFilter) visible = visible.filter(s => s.operator === state.operatorFilter);
     const top = visible.slice(0, 10);
     let html = "";
     let stationsHtml = "";
@@ -428,11 +458,23 @@
       </div>`;
     }
 
+    if (uniqueOps.length > 1) {
+      const chipAll = !state.operatorFilter ? ' ev-op-active' : '';
+      stationsHtml += `<div class="ev-op-chips" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px;">
+        <button class="ev-op-chip${chipAll}" data-op="">Alla</button>
+        ${uniqueOps.map(op => {
+          const act = state.operatorFilter === op ? ' ev-op-active' : '';
+          return `<button class="ev-op-chip${act}" data-op="${op}">${op}</button>`;
+        }).join('')}
+      </div>`;
+    }
+
     const filterNote = state.filter === "fast" ? " · DC ≥50 kW" : "";
+    const opNote = state.operatorFilter ? ` · ${state.operatorFilter}` : "";
     stationsHtml += `
       <div class="ev-results-header">
         <strong>${stations.length} kompatibla stationer inom 15 km</strong>
-        <span>Topp ${top.length}${filterNote}</span>
+        <span>Topp ${top.length}${filterNote}${opNote}</span>
       </div>`;
 
     const HOME_RATE = 2.0;
@@ -572,6 +614,13 @@
     document.getElementById("ev-output").innerHTML = html;
 
     if (document.getElementById('ev-calc-card')) evCalcUpdate();
+
+    document.querySelectorAll(".ev-op-chip").forEach(btn => {
+      btn.addEventListener("click", () => {
+        state.operatorFilter = btn.dataset.op || null;
+        if (state.lastData) renderResults(state.lastData);
+      });
+    });
 
     document.querySelectorAll(".ev-fav-btn").forEach(btn => {
       btn.addEventListener("click", async () => {
@@ -1125,5 +1174,127 @@
     </div>`;
   };
 
+  // ===== RUTTPLANERING =====
+  function initRouteMode() {
+    const controls = document.querySelector('.ev-controls');
+    if (!controls) return;
+    const wrap = document.createElement('div');
+    wrap.style.marginBottom = '16px';
+    wrap.innerHTML =
+      '<button id="ev-route-toggle" style="width:100%;padding:12px 16px;background:rgba(59,130,246,0.06);' +
+      'border:1.5px solid rgba(59,130,246,0.2);border-radius:12px;color:rgba(147,197,253,0.8);font-size:.85rem;' +
+      'font-weight:700;cursor:pointer;text-align:left;transition:all .18s;">🗺️ Planera rutt — hitta laddstoppar längs vägen</button>' +
+      '<div id="ev-route-panel" class="ev-route-panel" style="display:none;">' +
+        '<div class="ev-route-title">Planera laddstoppar längs rutten</div>' +
+        '<div class="ev-route-row"><input class="ev-route-input" id="ev-route-start" type="text" placeholder="Startort (t.ex. Stockholm)"></div>' +
+        '<div class="ev-route-row">' +
+          '<input class="ev-route-input" id="ev-route-end" type="text" placeholder="Destination (t.ex. Göteborg)">' +
+          '<button class="ev-route-btn" id="ev-route-go">Sök</button>' +
+        '</div>' +
+        '<div id="ev-route-result"></div>' +
+      '</div>';
+    controls.after(wrap);
+
+    const toggleBtn = document.getElementById('ev-route-toggle');
+    const panel     = document.getElementById('ev-route-panel');
+    toggleBtn.addEventListener('click', () => {
+      const open = panel.style.display !== 'none';
+      panel.style.display = open ? 'none' : 'block';
+      toggleBtn.style.borderColor  = open ? 'rgba(59,130,246,0.2)' : 'rgba(59,130,246,0.5)';
+      toggleBtn.style.background   = open ? 'rgba(59,130,246,0.06)' : 'rgba(59,130,246,0.1)';
+      toggleBtn.style.color        = open ? 'rgba(147,197,253,0.8)' : '#93c5fd';
+    });
+    document.getElementById('ev-route-go').addEventListener('click', planRoute);
+    ['ev-route-start','ev-route-end'].forEach(id =>
+      document.getElementById(id).addEventListener('keydown', e => { if (e.key === 'Enter') planRoute(); }));
+  }
+
+  async function geocodeCity(city) {
+    const r = await fetch(
+      `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(city)}&format=json&limit=1&countrycodes=se`,
+      { headers: { 'User-Agent': 'EV-Laddning-App/1.0' } }
+    );
+    const d = await r.json();
+    if (!d.length) throw new Error(`Kunde inte hitta "${city}"`);
+    return { lat: parseFloat(d[0].lat), lon: parseFloat(d[0].lon), display: d[0].display_name.split(',')[0] };
+  }
+
+  async function planRoute() {
+    const startCity = document.getElementById('ev-route-start')?.value?.trim();
+    const endCity   = document.getElementById('ev-route-end')?.value?.trim();
+    const resultEl  = document.getElementById('ev-route-result');
+    if (!resultEl) return;
+    if (!startCity || !endCity) {
+      resultEl.innerHTML = '<p style="color:#ef4444;font-size:.82rem;margin:8px 0">Ange start- och destinationsort.</p>';
+      return;
+    }
+    if (state.carIndex === null) {
+      resultEl.innerHTML = '<p style="color:#ef4444;font-size:.82rem;margin:8px 0">Välj din elbil överst på sidan först.</p>';
+      return;
+    }
+    const btn = document.getElementById('ev-route-go');
+    btn.disabled = true; btn.textContent = 'Söker…';
+    resultEl.innerHTML = '<div style="color:rgba(147,197,253,.55);font-size:.82rem;margin-top:8px">Geocodar orter…</div>';
+    try {
+      const [sg, eg] = await Promise.all([geocodeCity(startCity), geocodeCity(endCity)]);
+      resultEl.innerHTML = '<div style="color:rgba(147,197,253,.55);font-size:.82rem;margin-top:8px">Söker laddstationer längs vägen…</div>';
+      const url = `${API}/api/route-stations?startLat=${sg.lat}&startLon=${sg.lon}&endLat=${eg.lat}&endLon=${eg.lon}&carIndex=${state.carIndex}`;
+      const resp = await fetch(url);
+      if (!resp.ok) throw new Error('HTTP ' + resp.status);
+      renderRouteResult(await resp.json(), sg, eg);
+    } catch (e) {
+      resultEl.innerHTML = `<p style="color:#ef4444;font-size:.82rem;margin:8px 0">Fel: ${e.message}</p>`;
+    } finally {
+      btn.disabled = false; btn.textContent = 'Sök';
+    }
+  }
+
+  function renderRouteResult(data, sg, eg) {
+    const resultEl = document.getElementById('ev-route-result');
+    const { totalDistanceKm, stopsNeeded, carName, stops } = data;
+
+    if (stopsNeeded === 0) {
+      resultEl.innerHTML = `<div style="color:#86efac;font-size:.85rem;padding:10px 14px;background:rgba(34,197,94,.07);border:1px solid rgba(34,197,94,.2);border-radius:10px;margin-top:10px;">
+        ✅ Din ${carName} klarar ${Math.round(totalDistanceKm)} km utan laddning!
+      </div>`;
+      return;
+    }
+    if (!stops.length) {
+      resultEl.innerHTML = `<div style="color:rgba(245,158,11,.8);font-size:.82rem;padding:10px 14px;background:rgba(245,158,11,.06);border:1px solid rgba(245,158,11,.2);border-radius:10px;margin-top:10px;">
+        Inga kompatibla laddstationer hittades längs rutten. Kontrollera manuellt via Open Charge Map.
+      </div>`;
+      return;
+    }
+
+    const stopWord = stopsNeeded !== 1 ? 'stopp' : 'stopp';
+    let html = `<div style="font-size:.72rem;color:rgba(147,197,253,.5);margin:10px 0 12px;">${Math.round(totalDistanceKm)} km · ${stopsNeeded} laddning${stopsNeeded !== 1 ? 'ar' : ''} rekommenderat · ${carName}</div>`;
+    html += '<div class="ev-route-timeline">';
+
+    const dot = (cls, label) =>
+      `<div class="ev-route-dot ${cls}" style="flex-shrink:0">${label}</div>`;
+    const line = () =>
+      `<div style="display:flex;margin-left:13px;margin-bottom:3px;"><div class="ev-route-line" style="height:18px"></div></div>`;
+
+    html += `<div class="ev-route-stop">${dot('start','A')}<div class="ev-route-info"><div class="ev-route-name">${sg.display}</div><div class="ev-route-meta">Start · 0 km</div></div></div>`;
+
+    stops.forEach(stop => {
+      const s = stop.station;
+      const kw = Math.round(s.maxEffKw);
+      const price = s.chargepricePerKwh || s.usageCost || '';
+      html += line();
+      html += `<div class="ev-route-stop">${dot('',stop.order)}<div class="ev-route-info">
+        <div class="ev-route-name">${s.name}</div>
+        <div class="ev-route-meta">⚡ ${kw} kW · ${s.connectorType}${price ? ' · ' + price : ''}${s.address ? ' · ' + s.address : ''}</div>
+        <div class="ev-route-meta" style="margin-top:1px">📍 ${stop.distanceFromStartKm} km från start</div>
+      </div></div>`;
+    });
+
+    html += line();
+    html += `<div class="ev-route-stop">${dot('end','B')}<div class="ev-route-info"><div class="ev-route-name">${eg.display}</div><div class="ev-route-meta">Destination · ${Math.round(totalDistanceKm)} km</div></div></div>`;
+    html += '</div>';
+    resultEl.innerHTML = html;
+  }
+
   initChat();
+  initRouteMode();
 })();
