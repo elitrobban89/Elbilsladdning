@@ -12,6 +12,7 @@ Live: [elitrobban.se/elbilsladdning](https://elitrobban.se/elbilsladdning/)
 - **73 bilmodeller** — Volvo, Tesla, BMW, Audi, Kia, Hyundai, MG, BYD m.fl. — filtrerar på kontakttyp och laddeffekt
 - **Top 5 stationer** — visar de 5 bästa kompatibla stationerna inom 15 km; sortera på DC-effekt eller pris per kWh
 - **Filtrera laddtyp** — visa endast snabbladdare DC (≥50 kW) med ett klick
+- **Operatörsfilter** — klickbara chips ovanför stationslistan med unika operatörsnamn (Recharge, IONITY, Easypark osv.); filtret återställs automatiskt vid ny sökning
 - **Räckvidd** — WLTP-räckvidd och uppskattad verklig räckvidd (~85 % av WLTP)
 - **Laddtidsestimering** — ungefärlig tid för 20→80 % per DC-station baserat på din bil och stationens kW
 - **Kostnadskalkyl** — kostnad för full laddning och kr/mil vid varje station
@@ -27,6 +28,7 @@ Live: [elitrobban.se/elbilsladdning](https://elitrobban.se/elbilsladdning/)
 - **Livepriser** — Chargeprice API + statisk operatörstabell täcker de flesta svenska nätverk
 - **NOBIL-integration** — hämtar antal laddpunkter per station (aktiveras med API-nyckel)
 - **Interaktiv karta** — Leaflet + OpenStreetMap (gratis, ingen API-nyckel, serveras lokalt utan CDN-beroende) visas ovanför stationslistan; färgkodade markörer: 🟢 grön ≥100 kW, 🟠 orange ≥22 kW, 🟣 lila långsam; din position som blå cirkel; klicka markör för popup med kW, kontakttyp, pris och avstånd; zoomnivå 17
+- **Ruttplanering** — kollapsbar panel "Planera rutt" under kontrollerna; GPS-position används automatiskt som start; ange bara destination (t.ex. "Göteborg"); backend beräknar antal laddstoppar (75 % av WLTP per etapp) och söker närmaste kompatibla station per hållplats via OCM; kartan visar hela rutten som en verklig väglinje via [OSRM](https://project-osrm.org/) med faktisk motorvägsgeometri (E4, E6 osv.), gul A-markör vid start, numrerade gula markörer vid laddstoppar, röd B-markör vid mål; rubrikraden visar vägavstånd och uppskattad körtid; faller tillbaka på streckad rak linje om OSRM är otillgänglig; OSRM och laddstationssökning körs parallellt — ingen extra väntetid
 - **AI-chattbot** ⚡ — flytande chattassistent (knapp nere till höger med animerade blixtar runt elektrisk maskotgubbe) driven av Groq; glassmorphism-design med backdrop-blur, mörkt tema och halvtransparenta bubblor som matchar appens stil; stödjer markdown i bot-svar (fetstil, listor); rensa-knapp i headern; svarar ENDAST på frågor om elbilar, laddning, räckvidd och stationer; smarta budgetregler (budget under 200 tkr → föreslår begagnade med prisintervall, rekommenderar aldrig ny bil >1,3x budgeten); stödjer flerturskonversation; max 10 frågor/minut per IP
 - **Streaming-svar** — chattbotens svar strömmar direkt token för token via `/api/chat/stream` (SSE) utan att vänta på hela svaret; automatisk fallback till vanlig JSON-endpoint om webbläsaren saknar ReadableStream-stöd
 - **Dynamiska follow-up chips** — efter varje svar visas 2–3 kontextuella snabbknappar baserade på svarsinnehållet (räckvidd, laddning, pris, bilmodeller)
@@ -77,11 +79,14 @@ backend/                         Spring Boot-backend (Render)
     controller/
       ChargingController.java            REST-endpoints /api/cars och /api/stations
       FavoriteController.java            CRUD /api/favorites — GET, POST, DELETE
+      RouteController.java               GET /api/route-stations — ruttplanering med laddstoppar
     data/CarDatabase.java                73 bilmodeller med AC/DC-effekt, batteri, räckvidd och pris
     model/
       CarSpec.java                       Record — bilspecifikationer
       StationDto.java                    Record — laddstation med priser och laddpunktsantal
       StationResponse.java               Record — API-svar med stationer, AI-råd, funfact och carFact (värderanking)
+      RouteStop.java                     Record — ett laddstop i en rutt (ordning, km från start, station)
+      RouteResponse.java                 Record — ruttplaneringssvar (vägavstånd, antal stopp, laddstoppar)
       FavoriteStation.java               JPA-entity — sparade favoritstationer (ev_favorites)
     repository/
       FavoriteStationRepository.java     Spring Data JPA — findByUserId, existsByUserIdAndName
@@ -91,6 +96,7 @@ backend/                         Spring Boot-backend (Render)
       ChargepriceService.java            Livepriser via Chargeprice API
       OperatorPriceService.java          Statisk prislista för svenska operatörer (fallback)
       GroqService.java                   AI-rekommendation, "Visste du att" och chattbot via Groq
+      RouteService.java                  Beräknar laddstoppar längs rutt med haversine + OCM-sökning per etapp
       ApiNinjasService.java              API Ninjas-integration (reserv)
 
 elbilsladdning-web.html                  WordPress-snippet — endast HTML + CSS + <script src>
