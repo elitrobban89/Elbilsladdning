@@ -3,6 +3,7 @@
   let state = { lat: null, lon: null, city: "", sort: "speed", carIndex: null, cars: [], filter: "all", operatorFilter: null, lastData: null, favorites: [] };
   let evMap = null;
   let evMapMarkers = [];
+  let evRoutePolyline = null;
 
   (function injectStyles() {
     const s = document.createElement("style");
@@ -47,6 +48,8 @@
     const mapEl = document.getElementById("ev-map");
     if (!mapEl) return;
     mapEl.style.display = "block";
+
+    if (evRoutePolyline) { evRoutePolyline.remove(); evRoutePolyline = null; }
 
     if (!evMap) {
       evMap = L.map("ev-map", { zoomControl: true }).setView([userLat, userLon], 17);
@@ -1186,7 +1189,9 @@
       'font-weight:700;cursor:pointer;text-align:left;transition:all .18s;">🗺️ Planera rutt — hitta laddstoppar längs vägen</button>' +
       '<div id="ev-route-panel" class="ev-route-panel" style="display:none;">' +
         '<div class="ev-route-title">Planera laddstoppar längs rutten</div>' +
-        '<div class="ev-route-row"><input class="ev-route-input" id="ev-route-start" type="text" placeholder="Startort (t.ex. Stockholm)"></div>' +
+        '<div style="font-size:.78rem;color:rgba(147,197,253,.6);margin-bottom:10px;display:flex;align-items:center;gap:6px;">' +
+          '<span style="font-size:.9rem">📍</span><span id="ev-route-start-label">Din position (GPS)</span>' +
+        '</div>' +
         '<div class="ev-route-row">' +
           '<input class="ev-route-input" id="ev-route-end" type="text" placeholder="Destination (t.ex. Göteborg)">' +
           '<button class="ev-route-btn" id="ev-route-go">Sök</button>' +
@@ -1203,10 +1208,10 @@
       toggleBtn.style.borderColor  = open ? 'rgba(59,130,246,0.2)' : 'rgba(59,130,246,0.5)';
       toggleBtn.style.background   = open ? 'rgba(59,130,246,0.06)' : 'rgba(59,130,246,0.1)';
       toggleBtn.style.color        = open ? 'rgba(147,197,253,0.8)' : '#93c5fd';
+      if (!open && state.city) document.getElementById('ev-route-start-label').textContent = state.city;
     });
     document.getElementById('ev-route-go').addEventListener('click', planRoute);
-    ['ev-route-start','ev-route-end'].forEach(id =>
-      document.getElementById(id).addEventListener('keydown', e => { if (e.key === 'Enter') planRoute(); }));
+    document.getElementById('ev-route-end').addEventListener('keydown', e => { if (e.key === 'Enter') planRoute(); });
   }
 
   async function geocodeCity(city) {
@@ -1220,12 +1225,15 @@
   }
 
   async function planRoute() {
-    const startCity = document.getElementById('ev-route-start')?.value?.trim();
-    const endCity   = document.getElementById('ev-route-end')?.value?.trim();
-    const resultEl  = document.getElementById('ev-route-result');
+    const endCity  = document.getElementById('ev-route-end')?.value?.trim();
+    const resultEl = document.getElementById('ev-route-result');
     if (!resultEl) return;
-    if (!startCity || !endCity) {
-      resultEl.innerHTML = '<p style="color:#ef4444;font-size:.82rem;margin:8px 0">Ange start- och destinationsort.</p>';
+    if (!endCity) {
+      resultEl.innerHTML = '<p style="color:#ef4444;font-size:.82rem;margin:8px 0">Ange din destination.</p>';
+      return;
+    }
+    if (!state.lat || !state.lon) {
+      resultEl.innerHTML = '<p style="color:#ef4444;font-size:.82rem;margin:8px 0">GPS-position saknas — tillåt platsåtkomst och försök igen.</p>';
       return;
     }
     if (state.carIndex === null) {
@@ -1234,19 +1242,68 @@
     }
     const btn = document.getElementById('ev-route-go');
     btn.disabled = true; btn.textContent = 'Söker…';
-    resultEl.innerHTML = '<div style="color:rgba(147,197,253,.55);font-size:.82rem;margin-top:8px">Geocodar orter…</div>';
+    resultEl.innerHTML = '<div style="color:rgba(147,197,253,.55);font-size:.82rem;margin-top:8px">Geocodar destination…</div>';
     try {
-      const [sg, eg] = await Promise.all([geocodeCity(startCity), geocodeCity(endCity)]);
+      const eg = await geocodeCity(endCity);
+      const sg = { lat: state.lat, lon: state.lon, display: state.city || 'Din position' };
       resultEl.innerHTML = '<div style="color:rgba(147,197,253,.55);font-size:.82rem;margin-top:8px">Söker laddstationer längs vägen…</div>';
       const url = `${API}/api/route-stations?startLat=${sg.lat}&startLon=${sg.lon}&endLat=${eg.lat}&endLon=${eg.lon}&carIndex=${state.carIndex}`;
       const resp = await fetch(url);
       if (!resp.ok) throw new Error('HTTP ' + resp.status);
-      renderRouteResult(await resp.json(), sg, eg);
+      const data = await resp.json();
+      renderRouteResult(data, sg, eg);
+      setTimeout(() => renderRouteMap(sg, data.stops, eg), 80);
     } catch (e) {
       resultEl.innerHTML = `<p style="color:#ef4444;font-size:.82rem;margin:8px 0">Fel: ${e.message}</p>`;
     } finally {
       btn.disabled = false; btn.textContent = 'Sök';
     }
+  }
+
+  function renderRouteMap(sg, stops, eg) {
+    if (!window.L) return;
+    const mapEl = document.getElementById('ev-map');
+    if (!mapEl) return;
+    mapEl.style.display = 'block';
+
+    // Clear previous route polyline and markers
+    if (evRoutePolyline) { evRoutePolyline.remove(); evRoutePolyline = null; }
+    evMapMarkers.forEach(m => m.remove()); evMapMarkers = [];
+
+    const allPoints = [
+      [sg.lat, sg.lon],
+      ...stops.map(s => [s.station.lat, s.station.lon]),
+      [eg.lat, eg.lon]
+    ];
+
+    if (!evMap) {
+      evMap = L.map('ev-map', { zoomControl: true }).setView(allPoints[0], 7);
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>', maxZoom: 19
+      }).addTo(evMap);
+    }
+    evMap.fitBounds(L.latLngBounds(allPoints).pad(0.12));
+
+    // Dashed route line
+    evRoutePolyline = L.polyline(allPoints, { color: '#3b82f6', weight: 3, dashArray: '8 6', opacity: 0.7 }).addTo(evMap);
+
+    const makeIcon = (color, label) => L.divIcon({
+      className: '',
+      html: `<div style="width:30px;height:30px;border-radius:50%;background:${color};border:2.5px solid #fff;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;color:#111;box-shadow:0 2px 8px rgba(0,0,0,0.45)">${label}</div>`,
+      iconSize: [30, 30], iconAnchor: [15, 15], popupAnchor: [0, -15]
+    });
+
+    evMapMarkers.push(L.marker([sg.lat, sg.lon], { icon: makeIcon('#22c55e', 'A') }).addTo(evMap).bindPopup(`<b>Start</b><br>${sg.display}`));
+    stops.forEach(stop => {
+      const s = stop.station;
+      const kw = Math.round(s.maxEffKw);
+      evMapMarkers.push(L.marker([s.lat, s.lon], { icon: makeIcon('#f59e0b', stop.order) })
+        .addTo(evMap)
+        .bindPopup(`<b>${s.name}</b><br>⚡ ${kw} kW · ${s.connectorType}<br>📍 ${stop.distanceFromStartKm} km från start`));
+    });
+    evMapMarkers.push(L.marker([eg.lat, eg.lon], { icon: makeIcon('#ef4444', 'B') }).addTo(evMap).bindPopup(`<b>Destination</b><br>${eg.display}`));
+
+    setTimeout(() => evMap && evMap.invalidateSize(), 100);
   }
 
   function renderRouteResult(data, sg, eg) {
@@ -1266,7 +1323,6 @@
       return;
     }
 
-    const stopWord = stopsNeeded !== 1 ? 'stopp' : 'stopp';
     let html = `<div style="font-size:.72rem;color:rgba(147,197,253,.5);margin:10px 0 12px;">${Math.round(totalDistanceKm)} km · ${stopsNeeded} laddning${stopsNeeded !== 1 ? 'ar' : ''} rekommenderat · ${carName}</div>`;
     html += '<div class="ev-route-timeline">';
 
