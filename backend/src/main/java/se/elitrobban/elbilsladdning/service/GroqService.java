@@ -230,6 +230,7 @@ Hitta INTE på recensioner som inte finns i listan ovan.
             String funFact        = extractSectionCI(content, "VISSTE DU ATT:", null);
             quotaExceededUntil = 0;
             GroqResult result = new GroqResult(recommendation, funFact);
+            if (recommendCache.size() > 200) recommendCache.clear();
             recommendCache.put(key, new CacheEntry(result, System.currentTimeMillis()));
             return result;
 
