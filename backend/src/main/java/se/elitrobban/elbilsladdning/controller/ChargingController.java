@@ -24,9 +24,12 @@ import se.elitrobban.elbilsladdning.service.NobilService;
 import se.elitrobban.elbilsladdning.service.OcmService;
 import se.elitrobban.elbilsladdning.service.OperatorPriceService;
 
+import org.springframework.scheduling.annotation.Scheduled;
+
 import java.util.ArrayDeque;
 import java.util.Comparator;
 import java.util.Deque;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -64,7 +67,29 @@ public class ChargingController {
 
     @GetMapping("/health")
     public Map<String, String> health() {
-        return Map.of("status", "ok");
+        Map<String, String> result = new LinkedHashMap<>();
+        result.put("status", "ok");
+        if (groq.isQuotaExceeded()) {
+            result.put("groq", "quota_exceeded");
+        }
+        return result;
+    }
+
+    @Scheduled(fixedRate = 3_600_000L)
+    public void cleanRateLimitMaps() {
+        long now = System.currentTimeMillis();
+        chatTimestamps.entrySet().removeIf(e -> {
+            synchronized (e.getValue()) {
+                e.getValue().removeIf(t -> t < now - WINDOW_MS);
+                return e.getValue().isEmpty();
+            }
+        });
+        stationTimestamps.entrySet().removeIf(e -> {
+            synchronized (e.getValue()) {
+                e.getValue().removeIf(t -> t < now - STATIONS_WINDOW_MS);
+                return e.getValue().isEmpty();
+            }
+        });
     }
 
     @PostMapping("/chat")

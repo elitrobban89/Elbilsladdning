@@ -105,13 +105,13 @@ BUDGET-REGLER (följ dessa exakt):
 
         sb.append("Snabbaste DC-laddning:\n");
         cars.stream().filter(c -> c.maxDcKw() > 0 && c.priceKr() > 0)
-            .sorted((a, b) -> Double.compare(b.maxDcKw(), a.maxDcKw())).limit(10)
+            .sorted((a, b) -> Double.compare(b.maxDcKw(), a.maxDcKw())).limit(5)
             .forEach(c -> sb.append(String.format("  %s: %d kW DC, %d tkr%n",
                 c.name(), (int) c.maxDcKw(), c.priceKr() / 1000)));
 
         sb.append("\nLängst räckvidd (WLTP):\n");
         cars.stream().filter(c -> c.rangeKm() > 0 && c.priceKr() > 0)
-            .sorted((a, b) -> Integer.compare(b.rangeKm(), a.rangeKm())).limit(10)
+            .sorted((a, b) -> Integer.compare(b.rangeKm(), a.rangeKm())).limit(5)
             .forEach(c -> sb.append(String.format("  %s: %d km, %d tkr%n",
                 c.name(), c.rangeKm(), c.priceKr() / 1000)));
 
@@ -119,7 +119,7 @@ BUDGET-REGLER (följ dessa exakt):
         cars.stream().filter(c -> c.rangeKm() > 0 && c.priceKr() > 0)
             .sorted((a, b) -> Double.compare(
                 b.rangeKm() * 100_000.0 / b.priceKr(),
-                a.rangeKm() * 100_000.0 / a.priceKr())).limit(10)
+                a.rangeKm() * 100_000.0 / a.priceKr())).limit(5)
             .forEach(c -> sb.append(String.format("  %s: %d km/100tkr, %d tkr%n",
                 c.name(), (int)(c.rangeKm() * 100_000.0 / c.priceKr()), c.priceKr() / 1000)));
 
