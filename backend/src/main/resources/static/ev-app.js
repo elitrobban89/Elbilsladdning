@@ -39,7 +39,14 @@
       ".ev-dist{font-size:.73rem!important;}" +
       ".ev-price-badge{font-size:.72rem!important;padding:2px 7px!important;}" +
       ".ev-fav-btn{margin-top:0!important;}" +
-    "}";
+    "}" +
+    ".ev-section-divider{display:flex;align-items:center;gap:10px;margin:20px 0 4px;}" +
+    ".ev-divider-line{flex:1;height:1px;background:linear-gradient(90deg,transparent,rgba(251,191,36,0.4),transparent);}" +
+    ".ev-divider-badge{background:rgba(251,191,36,0.1);border:1px solid rgba(251,191,36,0.3);border-radius:20px;padding:3px 14px;font-size:11px;font-weight:700;color:#fbbf24;letter-spacing:0.06em;white-space:nowrap;}" +
+    ".ev-fact-nav{background:rgba(59,130,246,0.08);border:1.5px solid rgba(59,130,246,0.2);border-radius:8px;color:rgba(147,197,253,0.7);font-size:20px;width:32px;height:32px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .15s;padding:0;line-height:1;}" +
+    ".ev-fact-nav:hover{background:rgba(59,130,246,0.2);color:#93c5fd;}" +
+    ".ev-fact-dot{width:8px;height:8px;border-radius:50%;border:none;background:rgba(147,197,253,0.2);cursor:pointer;padding:0;transition:all .25s;flex-shrink:0;}" +
+    ".ev-fact-dot.ev-fact-dot-active{background:#3b82f6;width:20px;border-radius:4px;}";
     document.head.appendChild(s);
   })();
 
@@ -349,14 +356,37 @@
         </div>`;
     }
 
-    if (data.funFact) {
-      html += `
-        <div class="ev-funfact-card">
-          <div class="ev-funfact-icon">💡</div>
+    {
+      const staticFacts = [
+        { icon: '🏆', text: 'Tesla Model Y är Sveriges mest sålda bil 2024 – inte bara bland elbilar, utan av <strong>alla</strong> bilmodeller.' },
+        { icon: '🌍', text: 'IONITY är Europas snabbaste offentliga laddnätverk med upp till <strong>350 kW</strong> per laddpunkt. I Norden finns 100+ stationer längs motorvägarna.' },
+        { icon: '🇸🇪', text: 'Vattenfall InCharge är ett av Nordens största laddnätverk med över <strong>33 000 laddpunkter</strong> i Sverige, Norge, Danmark och Finland.' },
+        { icon: '❄️', text: 'På kall vinterdag kan räckvidden minska med <strong>20–40%</strong> jämfört med WLTP. Värm bilen medan den laddar för att spara batterienergi.' },
+        { icon: '⚡', text: 'Tesla öppnade sitt Supercharger-nätverk för andra elbilsmärken i Sverige <strong>2023</strong>. CCS (Combo) är Europas dominerande DC-laddstandard.' },
+        { icon: '📈', text: 'Sverige har ~<strong>60% elbilsandel</strong> av nybilsförsäljningen 2024 – en av världens högsta, efter Norge på ~90%.' },
+      ];
+      const facts = data.funFact
+        ? [{ icon: '💡', text: data.funFact }, ...staticFacts]
+        : staticFacts;
+
+      const fSlideHtml = facts.map((f, i) =>
+        `<div class="ev-funfact-slide" style="display:${i===0?'flex':'none'};align-items:flex-start;gap:10px;">
+          <div class="ev-funfact-icon">${f.icon}</div>
           <div>
             <div class="ev-funfact-label">Visste du att</div>
-            <div class="ev-funfact-text">${data.funFact}</div>
+            <div class="ev-funfact-text">${f.text}</div>
           </div>
+        </div>`
+      ).join('');
+
+      const fDotHtml = facts.map((_, i) =>
+        `<button class="ev-fact-dot${i===0?' ev-fact-dot-active':''}" aria-label="Fakta ${i+1}"></button>`
+      ).join('');
+
+      html += `
+        <div class="ev-funfact-card" id="ev-funfact-carousel" style="flex-direction:column;gap:0;">
+          <div id="ev-funfact-slides">${fSlideHtml}</div>
+          <div style="display:flex;justify-content:center;gap:6px;margin-top:10px;">${fDotHtml}</div>
         </div>`;
     }
 
@@ -394,14 +424,7 @@
         }
       ];
 
-      const mode = modes[Math.floor(Math.random() * modes.length)];
-      const { icon, label, colHeader, data, formatVal, factFn } = mode;
-      const factText = factFn(data[0]);
-      const myRank = data.findIndex(c => c.name === selectedName) + 1;
-
-      const isWltp = icon === '🎯';
-
-      const buildRow = (c, rank, hl, stripe) => {
+      const buildRow = (c, rank, hl, stripe, isWltp, formatVal) => {
         const rowBg  = hl ? 'background:rgba(59,130,246,0.12);border-left:3px solid #3b82f6;'
                          : stripe ? 'background:#dbeafe;' : 'background:#ffffff;';
         const bold   = hl ? 'font-weight:700;' : '';
@@ -421,19 +444,21 @@
             </tr>`;
       };
 
-      const rows = data.map((c, i) => buildRow(c, i + 1, c.name === selectedName, i % 2 === 1)).join('');
-
-      const th1 = isWltp ? 'WLTP'    : colHeader;
-      const th2 = isWltp ? '~Verklig' : 'Pris';
-
-      factHtml += `
-        <div class="ev-funfact-card">
+      const slides = modes.map((mode, mi) => {
+        const { icon, label, colHeader, data, formatVal, factFn } = mode;
+        if (!data.length) return '';
+        const factText = factFn(data[0]);
+        const isWltp = icon === '🎯';
+        const th1 = isWltp ? 'WLTP' : colHeader;
+        const th2 = isWltp ? '~Verklig' : 'Pris';
+        const rows = data.map((c, i) => buildRow(c, i + 1, c.name === selectedName, i % 2 === 1, isWltp, formatVal)).join('');
+        return `<div class="ev-fact-slide" data-slide="${mi}" style="display:${mi===0?'flex':'none'};gap:12px;align-items:flex-start;">
           <div class="ev-funfact-icon">${icon}</div>
           <div style="flex:1">
             <div class="ev-funfact-label">${label}</div>
             <div class="ev-funfact-text" style="margin-bottom:10px;">${factText}</div>
             <div style="border:1px solid #e5e7eb;border-radius:8px;overflow:hidden;margin-top:4px;">
-              <div style="overflow-y:auto;max-height:260px;">
+              <div style="overflow-y:auto;max-height:220px;">
                 <table style="width:100%;border-collapse:collapse;font-size:13px;">
                   <thead style="position:sticky;top:0;z-index:1;"><tr style="background:#f3f4f6;border-bottom:1px solid #e5e7eb;">
                     <th style="padding:6px 10px;text-align:left;color:#9ca3af;font-weight:600;font-size:11px;text-transform:uppercase;letter-spacing:0.5px;width:24px;">#</th>
@@ -445,6 +470,26 @@
                 </table>
               </div>
             </div>
+          </div>
+        </div>`;
+      }).filter(Boolean).join('');
+
+      const dots = modes.map((_, i) =>
+        `<button class="ev-fact-dot${i===0?' ev-fact-dot-active':''}" data-dot="${i}" aria-label="Fakta ${i+1}"></button>`
+      ).join('');
+
+      factHtml += `
+        <div class="ev-section-divider">
+          <div class="ev-divider-line"></div>
+          <div class="ev-divider-badge">💡 Visste du att?</div>
+          <div class="ev-divider-line"></div>
+        </div>
+        <div class="ev-funfact-card" id="ev-fact-carousel" style="flex-direction:column;gap:0;">
+          <div id="ev-fact-slides">${slides}</div>
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-top:12px;">
+            <button class="ev-fact-nav" id="ev-fact-prev">‹</button>
+            <div style="display:flex;gap:6px;">${dots}</div>
+            <button class="ev-fact-nav" id="ev-fact-next">›</button>
           </div>
         </div>`;
     }
@@ -641,6 +686,48 @@
         if (fav) await toggleFavorite({ lat: fav.lat, lon: fav.lon, name: fav.name, address: fav.address, maxEffKw: fav.maxEffKw, connectorType: fav.connectorType, operator: fav.operator });
       });
     });
+
+    const funfactCarousel = document.getElementById('ev-funfact-carousel');
+    if (funfactCarousel) {
+      let fc = 0;
+      const fSlides = funfactCarousel.querySelectorAll('.ev-funfact-slide');
+      const fDots   = funfactCarousel.querySelectorAll('.ev-fact-dot');
+      const ftotal  = fSlides.length;
+      let ftimer;
+      function showF(n) {
+        fc = (n + ftotal) % ftotal;
+        fSlides.forEach((s, i) => { s.style.display = i === fc ? 'flex' : 'none'; });
+        fDots.forEach((d, i) => { d.classList.toggle('ev-fact-dot-active', i === fc); });
+      }
+      function startF() { clearInterval(ftimer); ftimer = setInterval(() => showF(fc + 1), 6000); }
+      fDots.forEach((d, i) => d.addEventListener('click', () => { showF(i); startF(); }));
+      startF();
+    }
+
+    const carousel = document.getElementById('ev-fact-carousel');
+    if (carousel) {
+      let current = 0;
+      const allSlides = carousel.querySelectorAll('.ev-fact-slide');
+      const allDots   = carousel.querySelectorAll('.ev-fact-dot');
+      const total = allSlides.length;
+      let timer = null;
+
+      function showSlide(n) {
+        current = (n + total) % total;
+        allSlides.forEach((s, i) => { s.style.display = i === current ? 'flex' : 'none'; });
+        allDots.forEach((d, i) => { d.classList.toggle('ev-fact-dot-active', i === current); });
+      }
+
+      function startAuto() {
+        clearInterval(timer);
+        timer = setInterval(() => showSlide(current + 1), 6000);
+      }
+
+      carousel.querySelector('#ev-fact-prev')?.addEventListener('click', () => { showSlide(current - 1); startAuto(); });
+      carousel.querySelector('#ev-fact-next')?.addEventListener('click', () => { showSlide(current + 1); startAuto(); });
+      allDots.forEach((d, i) => d.addEventListener('click', () => { showSlide(i); startAuto(); }));
+      startAuto();
+    }
   }
 
   // ===== CHATTBOT =====

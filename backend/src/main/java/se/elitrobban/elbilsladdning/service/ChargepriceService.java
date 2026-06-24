@@ -36,36 +36,47 @@ public class ChargepriceService {
 
     /**
      * Returns a formatted price string (e.g. "0.69 €/kWh") or null if unavailable.
+     * Tries OCM-ID-based lookup first (most accurate), then falls back to network name.
      */
     public String getPricePerKwh(StationDto station, CarSpec car) {
         if (!isEnabled()) return null;
 
         String plug = PLUG_MAP.getOrDefault(station.connectorType(), "ccs");
-        String cacheKey = station.operator() + "_" + (int) station.stationKw() + "_" + plug;
 
-        return cache.computeIfAbsent(cacheKey, k -> Optional.ofNullable(fetch(station, car, plug)))
-                    .orElse(null);
+        // 1. OCM adapter: look up by exact station ID — most accurate
+        if (station.ocmId() != null && !station.ocmId().isBlank()) {
+            String ocmKey = "ocm_" + station.ocmId() + "_" + plug;
+            Optional<String> ocmResult = cache.computeIfAbsent(ocmKey,
+                    k -> Optional.ofNullable(fetchByOcmId(station, car, plug)));
+            if (ocmResult.isPresent()) return ocmResult.get();
+        }
+
+        // 2. Network-name adapter: match operator to Chargeprice network
+        String network = normalizeNetwork(station.operator(), station.name());
+        if (network == null) return null;
+        String netKey = network + "_" + (int) station.stationKw() + "_" + plug;
+        return cache.computeIfAbsent(netKey,
+                k -> Optional.ofNullable(fetchByNetwork(network, station, car, plug)))
+                .orElse(null);
     }
 
     @SuppressWarnings("unchecked")
-    private String fetch(StationDto station, CarSpec car, String plug) {
+    private String fetchByOcmId(StationDto station, CarSpec car, String plug) {
         try {
-            String network = normalizeNetwork(station.operator(), station.name());
-            if (network == null) return null;
-
+            int power = Math.max(1, (int) station.stationKw());
             Map<String, Object> body = Map.of(
                 "data", Map.of(
                     "type", "charge_price_request",
                     "attributes", Map.of(
-                        "data_adapter", "going_electric",
+                        "data_adapter", "open_charge_map",
                         "station", Map.of(
-                            "network",       network,
-                            "charge_points", List.of(Map.of("power", (int) station.stationKw(), "plug", plug))
+                            "id",           station.ocmId(),
+                            "charge_points", List.of(Map.of("power", power, "plug", plug))
                         ),
                         "vehicle", Map.of(
                             "battery_range",     List.of(20, 80),
-                            "ac_charging_power", (int) car.maxAcKw(),
-                            "dc_charging_power", (int) car.maxDcKw()
+                            "ac_charging_power", Math.max(1, (int) car.maxAcKw()),
+                            "dc_charging_power", Math.max(1, (int) car.maxDcKw())
                         ),
                         "options", Map.of(
                             "provider_customer_tariffs", false,
@@ -75,42 +86,78 @@ public class ChargepriceService {
                     )
                 )
             );
-
-            Map<String, Object> resp = http.post()
-                    .uri(CP_URL)
-                    .header("Api-Key", apiKey)
-                    .contentType(MediaType.APPLICATION_JSON)
-                    .body(body)
-                    .retrieve()
-                    .body(Map.class);
-
-            if (resp == null) return null;
-
-            List<Map<String, Object>> data = (List<Map<String, Object>>) resp.get("data");
-            if (data == null || data.isEmpty()) return null;
-
-            // Pick tariff with lowest per-kWh price from price_distribution
-            return data.stream()
-                    .map(d -> (Map<String, Object>) d.get("attributes"))
-                    .filter(Objects::nonNull)
-                    .min(Comparator.comparingDouble(a -> {
-                        Map<?, ?> dist = (Map<?, ?>) a.get("price_distribution");
-                        return dist != null ? toDouble(dist.get("per_kwh")) : Double.MAX_VALUE;
-                    }))
-                    .map(a -> {
-                        Map<?, ?> dist     = (Map<?, ?>) a.get("price_distribution");
-                        String currency    = (String) a.getOrDefault("currency", "EUR");
-                        double perKwh      = dist != null ? toDouble(dist.get("per_kwh")) : 0;
-                        double totalPrice  = toDouble(a.get("price"));
-                        if (perKwh > 0)    return String.format("%.2f %s/kWh", perKwh, currency);
-                        if (totalPrice > 0) return String.format("%.2f %s", totalPrice, currency);
-                        return null;
-                    })
-                    .orElse(null);
-
+            return parseResponse(post(body));
         } catch (Exception e) {
             return null;
         }
+    }
+
+    @SuppressWarnings("unchecked")
+    private String fetchByNetwork(String network, StationDto station, CarSpec car, String plug) {
+        try {
+            int power = Math.max(1, (int) station.stationKw());
+            Map<String, Object> body = Map.of(
+                "data", Map.of(
+                    "type", "charge_price_request",
+                    "attributes", Map.of(
+                        "data_adapter", "going_electric",
+                        "station", Map.of(
+                            "network",       network,
+                            "charge_points", List.of(Map.of("power", power, "plug", plug))
+                        ),
+                        "vehicle", Map.of(
+                            "battery_range",     List.of(20, 80),
+                            "ac_charging_power", Math.max(1, (int) car.maxAcKw()),
+                            "dc_charging_power", Math.max(1, (int) car.maxDcKw())
+                        ),
+                        "options", Map.of(
+                            "provider_customer_tariffs", false,
+                            "max_monthly_fees",          0,
+                            "allow_unbalanced_load",     true
+                        )
+                    )
+                )
+            );
+            return parseResponse(post(body));
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    @SuppressWarnings("unchecked")
+    private Map<String, Object> post(Map<String, Object> body) {
+        return http.post()
+                .uri(CP_URL)
+                .header("Api-Key", apiKey)
+                .contentType(MediaType.APPLICATION_JSON)
+                .body(body)
+                .retrieve()
+                .body(Map.class);
+    }
+
+    @SuppressWarnings("unchecked")
+    private String parseResponse(Map<String, Object> resp) {
+        if (resp == null) return null;
+        List<Map<String, Object>> data = (List<Map<String, Object>>) resp.get("data");
+        if (data == null || data.isEmpty()) return null;
+
+        return data.stream()
+                .map(d -> (Map<String, Object>) d.get("attributes"))
+                .filter(Objects::nonNull)
+                .min(Comparator.comparingDouble(a -> {
+                    Map<?, ?> dist = (Map<?, ?>) a.get("price_distribution");
+                    return dist != null ? toDouble(dist.get("per_kwh")) : Double.MAX_VALUE;
+                }))
+                .map(a -> {
+                    Map<?, ?> dist    = (Map<?, ?>) a.get("price_distribution");
+                    String currency   = (String) a.getOrDefault("currency", "EUR");
+                    double perKwh     = dist != null ? toDouble(dist.get("per_kwh")) : 0;
+                    double totalPrice = toDouble(a.get("price"));
+                    if (perKwh > 0)     return String.format("%.2f %s/kWh", perKwh, currency);
+                    if (totalPrice > 0) return String.format("%.2f %s", totalPrice, currency);
+                    return null;
+                })
+                .orElse(null);
     }
 
     private String normalizeNetwork(String operator, String stationName) {

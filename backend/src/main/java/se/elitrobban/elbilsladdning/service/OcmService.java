@@ -68,6 +68,8 @@ public class OcmService {
             String cost    = str(s, "UsageCost", "");
             var    opInfo  = (Map<String, Object>) s.get("OperatorInfo");
             String op      = opInfo != null ? str(opInfo, "Title", "") : "";
+            Object idRaw   = s.get("ID");
+            String ocmId   = idRaw != null ? idRaw.toString() : null;
 
             var connsRaw = (List<Object>) s.get("Connections");
             if (connsRaw == null) return null;
@@ -108,7 +110,7 @@ public class OcmService {
                 default        -> bestType;
             };
 
-            return new StationDto(name, address, dist, stLat, stLon, maxEffKw, bestStationKw, connLabel, op, cost, null, ocmConnCount);
+            return new StationDto(name, address, dist, stLat, stLon, maxEffKw, bestStationKw, connLabel, op, cost, null, ocmConnCount, ocmId);
         } catch (Exception e) {
             return null;
         }

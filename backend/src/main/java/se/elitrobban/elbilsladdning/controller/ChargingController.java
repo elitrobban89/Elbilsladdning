@@ -32,7 +32,10 @@ import java.util.Deque;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 @RestController
 @RequestMapping("/api")
@@ -42,6 +45,9 @@ public class ChargingController {
     private static final long WINDOW_MS            = 60_000L;
     private static final int  STATIONS_RATE_LIMIT  = 10;
     private static final long STATIONS_WINDOW_MS   = 3_600_000L;
+
+    // Virtual threads: cheap for I/O-bound parallel HTTP calls (Java 21+)
+    private static final ExecutorService IO_POOL = Executors.newVirtualThreadPerTaskExecutor();
 
     private final ConcurrentHashMap<String, Deque<Long>> chatTimestamps     = new ConcurrentHashMap<>();
     private final ConcurrentHashMap<String, Deque<Long>> stationTimestamps  = new ConcurrentHashMap<>();
@@ -207,38 +213,57 @@ public class ChargingController {
 
         CarSpec car = CarDatabase.CARS.get(carIndex);
 
-        List<StationDto> stations = ocm.findNearby(lat, lon, car);
-        stations = sorted(stations, sort);
+        // Step 1: OCM + NOBIL in parallel — independent data sources
+        var ocmFuture   = CompletableFuture.supplyAsync(() -> ocm.findNearby(lat, lon, car), IO_POOL);
+        var nobilFuture = CompletableFuture.supplyAsync(() -> nobil.getStations(lat, lon), IO_POOL);
 
-        // Fetch NOBIL data in parallel with price enrichment (non-blocking fallback)
-        List<NobilService.NobilStation> nobilStations = nobil.getStations(lat, lon);
+        List<StationDto> allStations;
+        List<NobilService.NobilStation> nobilStations;
+        try {
+            allStations   = ocmFuture.get();
+            nobilStations = nobilFuture.get();
+        } catch (Exception e) {
+            allStations   = List.of();
+            nobilStations = List.of();
+        }
 
-        stations = stations.stream().limit(5).map(s -> {
-            // 1. Chargeprice (live, structured)
-            String price = chargeprice.getPricePerKwh(s, car);
+        final List<NobilService.NobilStation> nobilResult = nobilStations;
+        List<StationDto> top5 = sorted(allStations, sort).stream().limit(5).toList();
 
-            // 2. API Ninjas (live, free-text) — only if Chargeprice has nothing
-            if (price == null && apiNinjas.isEnabled() && !city.isBlank())
-                price = apiNinjas.getPricing(city, s.lat(), s.lon());
+        // Step 2: Price enrichment for all 5 stations in parallel
+        List<CompletableFuture<StationDto>> priceFutures = top5.stream().map(s ->
+            CompletableFuture.supplyAsync(() -> {
+                // 1. Chargeprice (live, OCM-ID first, then network name)
+                String price = chargeprice.getPricePerKwh(s, car);
 
-            // 3. Static operator table — match on operator name, then station name
-            if (price == null)
-                price = operatorPrices.getApproxPrice(s.operator(), s.name());
+                // 2. API Ninjas (live, free-text) — only if Chargeprice has nothing
+                if (price == null && apiNinjas.isEnabled() && !city.isBlank())
+                    price = apiNinjas.getPricing(city, s.lat(), s.lon());
 
-            // 4. Match with nearest NOBIL station within 150 m for connector count; fall back to OCM count
-            int connCount = nobilStations.stream()
-                    .filter(n -> NobilService.distanceKm(s.lat(), s.lon(), n.lat(), n.lon()) < 0.15)
-                    .mapToInt(NobilService.NobilStation::connectorCount)
-                    .max()
-                    .orElse(s.connectorCount());
+                // 3. Static operator table — match on operator name, then station name
+                if (price == null)
+                    price = operatorPrices.getApproxPrice(s.operator(), s.name());
 
-            String finalPrice = price != null ? price : s.chargepricePerKwh();
-            return new StationDto(s.name(), s.address(), s.distanceKm(),
-                                  s.lat(), s.lon(), s.maxEffKw(), s.stationKw(),
-                                  s.connectorType(), s.operator(), s.usageCost(),
-                                  finalPrice, connCount);
-        }).toList();
+                // 4. NOBIL connector count within 150 m; fall back to OCM count
+                int connCount = nobilResult.stream()
+                        .filter(n -> NobilService.distanceKm(s.lat(), s.lon(), n.lat(), n.lon()) < 0.15)
+                        .mapToInt(NobilService.NobilStation::connectorCount)
+                        .max()
+                        .orElse(s.connectorCount());
 
+                String finalPrice = price != null ? price : s.chargepricePerKwh();
+                return new StationDto(s.name(), s.address(), s.distanceKm(),
+                                      s.lat(), s.lon(), s.maxEffKw(), s.stationKw(),
+                                      s.connectorType(), s.operator(), s.usageCost(),
+                                      finalPrice, connCount, s.ocmId());
+            }, IO_POOL)
+        ).toList();
+
+        List<StationDto> stations = priceFutures.stream()
+                .map(CompletableFuture::join)
+                .toList();
+
+        // Step 3: Groq — needs enriched station + price data, runs last
         var groqResult = groq.recommend(car, stations, buildCostComparison(car));
 
         return ResponseEntity.ok(new StationResponse(car.name(), stations, groqResult.recommendation(), groqResult.funFact(), buildCarFact(car)));

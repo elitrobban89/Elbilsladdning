@@ -25,8 +25,9 @@ Live: [elitrobban.se/elbilsladdning](https://elitrobban.se/elbilsladdning/)
 - **Groq 429-fallback** — vid dagsgräns returneras regelbaserat svar (bästa stationen med km/kW) direkt utan AI-anrop; `quotaExceededUntil`-backoff nollställs automatiskt vid nästa lyckade anrop; chat-endpointen kontrollerar samma backoff-flagga
 - **Rekommendations-cache** — 30 min TTL per bil+stationskombination; rensas automatiskt vid >200 entries för att hålla minnesanvändningen i schack
 - **IP-begränsning på stationssök** — max 10 förfrågningar per timme och IP (sliding window), 429 med svensk feltext vid överskridning; IP-poster rensas i schemalagd task varje timme
-- **Visste du att** — AI-genererat bilfakta per sökning
-- **Roterande faktatabeller** — en av fyra tabeller visas slumpmässigt per sökning: värde för pengarna (km/100 tkr), snabbast DC-laddning, längst räckvidd, samt WLTP vs verklig räckvidd — alla 73 bilar visas i en scrollbar tabell med sticky header, den valda bilen markeras alltid med blå highlight; placeras under stationslistan
+- **Parallell exekvering** — OCM och NOBIL körs samtidigt; prisberikning för alla 5 stationer körs parallellt via Java 21 virtuella trådar (`newVirtualThreadPerTaskExecutor`); sparar ~1–2 s per sökning vid cold cache
+- **"Visste du att"-karusell** — roterande kortlek med AI-genererat bilfakta + 6 statiska fakta (Tesla Model Y mest sålda bil i Sverige 2024, IONITY 350 kW i Norden, Vattenfall InCharge 33 000+ punkter, vinterpåverkan 20–40 %, Tesla Supercharger öppet sedan 2023, Sveriges elbilsandel ~60 %); auto-roterar var 6:e sekund med klickbara punktnavigering; AI-faktan visas alltid som första kort om Groq returnerar ett
+- **Roterande faktatabeller** — alla fyra tabeller cyklar som en karusell under en tydlig "💡 Visste du att?"-avgränsare skild från stationslistan: värde för pengarna (km/100 tkr), snabbast DC-laddning, längst räckvidd och WLTP vs verklig räckvidd; föregående/nästa-pilar + punktnavigering + auto-rotate var 6:e sekund; alla 73 bilar scrollbara med sticky header, vald bil highlightad i blått
 - **Livepriser** — Chargeprice API + statisk operatörstabell täcker de flesta svenska nätverk
 - **NOBIL-integration** — hämtar antal laddpunkter per station (aktiveras med API-nyckel)
 - **Interaktiv karta** — Leaflet + OpenStreetMap (gratis, ingen API-nyckel, serveras lokalt utan CDN-beroende) visas ovanför stationslistan; färgkodade markörer: 🟢 grön ≥100 kW, 🟠 orange ≥22 kW, 🟣 lila långsam; din position som blå cirkel; klicka markör för popup med kW, kontakttyp, pris och avstånd; zoomnivå 17
@@ -60,11 +61,12 @@ Live: [elitrobban.se/elbilsladdning](https://elitrobban.se/elbilsladdning/)
 
 Laddpriser hämtas från tre källor i prioritetsordning:
 
-| Källa | Status | Beskrivning |
-|-------|--------|-------------|
-| **Chargeprice.app** | ✅ Aktiv | Demo-API-nyckel, täcker stora operatörer (IONITY, Recharge m.fl.) |
-| **OCM UsageCost-fält** | ✅ Används | Finns ibland i Open Charge Map-data |
-| **Statisk operatörstabell** | ✅ Fallback | Priser utan abonnemang, uppdaterade 2026-06-13 |
+| Källa | Prioritet | Beskrivning |
+|-------|-----------|-------------|
+| **Chargeprice — OCM-adapter** | 1 | Slår upp exakt station via OCM-ID (`data_adapter: "open_charge_map"`); mest träffsäkert |
+| **Chargeprice — nätverksnamn** | 2 | Matchar operatörsnamn mot Chargeprice Going Electric-databas; fallback om OCM-ID ger inget |
+| **OCM UsageCost-fält** | 3 | Finns ibland i Open Charge Map-data |
+| **Statisk operatörstabell** | 4 | Priser utan abonnemang, uppdaterade 2026-06-13 |
 
 Statisk tabell (utan abonnemang, avrundade): Recharge ~3,49, InCharge ~3,49, Circle K ~5,99, MER ~6,24, IONITY ~6,96, E.ON ~4,75, Allego ~6,50, Bee ~3,29 kr/kWh m.fl.
 Priser markerade med `~` är ungefärliga — verifiera alltid hos respektive operatör.
@@ -85,7 +87,7 @@ backend/                         Spring Boot-backend (Render)
     data/CarDatabase.java                73 bilmodeller med AC/DC-effekt, batteri, räckvidd och pris
     model/
       CarSpec.java                       Record — bilspecifikationer
-      StationDto.java                    Record — laddstation med priser och laddpunktsantal
+      StationDto.java                    Record — laddstation med priser, laddpunktsantal och OCM-ID
       StationResponse.java               Record — API-svar med stationer, AI-råd, funfact och carFact (värderanking)
       RouteStop.java                     Record — ett laddstop i en rutt (ordning, km från start, station)
       RouteResponse.java                 Record — ruttplaneringssvar (vägavstånd, antal stopp, laddstoppar)
