@@ -4,6 +4,8 @@ En webbaserad laddningsassistent för elbilar i Sverige. Hitta kompatibla laddst
 
 Live: [elitrobban.se/elbilsladdning](https://elitrobban.se/elbilsladdning/)
 
+> **Åtkomst kräver prenumeration** — tjänsten är bakom en betalvägg (`ev-charging.js` från CarAdvice-backenden). En prenumeration på **49 kr/mån** via [elitrobban.se/bilradgivning](https://elitrobban.se/bilradgivning/) ger tillgång till båda tjänsterna med samma konto.
+
 ---
 
 ## Funktioner
@@ -99,7 +101,7 @@ backend/                         Spring Boot-backend (Render)
       RouteService.java                  Beräknar laddstoppar längs rutt med haversine + OCM-sökning per etapp
       ApiNinjasService.java              API Ninjas-integration (reserv)
 
-elbilsladdning-web.html                  WordPress-snippet — endast HTML + CSS + <script src>
+elbilsladdning-web.html                  WordPress-snippet — HTML + CSS + script-taggar; innehåller ev-sub-bar och ev-content (display:none) som ev-charging.js kontrollerar
   src/main/resources/static/
     ev-app.js                            All frontend-logik — serveras av Render, aldrig av WordPress
     test.html                            Lokal testmiljö — öppnas via http://localhost:8080/test.html
