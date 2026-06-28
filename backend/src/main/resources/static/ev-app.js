@@ -1,6 +1,6 @@
 (function () {
   const API = window.EV_API_URL || "https://elbilsladdning.onrender.com";
-  let state = { lat: null, lon: null, city: "", sort: "speed", carIndex: null, cars: [], filter: "all", operatorFilter: null, lastData: null, favorites: [] };
+  let state = { lat: null, lon: null, city: "", sort: "speed", carIndex: null, cars: [], filter: "all", operatorFilter: null, lastData: null, lastRoute: null, lastCalc: null, favorites: [] };
   let evMap = null;
   let evMapMarkers = [];
   let evRoutePolyline = null;
@@ -1059,14 +1059,47 @@
 
   function buildStationContext() {
     const d = state.lastData;
-    if (!d || !d.stations || d.stations.length === 0) return null;
     const car = state.carIndex !== null ? state.cars[state.carIndex] : null;
     const battery = car?.batteryKwh ?? null;
-    const lines = ["Laddstationssökning för " + d.carName + (state.city ? " nära " + state.city : "") + ":"];
+    const contextParts = [];
+
+    // Selected car specs
+    if (car) {
+      const specParts = ["Vald bil: " + car.name];
+      if (battery) specParts.push("batteri " + battery + " kWh");
+      if (car.rangeKm) specParts.push("WLTP " + car.rangeKm + " km (~" + Math.round(car.rangeKm * 0.85) + " km verklig)");
+      if (car.maxDcKw) specParts.push("DC max " + car.maxDcKw + " kW");
+      if (car.maxAcKw) specParts.push("AC max " + car.maxAcKw + " kW");
+      if (car.priceKr) specParts.push("pris ~" + Math.round(car.priceKr / 1000) + " 000 kr");
+      contextParts.push(specParts.join(" · "));
+    }
+
+    // Charging time calculator
+    const calc = state.lastCalc;
+    if (calc) {
+      let calcStr = "Laddtidskalkylator: " + calc.carName + " · " + calc.fromPct + "% → " + calc.toPct + "% (" + calc.kwhCharge + " kWh) · " + calc.effKw + " kW effektiv · tid " + calc.timeStr;
+      if (calc.cost) calcStr += " · kostnad ~" + calc.cost + " kr";
+      if (calc.rangeAdded) calcStr += " · räckvidd tillkommer ~" + calc.rangeAdded + " km";
+      if (calc.stationName) calcStr += " · vid station: " + calc.stationName;
+      contextParts.push(calcStr);
+    }
+
+    // Carousel facts (top 3 per category from car database)
+    if (state.cars.length > 0) {
+      const allValid = state.cars.filter(c => c.priceKr > 0 && c.rangeKm > 0);
+      const topDc = state.cars.filter(c => c.maxDcKw > 0 && c.priceKr > 0).sort((a, b) => b.maxDcKw - a.maxDcKw).slice(0, 3);
+      const topRange = allValid.sort((a, b) => b.rangeKm - a.rangeKm).slice(0, 3);
+      if (topDc.length) contextParts.push("Snabbaste DC (topp 3): " + topDc.map(c => c.name + " " + c.maxDcKw + " kW").join(", "));
+      if (topRange.length) contextParts.push("Längst räckvidd (topp 3): " + topRange.map(c => c.name + " " + c.rangeKm + " km").join(", "));
+    }
+
+    if (!d || !d.stations || d.stations.length === 0) {
+      return contextParts.length ? contextParts.join("\n") : null;
+    }
+    contextParts.push("--- LADDSTATIONER (" + (state.city || "din position") + ") ---");
+    contextParts.push("Bil i sökning: " + d.carName);
     if (battery) {
-      const homeMin = Math.round(battery * 1.5);
-      const homeMax = Math.round(battery * 3.5);
-      lines.push("Hemmaladdning (billigaste alternativet): ~1,50–3,50 kr/kWh · full laddning ~" + homeMin + "–" + homeMax + " kr");
+      contextParts.push("Hemmaladdning (billigaste): ~1,50–3,50 kr/kWh · full laddning ~" + Math.round(battery * 1.5) + "–" + Math.round(battery * 3.5) + " kr");
     }
     const stationsSorted = d.stations.slice(0, 5).map(function(s) {
       const raw = s.chargepricePerKwh || s.usageCost || "";
@@ -1078,12 +1111,31 @@
     stationsSorted.forEach(function(s, i) {
       const priceStr = s.chargepricePerKwh || s.usageCost || "okänt pris";
       const fullCost = (battery && s.priceKr) ? " · full laddning ~" + Math.round(battery * s.priceKr) + " kr" : "";
-      lines.push((i+1) + ". " + s.name + " — " + s.distanceKm.toFixed(1) + " km — " + Math.round(s.maxEffKw) + " kW " + s.connectorType + " — " + priceStr + fullCost);
+      contextParts.push((i+1) + ". " + s.name + " — " + s.distanceKm.toFixed(1) + " km — " + Math.round(s.maxEffKw) + " kW " + s.connectorType + " — " + priceStr + fullCost);
     });
     const cheapest = stationsSorted.filter(s => s.priceKr).sort((a, b) => a.priceKr - b.priceKr)[0];
-    if (cheapest) lines.push("\nBilligaste publik station i listan: " + cheapest.name + " (" + (cheapest.chargepricePerKwh || cheapest.usageCost) + ", " + cheapest.distanceKm.toFixed(1) + " km bort)");
-    if (d.recommendation) lines.push("\nAI-rekommendation: " + d.recommendation);
-    return lines.join("\n");
+    if (cheapest) contextParts.push("Billigaste publik station: " + cheapest.name + " (" + (cheapest.chargepricePerKwh || cheapest.usageCost) + ", " + cheapest.distanceKm.toFixed(1) + " km bort)");
+    if (d.recommendation) contextParts.push("AI-rekommendation: " + d.recommendation);
+    if (d.carFact) contextParts.push("Faktaruta visad: " + d.carFact);
+
+    const r = state.lastRoute;
+    if (r) {
+      contextParts.push("--- PLANERAD RUTT ---");
+      const durStr = r.durationMin ? " (~" + Math.floor(r.durationMin / 60) + " tim " + (r.durationMin % 60) + " min körtid)" : "";
+      contextParts.push("Från: " + r.startDisplay + " → Till: " + r.destination + " · " + r.distanceKm + " km" + durStr + " · Bil: " + r.carName);
+      if (r.stopsNeeded === 0) {
+        contextParts.push("Bilen klarar sträckan utan laddningsstopp.");
+      } else {
+        contextParts.push("Antal laddningsstopp längs rutten: " + r.stopsNeeded);
+        r.stops.forEach(function(stop, i) {
+          const s = stop.station;
+          const price = s.chargepricePerKwh || s.usageCost || "okänt pris";
+          contextParts.push("Stopp " + (i+1) + ": " + s.name + " · " + Math.round(s.maxEffKw) + " kW " + s.connectorType + " · " + price + " · " + stop.distanceFromStartKm + " km från start");
+        });
+      }
+    }
+
+    return contextParts.join("\n");
   }
 
   function saveChatHistory() {
@@ -1285,6 +1337,12 @@
     const realRange  = car.rangeKm ? Math.round(car.rangeKm * 0.85) : null;
     const rangeAdded = realRange   ? Math.round(realRange * (toPct - fromPct) / 100) : null;
 
+    state.lastCalc = {
+      carName: car.name, fromPct, toPct, kwhCharge: Math.round(kwhCharge * 10) / 10,
+      effKw: Math.round(effKw), timeStr, cost: cost || null, rangeAdded: rangeAdded || null,
+      stationName: dcStation?.name || null
+    };
+
     const cols = rangeAdded ? 3 : 2;
     resultEl.innerHTML = `<div style="display:grid;grid-template-columns:repeat(${cols},1fr);gap:10px;text-align:center;">
       <div>
@@ -1465,6 +1523,7 @@
       : '';
 
     if (stopsNeeded === 0) {
+      state.lastRoute = { destination: eg.display, startDisplay: sg.display, distanceKm: displayKm, durationMin: osrm?.durationMin ?? null, carName, stops: [], stopsNeeded: 0 };
       resultEl.innerHTML = `<div style="color:#86efac;font-size:.85rem;padding:10px 14px;background:rgba(34,197,94,.07);border:1px solid rgba(34,197,94,.2);border-radius:10px;margin-top:10px;">
         ✅ Din ${carName} klarar ${displayKm} km utan laddning!${driveStr ? ' Körtid' + driveStr + '.' : ''}
       </div>`;
@@ -1476,6 +1535,8 @@
       </div>`;
       return;
     }
+
+    state.lastRoute = { destination: eg.display, startDisplay: sg.display, distanceKm: displayKm, durationMin: osrm?.durationMin ?? null, carName, stops, stopsNeeded };
 
     let html = `<div style="font-size:.72rem;color:rgba(147,197,253,.5);margin:10px 0 12px;">${displayKm} km${driveStr} · ${stopsNeeded} laddning${stopsNeeded !== 1 ? 'ar' : ''} rekommenderat · ${carName}</div>`;
     html += '<div class="ev-route-timeline">';
