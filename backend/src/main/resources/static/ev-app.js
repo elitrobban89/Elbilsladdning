@@ -775,97 +775,110 @@
       .ev-chat-fab:hover{transform:scale(1.1);box-shadow:0 6px 22px rgba(29,78,216,.7);}
       .ev-chat-panel {
         position:fixed;bottom:92px;right:24px;z-index:9998;
-        width:380px;max-height:540px;
-        background:rgba(6,12,26,0.72);
-        backdrop-filter:blur(24px);-webkit-backdrop-filter:blur(24px);
-        border:1px solid rgba(147,197,253,0.18);border-radius:20px;
-        box-shadow:0 8px 48px rgba(0,0,0,.65),0 0 0 1px rgba(255,255,255,0.04) inset;
+        width:390px;max-height:560px;
+        background:rgba(5,10,24,0.82);
+        backdrop-filter:blur(32px) saturate(1.4);-webkit-backdrop-filter:blur(32px) saturate(1.4);
+        border:1px solid rgba(147,197,253,0.22);border-radius:22px;
+        box-shadow:0 12px 60px rgba(0,0,0,.75),0 0 0 1px rgba(255,255,255,0.05) inset,0 1px 0 rgba(147,197,253,0.12) inset;
         display:flex;flex-direction:column;overflow:hidden;
         font-family:inherit;
+        animation:ev-panel-in .2s cubic-bezier(.22,1,.36,1);
       }
+      @keyframes ev-panel-in{from{opacity:0;transform:translateY(12px) scale(.97)}to{opacity:1;transform:none}}
       .ev-chat-header {
-        background:linear-gradient(135deg,rgba(30,58,138,0.85),rgba(29,78,216,0.75));
-        backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);
-        border-bottom:1px solid rgba(147,197,253,0.15);
-        color:#fff;padding:13px 16px;
+        background:linear-gradient(135deg,rgba(17,40,110,0.95),rgba(29,78,216,0.88));
+        backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);
+        border-bottom:1px solid rgba(147,197,253,0.18);
+        color:#fff;padding:14px 16px 13px;
         display:flex;align-items:center;justify-content:space-between;
-        font-weight:700;font-size:14px;flex-shrink:0;gap:8px;
+        flex-shrink:0;gap:8px;
       }
+      .ev-chat-header-title { display:flex;flex-direction:column;gap:1px; }
+      .ev-chat-header-name { font-weight:700;font-size:14px;display:flex;align-items:center;gap:7px; }
+      .ev-chat-header-online {
+        width:7px;height:7px;border-radius:50%;background:#22c55e;flex-shrink:0;
+        box-shadow:0 0 6px rgba(34,197,94,0.8);
+        animation:ev-pulse-green 2s ease-in-out infinite;
+      }
+      @keyframes ev-pulse-green{0%,100%{box-shadow:0 0 6px rgba(34,197,94,0.8)}50%{box-shadow:0 0 12px rgba(34,197,94,1)}}
+      .ev-chat-header-sub { font-size:10px;font-weight:500;color:rgba(147,197,253,0.65);letter-spacing:.04em; }
       .ev-chat-header-actions { display:flex;align-items:center;gap:6px; }
       .ev-chat-header-clear {
-        background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.18);
-        color:rgba(255,255,255,0.75);font-size:11px;font-weight:600;padding:3px 9px;
+        background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.16);
+        color:rgba(255,255,255,0.7);font-size:11px;font-weight:600;padding:4px 10px;
         border-radius:20px;cursor:pointer;transition:all .15s;white-space:nowrap;
       }
-      .ev-chat-header-clear:hover { background:rgba(255,255,255,0.16);color:#fff; }
+      .ev-chat-header-clear:hover { background:rgba(255,255,255,0.15);color:#fff;border-color:rgba(255,255,255,0.28); }
       .ev-chat-header-close {
-        background:none;border:none;color:rgba(255,255,255,0.7);font-size:20px;
-        cursor:pointer;padding:0 2px;line-height:1;transition:color .12s;
+        background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.13);
+        color:rgba(255,255,255,0.7);font-size:15px;width:26px;height:26px;
+        border-radius:50%;cursor:pointer;display:flex;align-items:center;justify-content:center;
+        padding:0;line-height:1;transition:all .12s;
       }
-      .ev-chat-header-close:hover { color:#fff; }
+      .ev-chat-header-close:hover { background:rgba(255,255,255,0.18);color:#fff; }
       .ev-chat-messages {
-        flex:1;overflow-y:auto;padding:14px 12px;
-        display:flex;flex-direction:column;gap:10px;
+        flex:1;overflow-y:auto;padding:16px 13px;
+        display:flex;flex-direction:column;gap:11px;
         background:transparent;min-height:0;
       }
-      .ev-chat-messages::-webkit-scrollbar { width:4px; }
+      .ev-chat-messages::-webkit-scrollbar { width:3px; }
       .ev-chat-messages::-webkit-scrollbar-track { background:transparent; }
-      .ev-chat-messages::-webkit-scrollbar-thumb { background:rgba(147,197,253,0.25);border-radius:4px; }
+      .ev-chat-messages::-webkit-scrollbar-thumb { background:rgba(147,197,253,0.2);border-radius:3px; }
       .ev-chat-bubble {
-        max-width:85%;padding:10px 13px;border-radius:14px;
-        font-size:13px;line-height:1.6;word-break:break-word;
+        max-width:84%;padding:10px 14px;border-radius:16px;
+        font-size:13px;line-height:1.65;word-break:break-word;
       }
       .ev-chat-bubble.bot {
-        background:rgba(13,21,38,0.7);
+        background:rgba(10,18,40,0.75);
         backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);
-        border:1px solid rgba(147,197,253,0.15);
-        border-radius:4px 14px 14px 14px;align-self:flex-start;color:#e2e8f0;
+        border:1px solid rgba(147,197,253,0.14);
+        border-radius:4px 16px 16px 16px;align-self:flex-start;color:#dde8ff;
+        box-shadow:0 2px 12px rgba(0,0,0,.25);
       }
       .ev-chat-bubble.bot strong { color:#93c5fd; }
       .ev-chat-bubble.bot ul { margin:6px 0 2px 16px;padding:0;display:flex;flex-direction:column;gap:3px; }
       .ev-chat-bubble.bot li { list-style:disc; }
       .ev-chat-bubble.user {
-        background:linear-gradient(135deg,rgba(29,78,216,0.9),rgba(59,130,246,0.85));
-        backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);
-        border:1px solid rgba(147,197,253,0.2);
-        color:#fff;border-radius:14px 14px 4px 14px;align-self:flex-end;
+        background:linear-gradient(135deg,#1d4ed8,#3b82f6);
+        border:none;
+        color:#fff;border-radius:16px 16px 4px 16px;align-self:flex-end;
+        box-shadow:0 3px 14px rgba(59,130,246,0.4);
       }
       .ev-chat-quick {
-        padding:10px 12px 4px;display:flex;flex-wrap:wrap;gap:7px;flex-shrink:0;
-        background:rgba(6,12,26,0.5);border-top:1px solid rgba(147,197,253,0.1);
+        padding:10px 13px 6px;display:flex;flex-wrap:wrap;gap:7px;flex-shrink:0;
+        background:rgba(4,8,20,0.55);border-top:1px solid rgba(147,197,253,0.1);
       }
       .ev-chat-quick-btn {
-        background:rgba(59,130,246,0.1);border:1px solid rgba(147,197,253,0.25);color:#93c5fd;
-        border-radius:20px;padding:5px 12px;font-size:12px;font-weight:600;
+        background:rgba(59,130,246,0.1);border:1px solid rgba(147,197,253,0.22);color:#93c5fd;
+        border-radius:20px;padding:5px 13px;font-size:12px;font-weight:600;
         cursor:pointer;transition:all .15s;white-space:nowrap;
         backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px);
       }
-      .ev-chat-quick-btn:hover { background:rgba(59,130,246,0.35);color:#fff;border-color:rgba(147,197,253,0.5); }
+      .ev-chat-quick-btn:hover { background:rgba(59,130,246,0.28);color:#fff;border-color:rgba(147,197,253,0.5); }
       .ev-chat-input-row {
-        display:flex;gap:8px;padding:10px 12px;
+        display:flex;gap:8px;padding:10px 13px 11px;
         border-top:1px solid rgba(147,197,253,0.1);
-        background:rgba(6,12,26,0.5);flex-shrink:0;
+        background:rgba(4,8,20,0.55);flex-shrink:0;
       }
       .ev-chat-input {
-        flex:1;border:1px solid rgba(147,197,253,0.2);border-radius:22px;
-        padding:8px 14px;font-size:13px;outline:none;
-        background:rgba(13,21,38,0.6);color:#f0f4ff;transition:border-color .15s,box-shadow .15s;
-        backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px);
+        flex:1;border:1.5px solid rgba(147,197,253,0.18);border-radius:22px;
+        padding:9px 15px;font-size:13px;outline:none;
+        background:rgba(10,18,40,0.7);color:#f0f4ff;transition:border-color .15s,box-shadow .15s;
       }
-      .ev-chat-input::placeholder { color:rgba(200,215,255,0.35); }
-      .ev-chat-input:focus { border-color:rgba(147,197,253,0.5);box-shadow:0 0 0 3px rgba(59,130,246,0.12); }
+      .ev-chat-input::placeholder { color:rgba(200,215,255,0.3); }
+      .ev-chat-input:focus { border-color:rgba(147,197,253,0.55);box-shadow:0 0 0 3px rgba(59,130,246,0.15); }
       .ev-chat-send {
-        width:38px;height:38px;border-radius:50%;
+        width:40px;height:40px;border-radius:50%;
         background:linear-gradient(135deg,#1d4ed8,#3b82f6);
         color:#fff;border:none;cursor:pointer;
         font-size:16px;display:flex;align-items:center;justify-content:center;
         flex-shrink:0;transition:all .15s;
-        box-shadow:0 2px 10px rgba(59,130,246,0.35);
+        box-shadow:0 2px 12px rgba(59,130,246,0.45);
       }
-      .ev-chat-send:hover { background:linear-gradient(135deg,#2563eb,#60a5fa);box-shadow:0 4px 14px rgba(59,130,246,0.5); }
+      .ev-chat-send:hover { background:linear-gradient(135deg,#2563eb,#60a5fa);box-shadow:0 4px 18px rgba(59,130,246,0.6);transform:scale(1.06); }
       .ev-chat-typing { display:flex;gap:4px;align-items:center;padding:4px 0; }
       .ev-chat-typing span {
-        width:7px;height:7px;border-radius:50%;background:rgba(147,197,253,0.5);
+        width:7px;height:7px;border-radius:50%;background:rgba(147,197,253,0.45);
         animation:ev-bounce .9s infinite;display:inline-block;
       }
       .ev-chat-typing span:nth-child(2) { animation-delay:.15s; }
@@ -874,7 +887,7 @@
       .ev-chat-cursor{display:inline-block;width:2px;height:13px;background:#93c5fd;margin-left:2px;border-radius:1px;animation:ev-cursor-blink .55s steps(1) infinite;vertical-align:middle;}
       @keyframes ev-cursor-blink{0%,100%{opacity:1}50%{opacity:0}}
       .ev-chat-feedback{display:flex;gap:6px;margin-top:6px;padding-left:2px;align-items:center;}
-      .ev-chat-thumb{background:none;border:1px solid rgba(147,197,253,0.18);color:rgba(147,197,253,0.38);font-size:12px;padding:2px 8px;border-radius:10px;cursor:pointer;transition:all .15s;line-height:1.5;}
+      .ev-chat-thumb{background:none;border:1px solid rgba(147,197,253,0.16);color:rgba(147,197,253,0.35);font-size:12px;padding:2px 8px;border-radius:10px;cursor:pointer;transition:all .15s;line-height:1.5;}
       .ev-chat-thumb:hover{border-color:rgba(147,197,253,0.5);color:#93c5fd;}
       .ev-chat-thumb.voted{border-color:rgba(147,197,253,0.6);color:#93c5fd;background:rgba(147,197,253,0.08);}
       .ev-chat-retry{background:none;border:1px solid rgba(239,68,68,0.3);color:rgba(239,68,68,0.65);font-size:11px;font-weight:600;padding:4px 11px;border-radius:20px;cursor:pointer;margin-top:7px;display:inline-block;transition:all .15s;}
@@ -932,7 +945,12 @@
       </div>
       <div class="ev-chat-panel" id="ev-chat-panel" style="display:none;">
         <div class="ev-chat-header">
-          <span>⚡ EV-Assistenten</span>
+          <div class="ev-chat-header-title">
+            <div class="ev-chat-header-name">
+              <span class="ev-chat-header-online"></span>⚡ EV-Assistenten
+            </div>
+            <div class="ev-chat-header-sub">AI • Laddning &amp; Elbilar</div>
+          </div>
           <div class="ev-chat-header-actions">
             <button class="ev-chat-header-clear" id="ev-chat-clear">Rensa</button>
             <button class="ev-chat-header-close" id="ev-chat-close">✕</button>
@@ -943,11 +961,13 @@
           <button class="ev-chat-quick-btn" data-q="Ge mig råd för att köpa elbil">🚗 Elbilsköp</button>
           <button class="ev-chat-quick-btn" data-q="Vilken elbil laddar snabbast med DC?">⚡ Snabbaste DC</button>
           <button class="ev-chat-quick-btn" data-q="Vilken elbil har längst räckvidd?">🛣️ Räckvidd</button>
-          <button class="ev-chat-quick-btn" data-q="Vilken elbil ger bäst värde för pengarna?">💰 Bäst värde</button>
+          <button class="ev-chat-quick-btn" data-q="Var laddar jag billigast?">💰 Billigast</button>
         </div>
         <div class="ev-chat-input-row">
-          <input class="ev-chat-input" id="ev-chat-input" type="text" placeholder="Ställ en fråga…" autocomplete="off" />
-          <button class="ev-chat-send" id="ev-chat-send">➤</button>
+          <input class="ev-chat-input" id="ev-chat-input" type="text" placeholder="Skriv en fråga…" autocomplete="off" />
+          <button class="ev-chat-send" id="ev-chat-send">
+            <svg viewBox="0 0 20 20" width="18" height="18" fill="currentColor"><path d="M2 10.5l15-8-5 8 5 8z"/><path d="M17 2.5L9 10.5"/></svg>
+          </button>
         </div>
       </div>
     `;
@@ -1040,10 +1060,28 @@
   function buildStationContext() {
     const d = state.lastData;
     if (!d || !d.stations || d.stations.length === 0) return null;
+    const car = state.carIndex !== null ? state.cars[state.carIndex] : null;
+    const battery = car?.batteryKwh ?? null;
     const lines = ["Laddstationssökning för " + d.carName + (state.city ? " nära " + state.city : "") + ":"];
-    d.stations.slice(0, 5).forEach(function(s, i) {
-      lines.push((i+1) + ". " + s.name + " — " + s.distanceKm.toFixed(1) + " km — " + Math.round(s.maxEffKw) + " kW " + s.connectorType + " — " + (s.chargepricePerKwh || s.usageCost || "okänt pris"));
+    if (battery) {
+      const homeMin = Math.round(battery * 1.5);
+      const homeMax = Math.round(battery * 3.5);
+      lines.push("Hemmaladdning (billigaste alternativet): ~1,50–3,50 kr/kWh · full laddning ~" + homeMin + "–" + homeMax + " kr");
+    }
+    const stationsSorted = d.stations.slice(0, 5).map(function(s) {
+      const raw = s.chargepricePerKwh || s.usageCost || "";
+      const isEur = raw.includes("EUR");
+      const num = raw.match(/[\d,.]+/)?.[0] ? parseFloat(raw.match(/[\d,.]+/)[0].replace(",",".")) : null;
+      const priceKr = num ? (isEur ? num * 11.5 : num) : null;
+      return Object.assign({}, s, { priceKr: priceKr });
     });
+    stationsSorted.forEach(function(s, i) {
+      const priceStr = s.chargepricePerKwh || s.usageCost || "okänt pris";
+      const fullCost = (battery && s.priceKr) ? " · full laddning ~" + Math.round(battery * s.priceKr) + " kr" : "";
+      lines.push((i+1) + ". " + s.name + " — " + s.distanceKm.toFixed(1) + " km — " + Math.round(s.maxEffKw) + " kW " + s.connectorType + " — " + priceStr + fullCost);
+    });
+    const cheapest = stationsSorted.filter(s => s.priceKr).sort((a, b) => a.priceKr - b.priceKr)[0];
+    if (cheapest) lines.push("\nBilligaste publik station i listan: " + cheapest.name + " (" + (cheapest.chargepricePerKwh || cheapest.usageCost) + ", " + cheapest.distanceKm.toFixed(1) + " km bort)");
     if (d.recommendation) lines.push("\nAI-rekommendation: " + d.recommendation);
     return lines.join("\n");
   }

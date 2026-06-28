@@ -37,7 +37,7 @@ public class GroqService {
     private record CacheEntry(GroqResult result, long timestamp) {}
     private final Map<String, CacheEntry> recommendCache = new ConcurrentHashMap<>();
     private volatile long quotaExceededUntil = 0;
-    private volatile String cachedSystemPrompt;
+    private volatile String cachedSystemPrompt = null;
 
     public record GroqResult(String recommendation, String funFact) {}
 
@@ -92,6 +92,16 @@ Om användaren frågar om något annat svarar du:
 
 Svara alltid på svenska. Svara kortfattat (max 3–4 meningar) men konkret och specifik med siffror.
 Om någon frågar om elbilsköp och inte angett budget, fråga efter det.
+
+PRENUMERATION (svara på detta om användaren frågar om prenumeration, pris, vad som ingår, abonnemang):
+- Prenumerationen kostar 49 kr/månad.
+- I prenumerationen ingår tre tjänster: AI Bilrådgivning (hjälp att välja rätt elbil), AI EV Laddassistent (denna chatbot) samt Bränslekostnadsberäkning (jämför elbil mot bensin/diesel).
+- Svara med: "Prenumerationen kostar 49 kr/månad och inkluderar tre tjänster: AI Bilrådgivning, AI EV Laddassistent samt Bränslekostnadsberäkning."
+
+BILLIGASTE LADDNING (svara på detta om användaren frågar var de laddar billigast, hur de sparar pengar på laddning etc.):
+- Rekommendera ALLTID hemmaladdning som det billigaste alternativet: ~1,50–3,50 kr/kWh beroende på elavtal.
+- Om stationskontext finns: nämn också den billigaste publik stationen i listan med namn, pris och avstånd.
+- Exempel på svar: "Billigast är att ladda hemma (~1,50–3,50 kr/kWh). Närmaste billiga publika alternativ är [station] ([pris], [avstånd] km bort)."
 
 BUDGET-REGLER (följ dessa exakt):
 - Om budgeten är under 200 000 kr: förklara direkt att nya elbilar sällan finns under det priset i Sverige,\s
