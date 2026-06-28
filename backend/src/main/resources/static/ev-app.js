@@ -46,7 +46,11 @@
     ".ev-fact-nav{background:rgba(59,130,246,0.08);border:1.5px solid rgba(59,130,246,0.2);border-radius:8px;color:rgba(147,197,253,0.7);font-size:20px;width:32px;height:32px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .15s;padding:0;line-height:1;}" +
     ".ev-fact-nav:hover{background:rgba(59,130,246,0.2);color:#93c5fd;}" +
     ".ev-fact-dot{width:8px;height:8px;border-radius:50%;border:none;background:rgba(147,197,253,0.2);cursor:pointer;padding:0;transition:all .25s;flex-shrink:0;}" +
-    ".ev-fact-dot.ev-fact-dot-active{background:#3b82f6;width:20px;border-radius:4px;}";
+    ".ev-fact-dot.ev-fact-dot-active{background:#3b82f6;width:20px;border-radius:4px;}" +
+    "@keyframes ev-slide-in{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}" +
+    "@keyframes ev-slide-out{from{opacity:1;transform:none}to{opacity:0;transform:translateY(-8px)}}" +
+    ".ev-slide-entering{animation:ev-slide-in .5s cubic-bezier(.22,1,.36,1) forwards;}" +
+    ".ev-slide-leaving{animation:ev-slide-out .35s ease forwards;pointer-events:none;position:absolute;top:0;left:0;width:100%;}";
     document.head.appendChild(s);
   })();
 
@@ -385,7 +389,7 @@
 
       html += `
         <div class="ev-funfact-card" id="ev-funfact-carousel" style="flex-direction:column;gap:0;">
-          <div id="ev-funfact-slides">${fSlideHtml}</div>
+          <div id="ev-funfact-slides" style="position:relative;min-height:48px;">${fSlideHtml}</div>
           <div style="display:flex;justify-content:center;gap:6px;margin-top:10px;">${fDotHtml}</div>
         </div>`;
     }
@@ -485,7 +489,7 @@
           <div class="ev-divider-line"></div>
         </div>
         <div class="ev-funfact-card" id="ev-fact-carousel" style="flex-direction:column;gap:0;">
-          <div id="ev-fact-slides">${slides}</div>
+          <div id="ev-fact-slides" style="position:relative;">${slides}</div>
           <div style="display:flex;align-items:center;justify-content:space-between;margin-top:12px;">
             <button class="ev-fact-nav" id="ev-fact-prev">‹</button>
             <div style="display:flex;gap:6px;">${dots}</div>
@@ -687,19 +691,38 @@
       });
     });
 
+    function evFadeSlide(slides, dots, next, total) {
+      const prev = slides[next._prev !== undefined ? next._prev : -1];
+      slides.forEach((s, i) => {
+        if (i === next._idx) {
+          s.style.display = 'flex';
+          s.classList.remove('ev-slide-leaving');
+          s.classList.add('ev-slide-entering');
+          setTimeout(() => s.classList.remove('ev-slide-entering'), 550);
+        } else if (s === prev) {
+          s.classList.add('ev-slide-leaving');
+          setTimeout(() => { s.style.display = 'none'; s.classList.remove('ev-slide-leaving'); }, 360);
+        } else {
+          s.style.display = 'none';
+        }
+      });
+      dots.forEach((d, i) => d.classList.toggle('ev-fact-dot-active', i === next._idx));
+    }
+
     const funfactCarousel = document.getElementById('ev-funfact-carousel');
     if (funfactCarousel) {
       let fc = 0;
-      const fSlides = funfactCarousel.querySelectorAll('.ev-funfact-slide');
-      const fDots   = funfactCarousel.querySelectorAll('.ev-fact-dot');
+      const fSlides = Array.from(funfactCarousel.querySelectorAll('.ev-funfact-slide'));
+      const fDots   = Array.from(funfactCarousel.querySelectorAll('.ev-fact-dot'));
       const ftotal  = fSlides.length;
       let ftimer;
       function showF(n) {
+        const prev = fc;
         fc = (n + ftotal) % ftotal;
-        fSlides.forEach((s, i) => { s.style.display = i === fc ? 'flex' : 'none'; });
-        fDots.forEach((d, i) => { d.classList.toggle('ev-fact-dot-active', i === fc); });
+        fSlides[fc]._idx = fc; fSlides[fc]._prev = prev;
+        evFadeSlide(fSlides, fDots, fSlides[fc], ftotal);
       }
-      function startF() { clearInterval(ftimer); ftimer = setInterval(() => showF(fc + 1), 6000); }
+      function startF() { clearInterval(ftimer); ftimer = setInterval(() => showF(fc + 1), 9000); }
       fDots.forEach((d, i) => d.addEventListener('click', () => { showF(i); startF(); }));
       startF();
     }
@@ -707,20 +730,31 @@
     const carousel = document.getElementById('ev-fact-carousel');
     if (carousel) {
       let current = 0;
-      const allSlides = carousel.querySelectorAll('.ev-fact-slide');
-      const allDots   = carousel.querySelectorAll('.ev-fact-dot');
+      const allSlides = Array.from(carousel.querySelectorAll('.ev-fact-slide'));
+      const allDots   = Array.from(carousel.querySelectorAll('.ev-fact-dot'));
       const total = allSlides.length;
       let timer = null;
 
       function showSlide(n) {
+        const prev = current;
         current = (n + total) % total;
-        allSlides.forEach((s, i) => { s.style.display = i === current ? 'flex' : 'none'; });
-        allDots.forEach((d, i) => { d.classList.toggle('ev-fact-dot-active', i === current); });
+        allSlides[current]._idx = current; allSlides[current]._prev = prev;
+        evFadeSlide(allSlides, allDots, allSlides[current], total);
+        scrollToSelectedRow();
       }
 
       function startAuto() {
         clearInterval(timer);
-        timer = setInterval(() => showSlide(current + 1), 6000);
+        timer = setInterval(() => showSlide(current + 1), 9000);
+      }
+
+      function scrollToSelectedRow() {
+        const activeSlide = allSlides[current];
+        if (!activeSlide) return;
+        const highlighted = activeSlide.querySelector('tr[style*="rgba(59,130,246"]');
+        if (highlighted) {
+          setTimeout(() => highlighted.scrollIntoView({ behavior: 'smooth', block: 'nearest' }), 200);
+        }
       }
 
       carousel.querySelector('#ev-fact-prev')?.addEventListener('click', () => { showSlide(current - 1); startAuto(); });
