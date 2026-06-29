@@ -1598,6 +1598,68 @@
     html += `<div class="ev-route-stop">${dot('end','B')}<div class="ev-route-info"><div class="ev-route-name">${eg.display}</div><div class="ev-route-meta">Destination · ${Math.round(totalDistanceKm)} km</div></div></div>`;
     html += '</div>';
     resultEl.innerHTML = html;
+    triggerRouteProactiveMessage();
+  }
+
+  async function triggerRouteProactiveMessage() {
+    const context = buildStationContext();
+    const trigger = "Jag har precis sökt en rutt. Berätta kort om rutten och laddstoppet.";
+    const messages = [...chatHistory.slice(-4), { role: "user", content: trigger }];
+
+    const panel    = document.getElementById("ev-chat-panel");
+    const fabLabel = document.querySelector(".ev-chat-fab-label");
+    if (fabLabel) fabLabel.textContent = "💬 Ny info om din rutt!";
+
+    if (panel && panel.style.display === "none") {
+      panel.style.display = "flex";
+      const input = document.getElementById("ev-chat-input");
+      if (input) input.focus();
+    }
+    const quickEl = document.getElementById("ev-chat-quick");
+    if (quickEl) quickEl.style.display = "none";
+
+    let resp;
+    try {
+      resp = await fetch(`${API}/api/chat/stream`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ messages, context })
+      });
+    } catch (_) {
+      if (fabLabel) fabLabel.textContent = "✨ Fråga AI";
+      return;
+    }
+    if (!resp.ok || !resp.body) {
+      if (fabLabel) fabLabel.textContent = "✨ Fråga AI";
+      return;
+    }
+
+    const msgsEl = document.getElementById("ev-chat-messages");
+    const outer  = document.createElement("div");
+    const bubble = document.createElement("div");
+    bubble.className = "ev-chat-bubble bot";
+    outer.appendChild(bubble);
+    msgsEl.appendChild(outer);
+    msgsEl.scrollTop = msgsEl.scrollHeight;
+
+    const reader  = resp.body.getReader();
+    const decoder = new TextDecoder();
+    let fullText  = "";
+    try {
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        decoder.decode(value, { stream: true }).split("\n").forEach(line => {
+          if (!line.startsWith("data: ")) return;
+          const d = line.slice(6).trim();
+          if (d === "[DONE]") return;
+          try { fullText += JSON.parse(d); bubble.innerHTML = chatMarkdown(fullText); msgsEl.scrollTop = msgsEl.scrollHeight; } catch(e) {}
+        });
+      }
+    } catch(_) {}
+
+    if (fullText) { chatHistory.push({ role: "assistant", content: fullText }); saveChatHistory(); }
+    if (fabLabel) setTimeout(() => { fabLabel.textContent = "✨ Fråga AI"; }, 10000);
   }
 
   initChat();
