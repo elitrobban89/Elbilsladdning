@@ -753,9 +753,13 @@
         const activeSlide = allSlides[current];
         if (!activeSlide) return;
         const highlighted = activeSlide.querySelector('tr[style*="rgba(59,130,246"]');
-        if (highlighted) {
-          setTimeout(() => highlighted.scrollIntoView({ behavior: 'smooth', block: 'nearest' }), 200);
-        }
+        if (!highlighted) return;
+        const tableWrap = highlighted.closest('[style*="overflow"]') || highlighted.closest('div');
+        setTimeout(() => {
+          if (tableWrap && tableWrap.scrollHeight > tableWrap.clientHeight) {
+            tableWrap.scrollTop = highlighted.offsetTop - tableWrap.offsetTop - 40;
+          }
+        }, 200);
       }
 
       carousel.querySelector('#ev-fact-prev')?.addEventListener('click', () => { showSlide(current - 1); startAuto(); });
