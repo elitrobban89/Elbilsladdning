@@ -4,6 +4,7 @@
   let evMap = null;
   let evMapMarkers = [];
   let evRoutePolyline = null;
+  let savedStationsHtml = null;
 
   (function injectStyles() {
     const s = document.createElement("style");
@@ -1598,7 +1599,26 @@
     html += `<div class="ev-route-stop">${dot('end','B')}<div class="ev-route-info"><div class="ev-route-name">${eg.display}</div><div class="ev-route-meta">Destination · ${Math.round(totalDistanceKm)} km</div></div></div>`;
     html += '</div>';
     resultEl.innerHTML = html;
+    collapseStationsForRoute();
     triggerRouteProactiveMessage();
+  }
+
+  function collapseStationsForRoute() {
+    const el = document.getElementById("ev-output");
+    if (!el || !el.children.length) return;
+    savedStationsHtml = el.innerHTML;
+    const headerEl = el.querySelector(".ev-results-header strong");
+    const label = headerEl ? headerEl.textContent : "Laddstationer nära dig";
+    el.innerHTML =
+      '<div id="ev-stations-minimized" style="cursor:pointer;padding:10px 16px;' +
+      'background:rgba(59,130,246,0.05);border:1.5px dashed rgba(59,130,246,0.18);' +
+      'border-radius:12px;color:rgba(147,197,253,0.5);font-size:.8rem;' +
+      'display:flex;align-items:center;justify-content:space-between;transition:opacity .2s;">' +
+      '<span>📍 ' + label + '</span>' +
+      '<span style="font-size:.75rem;opacity:.65">visa ▾</span></div>';
+    el.querySelector("#ev-stations-minimized").addEventListener("click", function() {
+      if (savedStationsHtml) setOutput(savedStationsHtml);
+    });
   }
 
   async function triggerRouteProactiveMessage() {
