@@ -1491,6 +1491,7 @@
       if (!resp.ok) throw new Error('HTTP ' + resp.status);
       const data = await resp.json();
       renderRouteResult(data, sg, eg, osrm);
+      collapseStationsForRoute();
       setTimeout(() => renderRouteMap(sg, data.stops, eg, osrm?.coordinates), 80);
     } catch (e) {
       resultEl.innerHTML = `<p style="color:#ef4444;font-size:.82rem;margin:8px 0">Fel: ${e.message}</p>`;
@@ -1603,7 +1604,6 @@
     html += `<div class="ev-route-stop">${dot('end','B')}<div class="ev-route-info"><div class="ev-route-name">${eg.display}</div><div class="ev-route-meta">Destination · ${Math.round(totalDistanceKm)} km</div></div></div>`;
     html += '</div>';
     resultEl.innerHTML = html;
-    collapseStationsForRoute();
     triggerRouteProactiveMessage();
   }
 
