@@ -1492,6 +1492,7 @@
       const data = await resp.json();
       renderRouteResult(data, sg, eg, osrm);
       collapseStationsForRoute();
+      if (state.lastRoute) triggerRouteProactiveMessage();
       setTimeout(() => renderRouteMap(sg, data.stops, eg, osrm?.coordinates), 80);
     } catch (e) {
       resultEl.innerHTML = `<p style="color:#ef4444;font-size:.82rem;margin:8px 0">Fel: ${e.message}</p>`;
@@ -1604,7 +1605,6 @@
     html += `<div class="ev-route-stop">${dot('end','B')}<div class="ev-route-info"><div class="ev-route-name">${eg.display}</div><div class="ev-route-meta">Destination · ${Math.round(totalDistanceKm)} km</div></div></div>`;
     html += '</div>';
     resultEl.innerHTML = html;
-    triggerRouteProactiveMessage();
   }
 
   function collapseStationsForRoute() {
@@ -1627,7 +1627,15 @@
 
   async function triggerRouteProactiveMessage() {
     const context = buildStationContext();
-    const trigger = "Jag har precis sökt en rutt. Berätta kort om rutten och laddstoppet.";
+    const r = state.lastRoute;
+    let trigger;
+    if (r && r.stopsNeeded === 0) {
+      trigger = `Jag har precis planerat en rutt till ${r.destination} (${r.distanceKm} km) och min ${r.carName} klarar sträckan utan laddningsstopp. Ge mig ett par konkreta tips inför resan — bör jag ladda fullt hemma eller vid startpunkten innan avfärd, och finns det något annat jag bör tänka på?`;
+    } else if (r && r.stopsNeeded > 0) {
+      trigger = `Jag har precis planerat en rutt till ${r.destination} (${r.distanceKm} km) med ${r.stopsNeeded} laddningsstopp. Ge en kort sammanfattning av rutten och laddstoppet, och om det är värt att ladda extra vid startpunkten innan avfärd.`;
+    } else {
+      trigger = "Jag har precis sökt en rutt. Kan du ge mig tips om resan och laddning längs vägen?";
+    }
     const messages = [...chatHistory.slice(-4), { role: "user", content: trigger }];
 
     const panel    = document.getElementById("ev-chat-panel");
