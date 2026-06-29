@@ -24,7 +24,8 @@ import java.util.regex.Pattern;
 public class GroqService {
 
     private static final String GROQ_URL  = "https://api.groq.com/openai/v1/chat/completions";
-    private static final String MODEL     = "llama-3.3-70b-versatile";
+    private static final String MODEL     = "openai/gpt-oss-120b";
+    private static final int CHAT_MAX_HISTORY = 8;
     private static final long   CACHE_TTL = 30 * 60 * 1000L;
 
     @Value("${groq.api.key}")
@@ -54,10 +55,12 @@ public class GroqService {
         if (stationContext != null && !stationContext.isBlank())
             sysPrompt += "\n\nAktuella laddstationer i sökningen:\n" + stationContext;
         messages.add(Map.of("role", "system", "content", sysPrompt));
-        history.forEach(m -> messages.add(Map.of("role", (Object) m.get("role"), "content", (Object) m.get("content"))));
+        List<Map<String, String>> trimmed = history.size() > CHAT_MAX_HISTORY
+                ? history.subList(history.size() - CHAT_MAX_HISTORY, history.size()) : history;
+        trimmed.forEach(m -> messages.add(Map.of("role", (Object) m.get("role"), "content", (Object) m.get("content"))));
 
         Map<String, Object> body = Map.of(
-                "model", MODEL, "max_tokens", 350, "temperature", 0.7,
+                "model", MODEL, "max_tokens", 800, "temperature", 0.7,
                 "messages", messages);
         try {
             Map<String, Object> resp = http.post()
@@ -189,10 +192,12 @@ Hitta INTE på recensioner som inte finns i listan ovan.
         if (stationContext != null && !stationContext.isBlank())
             sysPrompt += "\n\nAktuella laddstationer i sökningen:\n" + stationContext;
         messages.add(Map.of("role", "system", "content", sysPrompt));
-        history.forEach(m -> messages.add(Map.of("role", (Object) m.get("role"), "content", (Object) m.get("content"))));
+        List<Map<String, String>> trimmedStream = history.size() > CHAT_MAX_HISTORY
+                ? history.subList(history.size() - CHAT_MAX_HISTORY, history.size()) : history;
+        trimmedStream.forEach(m -> messages.add(Map.of("role", (Object) m.get("role"), "content", (Object) m.get("content"))));
 
         Map<String, Object> body = Map.of(
-                "model", MODEL, "max_tokens", 350, "temperature", 0.7, "stream", true,
+                "model", MODEL, "max_tokens", 800, "temperature", 0.7, "stream", true,
                 "messages", messages);
 
         HttpRequest request = HttpRequest.newBuilder()
