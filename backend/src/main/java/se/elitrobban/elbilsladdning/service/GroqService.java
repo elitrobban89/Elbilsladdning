@@ -24,7 +24,7 @@ import java.util.regex.Pattern;
 public class GroqService {
 
     private static final String GROQ_URL  = "https://api.groq.com/openai/v1/chat/completions";
-    private static final String MODEL     = "openai/gpt-oss-120b";
+    private static final String MODEL     = "openai/gpt-oss-20b";
     private static final int CHAT_MAX_HISTORY = 8;
     private static final long   CACHE_TTL = 30 * 60 * 1000L;
 
