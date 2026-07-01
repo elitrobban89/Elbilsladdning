@@ -142,7 +142,8 @@
       const sel = document.getElementById("ev-car-select");
       cars.forEach((c, i) => {
         const o = document.createElement("option");
-        o.value = i; o.textContent = `${c.name}  (AC ${c.maxAcKw} kW · DC ${c.maxDcKw} kW)`;
+        const bat = c.batteryKwh ? (Number.isInteger(c.batteryKwh) ? c.batteryKwh : c.batteryKwh.toFixed(1)) + ' kWh · ' : '';
+        o.value = i; o.textContent = `${c.name}  (${bat}AC ${c.maxAcKw} kW · DC ${c.maxDcKw} kW)`;
         sel.appendChild(o);
       });
     })
