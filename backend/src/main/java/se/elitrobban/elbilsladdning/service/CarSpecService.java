@@ -8,7 +8,9 @@ import se.elitrobban.elbilsladdning.model.CarSpec;
 import se.elitrobban.elbilsladdning.model.EvSpecEntity;
 import se.elitrobban.elbilsladdning.repository.EvSpecRepository;
 
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 
 @Service
 public class CarSpecService {
@@ -30,9 +32,19 @@ public class CarSpecService {
         try {
             List<EvSpecEntity> rows = evSpecRepo.findByCarTypeOrderByCarNameAsc("EV");
             if (!rows.isEmpty()) {
-                cache = rows.stream().map(this::toCarSpec).toList();
+                // Deduplicate: one entry per car_name, keep the variant with highest rangeKm
+                Map<String, EvSpecEntity> best = new LinkedHashMap<>();
+                for (EvSpecEntity e : rows) {
+                    String name = e.getCarName() != null ? e.getCarName() : "";
+                    EvSpecEntity prev = best.get(name);
+                    if (prev == null || (e.getRangeKm() != null &&
+                            (prev.getRangeKm() == null || e.getRangeKm() > prev.getRangeKm()))) {
+                        best.put(name, e);
+                    }
+                }
+                cache = best.values().stream().map(this::toCarSpec).toList();
                 cacheTime = now;
-                log.debug("CarSpecService: loaded {} EVs from database", cache.size());
+                log.debug("CarSpecService: loaded {} unique EVs from database", cache.size());
                 return cache;
             }
         } catch (Exception e) {
