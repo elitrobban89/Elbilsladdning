@@ -8,7 +8,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
 import org.springframework.web.servlet.mvc.method.annotation.StreamingResponseBody;
-import se.elitrobban.elbilsladdning.data.CarDatabase;
+import se.elitrobban.elbilsladdning.service.CarSpecService;
 
 import java.io.BufferedReader;
 import java.io.InputStream;
@@ -59,16 +59,18 @@ public class ChargingController {
     private final ApiNinjasService     apiNinjas;
     private final OperatorPriceService operatorPrices;
     private final NobilService         nobil;
+    private final CarSpecService       carSpecService;
 
     public ChargingController(OcmService ocm, GroqService groq, ChargepriceService chargeprice,
                               ApiNinjasService apiNinjas, OperatorPriceService operatorPrices,
-                              NobilService nobil) {
+                              NobilService nobil, CarSpecService carSpecService) {
         this.ocm            = ocm;
         this.groq           = groq;
         this.chargeprice    = chargeprice;
         this.apiNinjas      = apiNinjas;
         this.operatorPrices = operatorPrices;
         this.nobil          = nobil;
+        this.carSpecService = carSpecService;
     }
 
     @GetMapping("/health")
@@ -118,7 +120,7 @@ public class ChargingController {
         List<Map<String, String>> messages = (List<Map<String, String>>) req.get("messages");
         if (messages == null || messages.isEmpty()) return Map.of("reply", "Inga meddelanden.");
         String context = (String) req.get("context");
-        return Map.of("reply", groq.chat(messages, CarDatabase.CARS, context));
+        return Map.of("reply", groq.chat(messages, carSpecService.getCars(), context));
     }
 
     @PostMapping(value = "/chat/stream", produces = "text/event-stream")
@@ -141,7 +143,7 @@ public class ChargingController {
         String context = (String) req.get("context");
 
         StreamingResponseBody body = outputStream -> {
-            try (InputStream is = groq.chatStream(messages, CarDatabase.CARS, context);
+            try (InputStream is = groq.chatStream(messages, carSpecService.getCars(), context);
                  BufferedReader reader = new BufferedReader(new InputStreamReader(is, StandardCharsets.UTF_8))) {
                 String line;
                 while ((line = reader.readLine()) != null) {
@@ -174,7 +176,7 @@ public class ChargingController {
 
     @GetMapping("/cars")
     public List<Map<String, Object>> cars() {
-        return CarDatabase.CARS.stream().map(c -> {
+        return carSpecService.getCars().stream().map(c -> {
             Map<String, Object> m = new java.util.LinkedHashMap<>();
             m.put("name",       c.name());
             m.put("maxAcKw",    c.maxAcKw());
@@ -208,10 +210,11 @@ public class ChargingController {
             times.addLast(now);
         }
 
-        if (carIndex < 0 || carIndex >= CarDatabase.CARS.size())
+        List<CarSpec> cars = carSpecService.getCars();
+        if (carIndex < 0 || carIndex >= cars.size())
             return ResponseEntity.badRequest().body(Map.of("error", "Ogiltigt bilindex: " + carIndex));
 
-        CarSpec car = CarDatabase.CARS.get(carIndex);
+        CarSpec car = cars.get(carIndex);
 
         // Step 1: OCM + NOBIL in parallel — independent data sources
         var ocmFuture   = CompletableFuture.supplyAsync(() -> ocm.findNearby(lat, lon, car), IO_POOL);
@@ -273,7 +276,7 @@ public class ChargingController {
         double selCpm = costPerMil(selected);
         if (selCpm <= 0) return null;
 
-        var others = CarDatabase.CARS.stream()
+        var others = carSpecService.getCars().stream()
                 .filter(c -> !c.name().equals(selected.name()) && c.rangeKm() > 0)
                 .sorted(Comparator.comparingDouble(this::costPerMil))
                 .toList();
@@ -311,7 +314,7 @@ public class ChargingController {
     private String buildCarFact(CarSpec car) {
         if (car.priceKr() <= 0 || car.rangeKm() <= 0) return null;
 
-        var ranked = CarDatabase.CARS.stream()
+        var ranked = carSpecService.getCars().stream()
                 .filter(c -> c.priceKr() > 0 && c.rangeKm() > 0)
                 .sorted(Comparator.comparingDouble(c -> -(c.rangeKm() * 100_000.0 / c.priceKr())))
                 .toList();

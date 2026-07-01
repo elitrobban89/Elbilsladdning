@@ -38,7 +38,6 @@ public class GroqService {
     private record CacheEntry(GroqResult result, long timestamp) {}
     private final Map<String, CacheEntry> recommendCache = new ConcurrentHashMap<>();
     private volatile long quotaExceededUntil = 0;
-    private volatile String cachedSystemPrompt = null;
 
     public record GroqResult(String recommendation, String funFact) {}
 
@@ -84,7 +83,6 @@ public class GroqService {
     }
 
     private String buildChatSystemPrompt(List<CarSpec> cars) {
-        if (cachedSystemPrompt != null) return cachedSystemPrompt;
         var sb = new StringBuilder();
         sb.append("""
 Du är en assistent för en EV-laddningsapp i Sverige.
@@ -181,8 +179,7 @@ Säg alltid vilken källa du refererar till (t.ex. "Enligt Teknikens Värld...")
 Hitta INTE på recensioner som inte finns i listan ovan.
 """);
 
-        cachedSystemPrompt = sb.toString();
-        return cachedSystemPrompt;
+        return sb.toString();
     }
 
     public InputStream chatStream(List<Map<String, String>> history, List<CarSpec> cars, String stationContext) throws Exception {
