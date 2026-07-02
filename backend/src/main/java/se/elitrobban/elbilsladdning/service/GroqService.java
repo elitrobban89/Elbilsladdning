@@ -60,6 +60,7 @@ public class GroqService {
 
         Map<String, Object> body = Map.of(
                 "model", MODEL, "max_tokens", 800, "temperature", 0.7,
+                "reasoning_effort", "low",
                 "messages", messages);
         try {
             Map<String, Object> resp = http.post()
@@ -195,6 +196,7 @@ Hitta INTE på recensioner som inte finns i listan ovan.
 
         Map<String, Object> body = Map.of(
                 "model", MODEL, "max_tokens", 800, "temperature", 0.7, "stream", true,
+                "reasoning_effort", "low",
                 "messages", messages);
 
         HttpRequest request = HttpRequest.newBuilder()
@@ -225,8 +227,9 @@ Hitta INTE på recensioner som inte finns i listan ovan.
         String userPrompt = buildPrompt(car, stations, costComparison);
         Map<String, Object> body = Map.of(
                 "model", MODEL,
-                "max_tokens", 450,
+                "max_tokens", 800,
                 "temperature", 0.8,
+                "reasoning_effort", "low",
                 "messages", List.of(
                         Map.of("role", "system", "content",
                                 "Du är en expert på elbilsladdning i Sverige. " +
