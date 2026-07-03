@@ -1,5 +1,7 @@
 ﻿# EV Laddningsassistent ⚡
 
+[![Build & Test](https://github.com/elitrobban89/Elbilsladdning/actions/workflows/maven.yml/badge.svg)](https://github.com/elitrobban89/Elbilsladdning/actions/workflows/maven.yml)
+
 En webbaserad laddningsassistent för elbilar i Sverige. Hitta kompatibla laddstationer nära dig, sorterade efter hastighet eller pris.
 
 Live: [elitrobban.se/elbilsladdning](https://elitrobban.se/elbilsladdning/)

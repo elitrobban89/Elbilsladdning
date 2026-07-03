@@ -18,6 +18,10 @@
 
     <properties>
         <java.version>21</java.version>
+        <!-- Nyare mockito/byte-buddy än Boot 3.2:s default — krävs för att mocka
+             konkreta klasser när testerna körs på JDK 22+ lokalt -->
+        <mockito.version>5.18.0</mockito.version>
+        <byte-buddy.version>1.17.6</byte-buddy.version>
     </properties>
 
     <dependencies>
