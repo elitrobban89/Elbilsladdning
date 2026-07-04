@@ -83,7 +83,7 @@ public class GroqService {
         }
     }
 
-    private String buildChatSystemPrompt(List<CarSpec> cars) {
+    String buildChatSystemPrompt(List<CarSpec> cars) {
         var sb = new StringBuilder();
         sb.append("""
 Du är en assistent för en EV-laddningsapp i Sverige.
@@ -275,7 +275,7 @@ Hitta INTE på recensioner som inte finns i listan ovan.
         }
     }
 
-    private GroqResult buildFallback(CarSpec car, List<StationDto> stations) {
+    GroqResult buildFallback(CarSpec car, List<StationDto> stations) {
         if (stations.isEmpty()) return new GroqResult("Inga laddstationer hittades i närheten.", null);
         StationDto best = stations.get(0);
         String rec = String.format("%s (%.1f km, %d kW %s) passar bäst för din %s.",
@@ -283,7 +283,7 @@ Hitta INTE på recensioner som inte finns i listan ovan.
         return new GroqResult(rec, null);
     }
 
-    private long parseRetryMs(String body) {
+    long parseRetryMs(String body) {
         try {
             Matcher m = Pattern.compile("try again in ([\\d]+m[\\d.]+s|[\\d.]+s)").matcher(body);
             if (!m.find()) return 15 * 60 * 1000L;
@@ -299,7 +299,7 @@ Hitta INTE på recensioner som inte finns i listan ovan.
     }
 
     /** Case-insensitive section extraction — handles AI variations like "Visste du att:" vs "VISSTE DU ATT:". */
-    private String extractSectionCI(String text, String startMarker, String endMarker) {
+    String extractSectionCI(String text, String startMarker, String endMarker) {
         String upper = text.toUpperCase();
         int start = upper.indexOf(startMarker.toUpperCase());
         if (start < 0) return null;
@@ -311,7 +311,7 @@ Hitta INTE på recensioner som inte finns i listan ovan.
         return text.substring(start, end).strip();
     }
 
-    private String buildPrompt(CarSpec car, List<StationDto> stations, String costComparison) {
+    String buildPrompt(CarSpec car, List<StationDto> stations, String costComparison) {
         var sb = new StringBuilder();
         sb.append("Bil: ").append(car.name())
           .append(" (DC max ").append((int) car.maxDcKw())
