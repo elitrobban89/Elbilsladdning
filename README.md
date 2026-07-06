@@ -65,6 +65,30 @@ Live: [elitrobban.se/elbilsladdning](https://elitrobban.se/elbilsladdning/)
 
 ---
 
+## Tester & CI
+
+49 tester i tre lager — ren logik, HTTP-felvägar och controller-lagret (MockMvc, tjänsterna mockas):
+
+| Testklass | Täcker |
+|-----------|--------|
+| `RouteServiceTest` (7) | Ruttmatte: haversine, stopp utifrån 75 % av räckvidden, stationsval per stopp |
+| `CarSpecServiceTest` (8) | Entitetsmappning, dubblettdedup, kontakttyper (CCS/CHAdeMO), DB-fel → hårdkodad fallback, cache |
+| `OperatorPriceServiceTest` (7) | Operatörsmatchning, stationsnamnsfallback, OCM-placeholder ignoreras |
+| `GroqServiceTest` (8) | Promptbygget (topplistor, stationslista, kostnadsjämförelse), fallbacksvar, 429-retry-parsning, sektionsextraktion |
+| `GroqServiceHttpTest` (6) | HTTP-felvägar mot lokal stubbserver: 429 sätter kvotspärr + kortsluter nästa anrop, trasigt JSON ger fallback, sektionsparsning av lyckat svar |
+| `ChargingControllerTest` (6) | Billistans form, bilindexvalidering 400, prisberikning i stationsflödet, chattens rate limit → 429 |
+| `FavoriteControllerTest` (5) | Dubblettskydd 409, ägarkontroll vid borttagning 404, spara/lista/ta bort |
+| `RouteControllerTest` (2) | Bilindexvalidering 400, ruttplanens JSON-form |
+
+```bash
+cd backend
+mvn test
+```
+
+GitHub Actions ([maven.yml](.github/workflows/maven.yml)) kör testerna på varje push — badgen överst visar status.
+
+---
+
 ## Prissättning
 
 Laddpriser hämtas från tre källor i prioritetsordning:
