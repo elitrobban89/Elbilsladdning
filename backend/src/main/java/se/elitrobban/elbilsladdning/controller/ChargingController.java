@@ -327,12 +327,17 @@ public class ChargingController {
                 if (label == null) continue;   // operator not in the price table
                 Double kr = operatorPrices.parseKr(label);
                 if (kr == null) continue;      // free charging — not a trip cost basis
+                // OCM's "(Unknown Operator)" placeholder reads badly in consumer UIs —
+                // the station name (which carried the price match) works better there
+                String operator = s.operator();
+                if (operator == null || operator.isBlank() || operator.contains("Unknown"))
+                    operator = s.name();
                 Map<String, Object> out = new LinkedHashMap<>();
                 out.put("source", "nearest-station");
                 out.put("priceKr", kr);
                 out.put("priceLabel", label);
                 out.put("station", s.name());
-                out.put("operator", s.operator());
+                out.put("operator", operator);
                 out.put("distanceKm", Math.round(s.distanceKm() * 10) / 10.0);
                 out.put("maxKw", Math.round(s.maxEffKw()));
                 out.put("avgNationalKr", avgNational);

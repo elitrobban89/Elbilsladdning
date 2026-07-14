@@ -113,7 +113,7 @@ backend/                         Spring Boot-backend (Render)
     config/
       WebConfig.java                     Global CORS-konfiguration för /api/**
     controller/
-      ChargingController.java            REST-endpoints /api/cars och /api/stations
+      ChargingController.java            REST-endpoints /api/cars, /api/stations och /api/charging-price
       FavoriteController.java            CRUD /api/favorites — GET, POST, DELETE
       RouteController.java               GET /api/route-stations — ruttplanering med laddstoppar
     data/CarDatabase.java                73 bilmodeller med AC/DC-effekt, batteri, räckvidd och pris
@@ -179,6 +179,23 @@ data: " IONIQ"
 data: " 6"
 ...
 data: [DONE]
+```
+
+### Snabbladdarpris för externa konsumenter
+
+`GET /api/charging-price?lat=57.71&lon=11.97` — konsumeras av **Bilresas bränslekostnadskalkylator**
+(⚡ Snabbladdare-chippen). Med koordinater: priset hos närmaste DC-station vars operatör finns i
+`OperatorPriceService`-tabellen. Utan koordinater eller utan träff: riksgenomsnittet av tabellen
+(aliasnycklar räknas en gång, gratisladdning exkluderas). Rate limit 30 anrop/h per IP.
+
+```json
+{ "source": "nearest-station", "priceKr": 5.99, "priceLabel": "~5,99 kr/kWh",
+  "station": "Circle K Backaplan", "operator": "Circle K", "distanceKm": 1.4,
+  "maxKw": 150, "avgNationalKr": 4.72 }
+```
+
+```json
+{ "source": "national-average", "priceKr": 4.72, "avgNationalKr": 4.72 }
 ```
 
 ---

@@ -150,6 +150,24 @@ class ChargingControllerTest {
     }
 
     @Test
+    void laddprisErsatterOkandOperatorMedStationsnamn() throws Exception {
+        // OCM:s "(Unknown Operator)"-platshållare ska inte läcka till konsument-UI:t
+        StationDto lidl = new StationDto("Lidl Kungsbacka", "Gata 4", 1.1, 57.5, 12.1, 150, 150,
+                "CCS Combo 2 (DC)", "(Unknown Operator)", null, null, 0, "4");
+        when(ocm.findNearby(anyDouble(), anyDouble(), any())).thenReturn(List.of(lidl));
+        when(operatorPrices.getApproxPrice("(Unknown Operator)", "Lidl Kungsbacka")).thenReturn("~2,99 kr/kWh");
+        when(operatorPrices.parseKr("~2,99 kr/kWh")).thenReturn(2.99);
+        when(operatorPrices.nationalAverageKr()).thenReturn(4.75);
+
+        mvc.perform(get("/api/charging-price")
+                .header("X-Forwarded-For", "10.8.8.8")
+                .param("lat", "57.5").param("lon", "12.1"))
+           .andExpect(status().isOk())
+           .andExpect(jsonPath("$.source").value("nearest-station"))
+           .andExpect(jsonPath("$.operator").value("Lidl Kungsbacka"));
+    }
+
+    @Test
     void laddprisUtanKoordinaterGerRiksgenomsnitt() throws Exception {
         when(operatorPrices.nationalAverageKr()).thenReturn(4.72);
 
