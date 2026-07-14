@@ -52,4 +52,33 @@ class OperatorPriceServiceTest {
     void ikeaVisarGratisForKunder() {
         assertThat(service.getApproxPrice("IKEA Kållered", null)).isEqualTo("Gratis (för kunder)");
     }
+
+    // --- parseKr ---
+
+    @Test
+    void parseKrLaserSvensktDecimalkomma() {
+        assertThat(service.parseKr("~6,96 kr/kWh")).isEqualTo(6.96);
+    }
+
+    @Test
+    void parseKrGerNullForGratisOchNull() {
+        assertThat(service.parseKr("Gratis (för kunder)")).isNull();
+        assertThat(service.parseKr(null)).isNull();
+        assertThat(service.parseKr("")).isNull();
+    }
+
+    // --- nationalAverageKr ---
+
+    @Test
+    void riksgenomsnittLiggerIRimligtSpann() {
+        double avg = service.nationalAverageKr();
+        // Tabellvärdena spänner ~2,99–6,96 kr/kWh — snittet måste ligga däremellan
+        assertThat(avg).isBetween(2.99, 6.96);
+    }
+
+    @Test
+    void riksgenomsnittAvrundasTillTvaDecimaler() {
+        double avg = service.nationalAverageKr();
+        assertThat(Math.round(avg * 100) / 100.0).isEqualTo(avg);
+    }
 }

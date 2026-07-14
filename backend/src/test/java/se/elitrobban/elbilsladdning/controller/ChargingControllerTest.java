@@ -119,6 +119,60 @@ class ChargingControllerTest {
            .andExpect(jsonPath("$.reply").value("Inga meddelanden."));
     }
 
+    // --- /api/charging-price (konsumeras av Bilresas kalkylator) ---
+
+    @Test
+    void laddprisVAljerNarmasteDCMedKandOperator() throws Exception {
+        // Närmast: AC-station (hoppas över), sedan DC med okänd operatör (hoppas över),
+        // sedan DC Ionity med pris i tabellen — den ska vinna trots störst avstånd
+        StationDto ac        = new StationDto("P-hus AC", "Gata 1", 0.3, 59.0, 18.0, 22, 22,
+                "Type 2 (AC)", "Ionity", null, null, 0, "1");
+        StationDto okandDc   = new StationDto("BRF Laddaren", "Gata 2", 0.8, 59.0, 18.0, 150, 150,
+                "CCS Combo 2 (DC)", "Lokal BRF", null, null, 0, "2");
+        StationDto ionityDc  = new StationDto("Ionity Arlanda", "Gata 3", 2.75, 59.0, 18.0, 250, 350,
+                "CCS Combo 2 (DC)", "Ionity", null, null, 0, "3");
+        when(ocm.findNearby(anyDouble(), anyDouble(), any()))
+                .thenReturn(List.of(ionityDc, ac, okandDc));
+        when(operatorPrices.getApproxPrice("Ionity", "Ionity Arlanda")).thenReturn("~6,96 kr/kWh");
+        when(operatorPrices.parseKr("~6,96 kr/kWh")).thenReturn(6.96);
+        when(operatorPrices.nationalAverageKr()).thenReturn(4.72);
+
+        mvc.perform(get("/api/charging-price")
+                .header("X-Forwarded-For", "10.5.5.5")
+                .param("lat", "59.33").param("lon", "18.06"))
+           .andExpect(status().isOk())
+           .andExpect(jsonPath("$.source").value("nearest-station"))
+           .andExpect(jsonPath("$.priceKr").value(6.96))
+           .andExpect(jsonPath("$.station").value("Ionity Arlanda"))
+           .andExpect(jsonPath("$.operator").value("Ionity"))
+           .andExpect(jsonPath("$.distanceKm").value(2.8))
+           .andExpect(jsonPath("$.avgNationalKr").value(4.72));
+    }
+
+    @Test
+    void laddprisUtanKoordinaterGerRiksgenomsnitt() throws Exception {
+        when(operatorPrices.nationalAverageKr()).thenReturn(4.72);
+
+        mvc.perform(get("/api/charging-price").header("X-Forwarded-For", "10.6.6.6"))
+           .andExpect(status().isOk())
+           .andExpect(jsonPath("$.source").value("national-average"))
+           .andExpect(jsonPath("$.priceKr").value(4.72));
+    }
+
+    @Test
+    void laddprisFallerTillbakaNarOCMFelar() throws Exception {
+        when(ocm.findNearby(anyDouble(), anyDouble(), any()))
+                .thenThrow(new RuntimeException("OCM nere"));
+        when(operatorPrices.nationalAverageKr()).thenReturn(4.72);
+
+        mvc.perform(get("/api/charging-price")
+                .header("X-Forwarded-For", "10.7.7.7")
+                .param("lat", "59.33").param("lon", "18.06"))
+           .andExpect(status().isOk())
+           .andExpect(jsonPath("$.source").value("national-average"))
+           .andExpect(jsonPath("$.priceKr").value(4.72));
+    }
+
     @Test
     void chattensRateLimitGer429EfterTioAnrop() throws Exception {
         when(carSpecService.getCars()).thenReturn(CARS);

@@ -66,4 +66,34 @@ public class OperatorPriceService {
         }
         return null;
     }
+
+    /**
+     * Parses a price label like "~6,96 kr/kWh" to 6.96.
+     * Returns null for non-numeric entries such as "Gratis (för kunder)".
+     */
+    public Double parseKr(String priceLabel) {
+        if (priceLabel == null || priceLabel.isBlank()) return null;
+        var m = java.util.regex.Pattern.compile("(\\d+[.,]?\\d*)").matcher(priceLabel);
+        if (!m.find()) return null;
+        return Double.parseDouble(m.group(1).replace(",", "."));
+    }
+
+    /**
+     * Average kr/kWh across the table, rounded to 2 decimals. Alias keys for the
+     * same network ("circle k"/"circlek", "e.on"/"eon") count once; free/non-numeric
+     * entries are excluded.
+     */
+    public double nationalAverageKr() {
+        var seen = new java.util.HashSet<String>();
+        double sum = 0;
+        int n = 0;
+        for (Map.Entry<String, String> e : PRICES.entrySet()) {
+            if (!seen.add(e.getKey().replaceAll("[^a-z0-9]", ""))) continue;
+            Double kr = parseKr(e.getValue());
+            if (kr == null) continue;
+            sum += kr;
+            n++;
+        }
+        return n == 0 ? 0 : Math.round(sum / n * 100.0) / 100.0;
+    }
 }

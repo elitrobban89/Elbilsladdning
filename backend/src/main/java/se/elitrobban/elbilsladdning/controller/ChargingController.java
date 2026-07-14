@@ -45,12 +45,19 @@ public class ChargingController {
     private static final long WINDOW_MS            = 60_000L;
     private static final int  STATIONS_RATE_LIMIT  = 10;
     private static final long STATIONS_WINDOW_MS   = 3_600_000L;
+    private static final int  PRICE_RATE_LIMIT     = 30;
+
+    // Generic DC probe car for /charging-price — accepts every connector type so
+    // no station is filtered out on car capabilities
+    private static final CarSpec PRICE_PROBE_CAR =
+            new CarSpec("prissond", 22, 400, List.of("ccs", "chademo", "type2"), 0, 0, 0);
 
     // Virtual threads: cheap for I/O-bound parallel HTTP calls (Java 21+)
     private static final ExecutorService IO_POOL = Executors.newVirtualThreadPerTaskExecutor();
 
     private final ConcurrentHashMap<String, Deque<Long>> chatTimestamps     = new ConcurrentHashMap<>();
     private final ConcurrentHashMap<String, Deque<Long>> stationTimestamps  = new ConcurrentHashMap<>();
+    private final ConcurrentHashMap<String, Deque<Long>> priceTimestamps    = new ConcurrentHashMap<>();
     private final ObjectMapper mapper = new ObjectMapper();
 
     private final OcmService           ocm;
@@ -93,6 +100,12 @@ public class ChargingController {
             }
         });
         stationTimestamps.entrySet().removeIf(e -> {
+            synchronized (e.getValue()) {
+                e.getValue().removeIf(t -> t < now - STATIONS_WINDOW_MS);
+                return e.getValue().isEmpty();
+            }
+        });
+        priceTimestamps.entrySet().removeIf(e -> {
             synchronized (e.getValue()) {
                 e.getValue().removeIf(t -> t < now - STATIONS_WINDOW_MS);
                 return e.getValue().isEmpty();
@@ -270,6 +283,68 @@ public class ChargingController {
         var groqResult = groq.recommend(car, stations, buildCostComparison(car));
 
         return ResponseEntity.ok(new StationResponse(car.name(), stations, groqResult.recommendation(), groqResult.funFact(), buildCarFact(car)));
+    }
+
+    /**
+     * Fast-charge price for external consumers (Bilresa's fuel cost calculator).
+     * With lat/lon: price of the nearest DC station whose operator is in the price
+     * table. Without coordinates, or when nothing nearby matches: national average
+     * across the operator table. Always includes avgNationalKr for fallback display.
+     */
+    @GetMapping("/charging-price")
+    public ResponseEntity<?> chargingPrice(
+            @RequestParam(required = false) Double lat,
+            @RequestParam(required = false) Double lon,
+            HttpServletRequest httpReq) {
+
+        String ip = httpReq.getHeader("X-Forwarded-For");
+        if (ip == null || ip.isBlank()) ip = httpReq.getRemoteAddr();
+        String clientIp = ip.split(",")[0].trim();
+        long now = System.currentTimeMillis();
+        Deque<Long> times = priceTimestamps.computeIfAbsent(clientIp, k -> new ArrayDeque<>());
+        synchronized (times) {
+            while (!times.isEmpty() && now - times.peekFirst() > STATIONS_WINDOW_MS) times.pollFirst();
+            if (times.size() >= PRICE_RATE_LIMIT)
+                return ResponseEntity.status(429).body(Map.of("error", "För många förfrågningar. Försök igen om en stund."));
+            times.addLast(now);
+        }
+
+        double avgNational = operatorPrices.nationalAverageKr();
+
+        if (lat != null && lon != null) {
+            List<StationDto> stations;
+            try {
+                stations = ocm.findNearby(lat, lon, PRICE_PROBE_CAR);
+            } catch (Exception e) {
+                stations = List.of();
+            }
+            List<StationDto> byDistance = stations.stream()
+                    .sorted(Comparator.comparingDouble(StationDto::distanceKm))
+                    .toList();
+            for (StationDto s : byDistance) {
+                if (!s.connectorType().contains("DC")) continue;
+                String label = operatorPrices.getApproxPrice(s.operator(), s.name());
+                if (label == null) continue;   // operator not in the price table
+                Double kr = operatorPrices.parseKr(label);
+                if (kr == null) continue;      // free charging — not a trip cost basis
+                Map<String, Object> out = new LinkedHashMap<>();
+                out.put("source", "nearest-station");
+                out.put("priceKr", kr);
+                out.put("priceLabel", label);
+                out.put("station", s.name());
+                out.put("operator", s.operator());
+                out.put("distanceKm", Math.round(s.distanceKm() * 10) / 10.0);
+                out.put("maxKw", Math.round(s.maxEffKw()));
+                out.put("avgNationalKr", avgNational);
+                return ResponseEntity.ok(out);
+            }
+        }
+
+        Map<String, Object> out = new LinkedHashMap<>();
+        out.put("source", "national-average");
+        out.put("priceKr", avgNational);
+        out.put("avgNationalKr", avgNational);
+        return ResponseEntity.ok(out);
     }
 
     private String buildCostComparison(CarSpec selected) {
