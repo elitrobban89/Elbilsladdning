@@ -27,12 +27,22 @@ public class RouteController {
             @RequestParam double startLon,
             @RequestParam double endLat,
             @RequestParam double endLon,
-            @RequestParam int carIndex) {
+            @RequestParam(required = false) Integer carIndex,
+            @RequestParam(required = false) Integer rangeKm) {
 
-        List<CarSpec> cars = carSpecService.getCars();
-        if (carIndex < 0 || carIndex >= cars.size())
-            return ResponseEntity.badRequest().body(Map.of("error", "Ogiltig bilindex"));
+        CarSpec car;
+        if (carIndex != null) {
+            List<CarSpec> cars = carSpecService.getCars();
+            if (carIndex < 0 || carIndex >= cars.size())
+                return ResponseEntity.badRequest().body(Map.of("error", "Ogiltig bilindex"));
+            car = cars.get(carIndex);
+        } else {
+            // External consumers (Bilresa's calculator) don't know our car list —
+            // a generic all-connector EV with clamped range works for stop planning
+            int range = rangeKm != null ? Math.max(100, Math.min(800, rangeKm)) : 400;
+            car = new CarSpec("Generisk elbil", 22, 400, List.of("ccs", "chademo", "type2"), 0, range, 0);
+        }
 
-        return ResponseEntity.ok(routeService.plan(startLat, startLon, endLat, endLon, cars.get(carIndex)));
+        return ResponseEntity.ok(routeService.plan(startLat, startLon, endLat, endLon, car));
     }
 }

@@ -32,7 +32,8 @@ class RouteServiceTest {
     private OcmService ocmService;
 
     private RouteService service() {
-        return new RouteService(ocmService);
+        // Riktiga OperatorPriceService — ren logik utan beroenden
+        return new RouteService(ocmService, new OperatorPriceService());
     }
 
     private static CarSpec bil(int rangeKm) {
@@ -101,5 +102,23 @@ class RouteServiceTest {
         RouteResponse r = service().plan(STHLM_LAT, STHLM_LON, GBG_LAT, GBG_LON, bil(300));
         assertThat(r.stops().get(0).distanceFromStartKm())
                 .isCloseTo(r.totalDistanceKm() / 2, within(1.0));
+    }
+
+    @Test
+    void stoppberikasMedPrisFranOperatorstabellen() {
+        StationDto ionity = new StationDto("Ionity Mariestad", "Adress 1", 1.0, 58.5, 15.0, 350, 350,
+                "ccs", "Ionity GmbH", null, null, 4, "123");
+        when(ocmService.findNearby(anyDouble(), anyDouble(), any())).thenReturn(List.of(ionity));
+        RouteResponse r = service().plan(STHLM_LAT, STHLM_LON, GBG_LAT, GBG_LON, bil(300));
+        assertThat(r.stops().get(0).station().chargepricePerKwh()).isEqualTo("~6,96 kr/kWh");
+    }
+
+    @Test
+    void okandOperatorLamnarPrisetTomt() {
+        StationDto okand = new StationDto("BRF Laddaren", "Adress 2", 1.0, 58.5, 15.0, 150, 150,
+                "ccs", "Lokal BRF", null, null, 2, "124");
+        when(ocmService.findNearby(anyDouble(), anyDouble(), any())).thenReturn(List.of(okand));
+        RouteResponse r = service().plan(STHLM_LAT, STHLM_LON, GBG_LAT, GBG_LON, bil(300));
+        assertThat(r.stops().get(0).station().chargepricePerKwh()).isNull();
     }
 }

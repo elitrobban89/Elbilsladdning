@@ -14,9 +14,11 @@ import java.util.List;
 public class RouteService {
 
     private final OcmService ocmService;
+    private final OperatorPriceService operatorPrices;
 
-    public RouteService(OcmService ocmService) {
+    public RouteService(OcmService ocmService, OperatorPriceService operatorPrices) {
         this.ocmService = ocmService;
+        this.operatorPrices = operatorPrices;
     }
 
     public RouteResponse plan(double startLat, double startLon, double endLat, double endLon, CarSpec car) {
@@ -36,10 +38,21 @@ public class RouteService {
             int order = i;
             nearby.stream()
                   .max(Comparator.comparingDouble(StationDto::maxEffKw))
-                  .ifPresent(best -> stops.add(new RouteStop(order, distFromStart, best)));
+                  .ifPresent(best -> stops.add(new RouteStop(order, distFromStart, withPrice(best))));
         }
 
         return new RouteResponse(Math.round(totalKm * 10.0) / 10.0, stopsNeeded, car.name(), stops);
+    }
+
+    // Route stops skip the /stations price pipeline — the static operator table
+    // is free to consult and good enough for a per-stop price estimate
+    private StationDto withPrice(StationDto s) {
+        if (s.chargepricePerKwh() != null && !s.chargepricePerKwh().isBlank()) return s;
+        String price = operatorPrices.getApproxPrice(s.operator(), s.name());
+        if (price == null) return s;
+        return new StationDto(s.name(), s.address(), s.distanceKm(), s.lat(), s.lon(),
+                s.maxEffKw(), s.stationKw(), s.connectorType(), s.operator(), s.usageCost(),
+                price, s.connectorCount(), s.ocmId());
     }
 
     private double haversine(double lat1, double lon1, double lat2, double lon2) {

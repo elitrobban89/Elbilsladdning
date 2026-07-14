@@ -67,4 +67,38 @@ class RouteControllerTest {
            .andExpect(jsonPath("$.stops[0].order").value(1))
            .andExpect(jsonPath("$.stops[0].distanceFromStartKm").value(225.0));
     }
+
+    @Test
+    void utanBilindexAnvandsGeneriskBil() throws Exception {
+        // Externa konsumenter (Bilresas kalkylator) skickar rangeKm i stället för carIndex
+        org.mockito.ArgumentCaptor<CarSpec> captor = org.mockito.ArgumentCaptor.forClass(CarSpec.class);
+        when(routeService.plan(anyDouble(), anyDouble(), anyDouble(), anyDouble(), captor.capture()))
+                .thenReturn(new RouteResponse(398.0, 1, "Generisk elbil", List.of()));
+
+        mvc.perform(get("/api/route-stations")
+                .param("startLat", "59.33").param("startLon", "18.06")
+                .param("endLat", "57.71").param("endLon", "11.97")
+                .param("rangeKm", "350"))
+           .andExpect(status().isOk())
+           .andExpect(jsonPath("$.carName").value("Generisk elbil"));
+
+        org.assertj.core.api.Assertions.assertThat(captor.getValue().rangeKm()).isEqualTo(350);
+        org.assertj.core.api.Assertions.assertThat(captor.getValue().connectors())
+                .containsExactly("ccs", "chademo", "type2");
+    }
+
+    @Test
+    void rangeKmKlampasTillRimligtSpann() throws Exception {
+        org.mockito.ArgumentCaptor<CarSpec> captor = org.mockito.ArgumentCaptor.forClass(CarSpec.class);
+        when(routeService.plan(anyDouble(), anyDouble(), anyDouble(), anyDouble(), captor.capture()))
+                .thenReturn(new RouteResponse(398.0, 0, "Generisk elbil", List.of()));
+
+        mvc.perform(get("/api/route-stations")
+                .param("startLat", "59.33").param("startLon", "18.06")
+                .param("endLat", "57.71").param("endLon", "11.97")
+                .param("rangeKm", "9999"))
+           .andExpect(status().isOk());
+
+        org.assertj.core.api.Assertions.assertThat(captor.getValue().rangeKm()).isEqualTo(800);
+    }
 }

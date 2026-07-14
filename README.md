@@ -181,6 +181,17 @@ data: " 6"
 data: [DONE]
 ```
 
+### Ruttplanering för externa konsumenter
+
+`GET /api/route-stations` fungerar nu även **utan `carIndex`** — externa konsumenter (Bilresas
+kalkylator visar laddstopp för elresor över 25 mil) skickar `rangeKm` i stället (klampas till
+100–800, default 400) och får en generisk elbil med alla kontakttyper. Stoppen prisberikas ur
+operatörstabellen (`OperatorPriceService`) när OCM saknar pris.
+
+```
+GET /api/route-stations?startLat=57.71&startLon=11.97&endLat=59.33&endLon=18.07&rangeKm=400
+```
+
 ### Snabbladdarpris för externa konsumenter
 
 `GET /api/charging-price?lat=57.71&lon=11.97` — konsumeras av **Bilresas bränslekostnadskalkylator**
