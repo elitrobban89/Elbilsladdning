@@ -32,6 +32,9 @@ public class OperatorPriceService {
         PRICES.put("circlek",     "~5,99 kr/kWh");
         PRICES.put("bee",         "~3,29 kr/kWh");
         PRICES.put("mer",         "~6,24 kr/kWh");
+        // Betalplattform utan eget publikt kWh-pris — baserat på Mer-DC 6 kr/kWh
+        // via Easypark + 15 % serviceavgift (Small-planen). Tillagd 2026-07-15.
+        PRICES.put("easypark",    "~6,90 kr/kWh");
         PRICES.put("e.on",        "~4,75 kr/kWh");
         PRICES.put("eon",         "~4,75 kr/kWh");
         PRICES.put("clever",      "~3,99 kr/kWh");

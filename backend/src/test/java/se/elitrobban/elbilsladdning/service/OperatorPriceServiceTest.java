@@ -49,6 +49,11 @@ class OperatorPriceServiceTest {
     }
 
     @Test
+    void easyparkMatcharBetalplattformen() {
+        assertThat(service.getApproxPrice("Easypark", null)).isEqualTo("~6,90 kr/kWh");
+    }
+
+    @Test
     void ikeaVisarGratisForKunder() {
         assertThat(service.getApproxPrice("IKEA Kållered", null)).isEqualTo("Gratis (för kunder)");
     }
