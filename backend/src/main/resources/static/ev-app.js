@@ -364,7 +364,7 @@
 
     {
       const staticFacts = [
-        { icon: '🏆', text: 'Volvo EX40 var Sveriges mest sålda elbil 2025 med <strong>8 788</strong> nyregistreringar, före VW ID.7 och Tesla Model Y (Mobility Sweden).' },
+        { icon: '🏆', text: 'Volvo EX40 var Sveriges mest sålda elbil 2025 med <strong>8 788</strong> nyregistreringar – och EX40/XC40 leder även första halvåret 2026, före Tesla Model Y (Mobility Sweden).' },
         { icon: '🌍', text: 'IONITY är Europas snabbaste offentliga laddnätverk med upp till <strong>350 kW</strong> per laddpunkt. I Norden finns 100+ stationer längs motorvägarna.' },
         { icon: '🇸🇪', text: 'Vattenfall InCharge är ett av Nordens största laddnätverk med över <strong>33 000 laddpunkter</strong> i Sverige, Norge, Danmark och Finland.' },
         { icon: '❄️', text: 'På kall vinterdag kan räckvidden minska med <strong>20–40%</strong> jämfört med WLTP. Värm bilen medan den laddar för att spara batterienergi.' },
