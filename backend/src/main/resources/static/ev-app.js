@@ -364,12 +364,13 @@
 
     {
       const staticFacts = [
-        { icon: '🏆', text: 'Tesla Model Y är Sveriges mest sålda bil 2024 – inte bara bland elbilar, utan av <strong>alla</strong> bilmodeller.' },
+        { icon: '🏆', text: 'Volvo EX40 var Sveriges mest sålda elbil 2025 med <strong>8 788</strong> nyregistreringar, före VW ID.7 och Tesla Model Y (Mobility Sweden).' },
         { icon: '🌍', text: 'IONITY är Europas snabbaste offentliga laddnätverk med upp till <strong>350 kW</strong> per laddpunkt. I Norden finns 100+ stationer längs motorvägarna.' },
         { icon: '🇸🇪', text: 'Vattenfall InCharge är ett av Nordens största laddnätverk med över <strong>33 000 laddpunkter</strong> i Sverige, Norge, Danmark och Finland.' },
         { icon: '❄️', text: 'På kall vinterdag kan räckvidden minska med <strong>20–40%</strong> jämfört med WLTP. Värm bilen medan den laddar för att spara batterienergi.' },
         { icon: '⚡', text: 'Tesla öppnade sitt Supercharger-nätverk för andra elbilsmärken i Sverige <strong>2023</strong>. CCS (Combo) är Europas dominerande DC-laddstandard.' },
-        { icon: '📈', text: 'Sverige har ~<strong>60% elbilsandel</strong> av nybilsförsäljningen 2024 – en av världens högsta, efter Norge på ~90%.' },
+        { icon: '📈', text: 'Elbilarna går framåt: <strong>45%</strong> av Sveriges nyregistreringar 2026 väntas bli elbilar enligt Mobility Swedens prognos (justerad juli 2026) – upp från 36,5% helåret 2025.' },
+        { icon: '🚗', text: 'Mercedes eldrivna CLA utsågs till <strong>Årets Bil 2026</strong> (europeiska Car of the Year) – före Škoda Elroq och Kia EV4. 2025 vann Renault 5 E-Tech.' },
       ];
       const facts = data.funFact
         ? [{ icon: '💡', text: data.funFact }, ...staticFacts]
