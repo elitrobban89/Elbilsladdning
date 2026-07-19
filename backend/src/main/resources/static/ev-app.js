@@ -371,6 +371,7 @@
         { icon: '⚡', text: 'Tesla öppnade sitt Supercharger-nätverk för andra elbilsmärken i Sverige <strong>2023</strong>. CCS (Combo) är Europas dominerande DC-laddstandard.' },
         { icon: '📈', text: 'Elbilarna går framåt: <strong>45%</strong> av Sveriges nyregistreringar 2026 väntas bli elbilar enligt Mobility Swedens prognos (justerad juli 2026) – upp från 36,5% helåret 2025.' },
         { icon: '🚗', text: 'Mercedes eldrivna CLA utsågs till <strong>Årets Bil 2026</strong> (europeiska Car of the Year) – före Škoda Elroq och Kia EV4. 2025 vann Renault 5 E-Tech.' },
+        { icon: '📊', text: 'Volvo dominerar den svenska nybilsmarknaden med <strong>16,5%</strong> marknadsandel i juni 2026, före Volkswagen (13,2%) och Kia (7,4%). Tesla ligger åtta med 4,4% (Mobility Sweden).' },
       ];
       const facts = data.funFact
         ? [{ icon: '💡', text: data.funFact }, ...staticFacts]
