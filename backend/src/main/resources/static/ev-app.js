@@ -372,6 +372,9 @@
         { icon: '📈', text: 'Elbilarna går framåt: <strong>45%</strong> av Sveriges nyregistreringar 2026 väntas bli elbilar enligt Mobility Swedens prognos (justerad juli 2026) – upp från 36,5% helåret 2025.' },
         { icon: '🚗', text: 'Mercedes eldrivna CLA utsågs till <strong>Årets Bil 2026</strong> (europeiska Car of the Year) – före Škoda Elroq och Kia EV4. 2025 vann Renault 5 E-Tech.' },
         { icon: '📊', text: 'Volvo dominerar den svenska nybilsmarknaden med <strong>16,5%</strong> marknadsandel i juni 2026, före Volkswagen (13,2%) och Kia (7,4%). Tesla ligger åtta med 4,4% (Mobility Sweden).' },
+        { icon: '🥇', text: 'I maj 2026 var Volkswagen ID.4 Sveriges mest sålda renodlade elbil med <strong>687</strong> nyregistreringar – tätt följt av Tesla Model Y (683) och Polestar 2 (526) (Carla.se elbilsindex).' },
+        { icon: '🔌', text: 'Kia EV6 (339), Volkswagen ID.3 (285) och Škoda Enyaq (276) rundade av majitoppen bland Sveriges mest sålda elbilar 2026 – före Nissan Leaf (260) och Volvo EX40 (205) (Carla.se elbilsindex).' },
+        { icon: '🚀', text: 'Elbilar gick om laddhybrider i försäljning kring årsskiftet 2025/2026 och har inte tittat tillbaka – i april 2026 passerade elbilsförsäljningen till och med diesel och närmade sig bensin, fortfarande den största kategorin (Carla.se).' },
       ];
       const facts = data.funFact
         ? [{ icon: '💡', text: data.funFact }, ...staticFacts]
