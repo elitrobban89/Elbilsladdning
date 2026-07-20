@@ -28,7 +28,8 @@ Live: [elitrobban.se/elbilsladdning](https://elitrobban.se/elbilsladdning/)
 - **Rekommendations-cache** — 30 min TTL per bil+stationskombination; rensas automatiskt vid >200 entries för att hålla minnesanvändningen i schack
 - **IP-begränsning på stationssök** — max 10 förfrågningar per timme och IP (sliding window), 429 med svensk feltext vid överskridning; IP-poster rensas i schemalagd task varje timme
 - **Parallell exekvering** — OCM och NOBIL körs samtidigt; prisberikning för alla 5 stationer körs parallellt via Java 21 virtuella trådar (`newVirtualThreadPerTaskExecutor`); sparar ~1–2 s per sökning vid cold cache
-- **"Visste du att"-karusell** — roterande kortlek med AI-genererat bilfakta + 11 statiska fakta (Volvo EX40 mest sålda elbilen 2025 med 8 788 nyregistreringar och ledare även H1 2026, IONITY 350 kW i Norden, Vattenfall InCharge 33 000+ punkter, vinterpåverkan 20–40 %, Tesla Supercharger öppet sedan 2023, Mobility Swedens prognos 45 % elbilsandel 2026, Mercedes CLA Årets Bil 2026, Volvo 16,5 % marknadsandel juni 2026, VW ID.4 månadsetta bland renodlade elbilar maj 2026 med 687 registreringar tätt före Model Y och Polestar 2, EV6/ID.3/Enyaq som rundar av majitoppen, elbilar gick om laddhybrider kring årsskiftet 2025/2026 och passerade diesel i april 2026 — de tre senaste källa Carla.se elbilsindex/statistik, uppdateras manuellt månadsvis då sajten blockerar automatisk skrapning); auto-roterar var 9:e sekund med mjuk crossfade-animation (slide glider upp + tonar in); klickbara punkter för manuell navigering
+- **"Visste du att"-karusell** — roterande kortlek med AI-genererat bilfakta, en automatiskt uppdaterad topplista-fakta (se nedan) + 11 statiska fakta (Volvo EX40 mest sålda elbilen 2025 med 8 788 nyregistreringar och ledare även H1 2026, IONITY 350 kW i Norden, Vattenfall InCharge 33 000+ punkter, vinterpåverkan 20–40 %, Tesla Supercharger öppet sedan 2023, Mobility Swedens prognos 45 % elbilsandel 2026, Mercedes CLA Årets Bil 2026, Volvo 16,5 % marknadsandel juni 2026, VW ID.4 månadsetta bland renodlade elbilar maj 2026 med 687 registreringar tätt före Model Y och Polestar 2, EV6/ID.3/Enyaq som rundar av majitoppen, elbilar gick om laddhybrider kring årsskiftet 2025/2026 och passerade diesel i april 2026 — de tre senaste källa Carla.se elbilsindex/statistik, uppdateras manuellt månadsvis då sajten blockerar automatisk skrapning); auto-roterar var 9:e sekund med mjuk crossfade-animation (slide glider upp + tonar in); klickbara punkter för manuell navigering
+- **Automatisk elbilstopplista** — `EvSalesRankSyncService` hämtar den 6:e varje månad 05:30 Stockholm (`EvSalesRankSyncScheduler`) elbilsvaruhuset.se:s inlägg "De 10 populäraste elbilarna i Sverige" via öppet WordPress REST-API (`wp-json/wp/v2/posts`, ingen bot-spärr till skillnad från carla.se) — källa Mobility Sweden, renodlat BEV (ingen laddhybrid-/bensinblandning). Tabellen (rank/modell/antal/pris/period) parsas ur riktiga HTML-`<table>`-celler, inte plattad text — modellnamn med siffror ("Polestar 4", "ID.7", "bZ4X") skulle annars blandas ihop med antalskolumnen. Ersätter hela tabellen varje körning (`ev_sales_rank`, ingen historik). Publikt `GET /api/ev-sales-rank`; manuell admin-trigger `POST /api/admin/sync-ev-sales-rank` (X-Admin-Key). Frontend bygger en dynamisk "Visste du att"-fakta av ettan/tvåan varje sidladdning — uppdateras alltså av sig själv utan kodändring.
 - **Roterande faktatabeller** — alla fyra tabeller cyklar som en karusell under en tydlig "💡 Visste du att?"-avgränsare: värde för pengarna (km/100 tkr), snabbast DC-laddning, längst räckvidd och WLTP vs verklig räckvidd; föregående/nästa-pilar + punktnavigering + auto-rotate var 9:e sekund; crossfade-transition mellan slides; alla 73 bilar scrollbara med sticky header; vald bil highlightad i blått och auto-scrollad till vid slide-byte; auto-scroll scrollar bara inne i tabellen (inte hela sidan) via `scrollTop` på tabellens scroll-container
 - **Livepriser** — Chargeprice API + statisk operatörstabell täcker de flesta svenska nätverk
 - **NOBIL-integration** — hämtar antal laddpunkter per station (aktiveras med API-nyckel)
@@ -67,18 +68,20 @@ Live: [elitrobban.se/elbilsladdning](https://elitrobban.se/elbilsladdning/)
 
 ## Tester & CI
 
-49 tester i tre lager — ren logik, HTTP-felvägar och controller-lagret (MockMvc, tjänsterna mockas):
+73 tester i tre lager — ren logik, HTTP-felvägar och controller-lagret (MockMvc, tjänsterna mockas):
 
 | Testklass | Täcker |
 |-----------|--------|
-| `RouteServiceTest` (7) | Ruttmatte: haversine, stopp utifrån 75 % av räckvidden, stationsval per stopp |
+| `RouteServiceTest` (9) | Ruttmatte: haversine, stopp utifrån 75 % av räckvidden, stationsval per stopp |
 | `CarSpecServiceTest` (8) | Entitetsmappning, dubblettdedup, kontakttyper (CCS/CHAdeMO), DB-fel → hårdkodad fallback, cache |
-| `OperatorPriceServiceTest` (7) | Operatörsmatchning, stationsnamnsfallback, OCM-placeholder ignoreras |
+| `OperatorPriceServiceTest` (12) | Operatörsmatchning, stationsnamnsfallback, OCM-placeholder ignoreras |
 | `GroqServiceTest` (8) | Promptbygget (topplistor, stationslista, kostnadsjämförelse), fallbacksvar, 429-retry-parsning, sektionsextraktion |
 | `GroqServiceHttpTest` (6) | HTTP-felvägar mot lokal stubbserver: 429 sätter kvotspärr + kortsluter nästa anrop, trasigt JSON ger fallback, sektionsparsning av lyckat svar |
-| `ChargingControllerTest` (6) | Billistans form, bilindexvalidering 400, prisberikning i stationsflödet, chattens rate limit → 429 |
+| `EvSalesRankSyncServiceParseTest` (7) | Parsning av elbilsvaruhuset.se:s rankingtabell ur riktiga table/td-celler — modellnamn med siffror ("Polestar 4", "ID.7", "bZ4X") blandas inte ihop med antalskolumnen |
+| `EvSalesRankSyncServiceHttpTest` (4) | Full synk mot lokal stubbserver: lyckad parsning+spara, tomt svar/saknad tabell/HTTP-fel ger ERROR utan att röra befintliga rader |
+| `ChargingControllerTest` (10) | Billistans form, bilindexvalidering 400, prisberikning i stationsflödet, chattens rate limit → 429 |
 | `FavoriteControllerTest` (5) | Dubblettskydd 409, ägarkontroll vid borttagning 404, spara/lista/ta bort |
-| `RouteControllerTest` (2) | Bilindexvalidering 400, ruttplanens JSON-form |
+| `RouteControllerTest` (4) | Bilindexvalidering 400, ruttplanens JSON-form |
 
 ```bash
 cd backend
@@ -116,6 +119,7 @@ backend/                         Spring Boot-backend (Render)
       ChargingController.java            REST-endpoints /api/cars, /api/stations och /api/charging-price
       FavoriteController.java            CRUD /api/favorites — GET, POST, DELETE
       RouteController.java               GET /api/route-stations — ruttplanering med laddstoppar
+      EvSalesRankController.java         GET /api/ev-sales-rank (publik) + POST /api/admin/sync-ev-sales-rank (X-Admin-Key)
     data/CarDatabase.java                73 bilmodeller med AC/DC-effekt, batteri, räckvidd och pris
     model/
       CarSpec.java                       Record — bilspecifikationer
@@ -124,8 +128,13 @@ backend/                         Spring Boot-backend (Render)
       RouteStop.java                     Record — ett laddstop i en rutt (ordning, km från start, station)
       RouteResponse.java                 Record — ruttplaneringssvar (vägavstånd, antal stopp, laddstoppar)
       FavoriteStation.java               JPA-entity — sparade favoritstationer (ev_favorites)
+      EvSalesRankEntry.java              JPA-entity — senaste elbilstopplistan (ev_sales_rank), ersätts varje synk
     repository/
       FavoriteStationRepository.java     Spring Data JPA — findByUserId, existsByUserIdAndName
+      EvSalesRankRepository.java         Spring Data JPA — findAllByOrderByRankAsc
+    scraper/
+      EvSalesRankSyncService.java        Hämtar + parsar elbilsvaruhuset.se:s topplista (WordPress REST-API)
+      EvSalesRankSyncScheduler.java      Månadsvis synk — den 6:e 05:30 Stockholm
     service/
       OcmService.java                    Hämtar stationer från Open Charge Map
       NobilService.java                  Hämtar laddpunktsdata från NOBIL (nordisk databas)
@@ -223,3 +232,4 @@ GET /api/route-stations?startLat=57.71&startLon=11.97&endLat=59.33&endLon=18.07&
 | `CHARGEPRICE_API_KEY` | ⚪ | Chargeprice API-nyckel (demo-nyckel fungerar) |
 | `APININJAS_API_KEY` | ⚪ | API Ninjas (valfri reservkälla) |
 | `NOBIL_API_KEY` | ⚪ | NOBIL API-nyckel — aktiverar antal laddpunkter per station (nordisk databas, aktivt konfigurerat) |
+| `ADMIN_KEY` | ⚪ | Nyckel för `X-Admin-Key`-skyddade admin-endpoints (t.ex. `POST /api/admin/sync-ev-sales-rank`); saknas den nekas admin-anrop |

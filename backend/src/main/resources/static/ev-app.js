@@ -1,6 +1,6 @@
 (function () {
   const API = window.EV_API_URL || "https://elbilsladdning.onrender.com";
-  let state = { lat: null, lon: null, city: "", sort: "speed", carIndex: null, cars: [], filter: "all", operatorFilter: null, lastData: null, lastRoute: null, lastCalc: null, favorites: [] };
+  let state = { lat: null, lon: null, city: "", sort: "speed", carIndex: null, cars: [], filter: "all", operatorFilter: null, lastData: null, lastRoute: null, lastCalc: null, favorites: [], evSalesRank: [] };
   let evMap = null;
   let evMapMarkers = [];
   let evRoutePolyline = null;
@@ -150,6 +150,11 @@
     .catch(() => {
       document.getElementById("ev-car-select").innerHTML = "<option>Kunde inte hämta bilar</option>";
     });
+
+  fetch(API + "/api/ev-sales-rank")
+    .then(r => r.json())
+    .then(rows => { if (Array.isArray(rows)) state.evSalesRank = rows; })
+    .catch(() => {});
 
   document.getElementById("ev-car-select").addEventListener("change", function () {
     const idx = parseInt(this.value);
@@ -376,9 +381,22 @@
         { icon: '🔌', text: 'Kia EV6 (339), Volkswagen ID.3 (285) och Škoda Enyaq (276) rundade av majitoppen bland Sveriges mest sålda elbilar 2026 – före Nissan Leaf (260) och Volvo EX40 (205) (Carla.se elbilsindex).' },
         { icon: '🚀', text: 'Elbilar gick om laddhybrider i försäljning kring årsskiftet 2025/2026 och har inte tittat tillbaka – i april 2026 passerade elbilsförsäljningen till och med diesel och närmade sig bensin, fortfarande den största kategorin (Carla.se).' },
       ];
-      const facts = data.funFact
-        ? [{ icon: '💡', text: data.funFact }, ...staticFacts]
-        : staticFacts;
+      const dynamicRankFacts = [];
+      if (state.evSalesRank && state.evSalesRank.length > 0) {
+        const top = state.evSalesRank[0];
+        const second = state.evSalesRank[1];
+        const period = top.periodLabel ? ' ' + top.periodLabel : '';
+        const rankText =
+          `${top.model} var Sveriges mest sålda elbil${period} med <strong>${top.units.toLocaleString('sv-SE')}</strong> nyregistreringar` +
+          (second ? `, före ${second.model} (${second.units.toLocaleString('sv-SE')})` : '') +
+          ' (elbilsvaruhuset.se / Mobility Sweden).';
+        dynamicRankFacts.push({ icon: '🔋', text: rankText });
+      }
+      const facts = [
+        ...(data.funFact ? [{ icon: '💡', text: data.funFact }] : []),
+        ...dynamicRankFacts,
+        ...staticFacts
+      ];
 
       const fSlideHtml = facts.map((f, i) =>
         `<div class="ev-funfact-slide" style="display:${i===0?'flex':'none'};align-items:flex-start;gap:10px;">
