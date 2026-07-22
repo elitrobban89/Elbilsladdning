@@ -36,12 +36,14 @@ Live: [elitrobban.se/elbilsladdning](https://elitrobban.se/elbilsladdning/)
 - **Interaktiv karta** — Leaflet + OpenStreetMap (gratis, ingen API-nyckel, serveras lokalt utan CDN-beroende) visas ovanför stationslistan; färgkodade markörer: 🟢 grön ≥100 kW, 🟠 orange ≥22 kW, 🟣 lila långsam; din position som blå cirkel; klicka markör för popup med kW, kontakttyp, pris och avstånd; zoomnivå 17
 - **Ruttplanering** — kollapsbar panel "Planera rutt" under kontrollerna; GPS-position används automatiskt som start; ange bara destination (t.ex. "Göteborg"); backend beräknar antal laddstoppar (75 % av WLTP per etapp) och söker närmaste kompatibla station per hållplats via OCM; kartan visar hela rutten som en verklig väglinje via [OSRM](https://project-osrm.org/) med faktisk motorvägsgeometri (E4, E6 osv.), gul A-markör vid start, numrerade gula markörer vid laddstoppar, röd B-markör vid mål; rubrikraden visar vägavstånd och uppskattad körtid; faller tillbaka på streckad rak linje om OSRM är otillgänglig; OSRM och laddstationssökning körs parallellt — ingen extra väntetid
 - **Stationer kollapsar vid ruttplanering** — när ruttresultat visas minimeras den lokala stationslistan automatiskt till en klickbar rad ("📍 X stationer nära dig · visa ▾"); kartan och ruttresultatet tar fokus; klick på raden återställer stationslistan
-- **Proaktiv ruttchatt** — chatboten öppnas automatiskt och sammanfattar rutten och laddstoppet direkt när ruttplanering slutförts, utan att användaren behöver fråga; svaret streamar token för token och sparas i chatthistoriken
+- **Proaktiv ruttchatt** — chatboten öppnas automatiskt och sammanfattar rutten och laddstoppet direkt när ruttplanering slutförts, utan att användaren behöver fråga; svaret streamar token för token och sparas i chatthistoriken. **Klarar bilen hela sträckan utan laddstopp bekräftar boten det uttryckligen** (t.ex. "Din ES90 klarar hela sträckan till Stockholm utan laddstopp") innan den ger reseråd — promptregeln är obligatorisk, inte valfri
 - **AI-chattbot** ⚡ — flytande chattassistent (knapp nere till höger med animerade blixtar) driven av Groq; polerad glassmorphism-design med öppningsanimation, grön pulserande online-indikator och underrubrik "AI • Laddning & Elbilar"; stödjer markdown i bot-svar (fetstil, listor); rensa-knapp i headern; svarar ENDAST på frågor om elbilar, laddning, räckvidd och stationer; smarta budgetregler (budget under 200 tkr → föreslår begagnade med prisintervall, rekommenderar aldrig ny bil >1,3x budgeten); stödjer flerturskonversation; max 10 frågor/minut per IP
+- **Demoläge på chatboten** — utloggade får **3 gratis frågor** (chatboten är det enda som syns utan konto); en demobar visar "N gratis frågor kvar" och 4:e frågan visar en inloggnings-CTA. `ev_demo_count` i `localStorage`, inloggning verifieras mot CarAdvice `/api/auth/me` (`ca_token`, samma konto som övriga tjänster); lyssnar på inloggningspopupen (CA_LOGIN/CA_SUBSCRIBED/CA_LOGOUT). Omförsök och info-knappen räknas aldrig mot gränsen
 - **Streaming-svar** — chattbotens svar strömmar direkt token för token via `/api/chat/stream` (SSE) utan att vänta på hela svaret; automatisk fallback till vanlig JSON-endpoint om webbläsaren saknar ReadableStream-stöd
 - **Dynamiska follow-up chips** — efter varje svar visas 2–3 kontextuella snabbknappar baserade på svarsinnehållet (räckvidd, laddning, pris, bilmodeller)
 - **Full appkontext till chattboten** — chatboten får automatiskt hela skärmens kontext: vald bil (batteri, DC, räckvidd, pris), laddtidskalkylatorn (från/till%, tid, kostnad, tillkommen räckvidd), planerad rutt (destination, alla laddstoppar med avstånd och pris), DC-ranking topp 3, räckvidsranking topp 3, AI-rekommendation och faktaruta visad på skärmen; möjliggör naturliga följdfrågor på allt som visas
 - **Prenumerationsinfo** — chatboten svarar korrekt på frågor om prenumerationen: 49 kr/mån inkluderar AI Bilrådgivning, AI EV Laddassistent och Bränslekostnadsberäkning
+- **"Info & prenumeration"-knapp** — alltid synlig i chatten (även demobaren för utloggade); visar ett statiskt info-kort (ingen AI/backend-anrop, alltid gratis) med alla tre tjänster **obegränsade** för prenumeranter mot begränsade demoversioner + en Prenumerera-knapp som öppnar `subscribe.html?from=elbilsladdning`
 - **Billigaste laddning** — vid fråga om billigaste laddning rekommenderas alltid hemmaladdning (~1,50–3,50 kr/kWh) först, följt av billigaste publik station i listan med namn, pris och avstånd
 - **Ruttkontext** — om en rutt är planerad kan chattboten förklara varför ett specifikt laddstop valts, om bilen klarar sträckan utan stopp, och hur stopparna är utplacerade längs vägen
 - **Laddtidskalkylator** — interaktiv kalkylator visas under sökresultaten: dra sliders "Ladda från X% till Y%" och se beräknad tid, kostnad och tillkommen räckvidd i realtid; använder vald bils batteristorlek och den närmaste DC-stationens effektiva kW
@@ -68,14 +70,14 @@ Live: [elitrobban.se/elbilsladdning](https://elitrobban.se/elbilsladdning/)
 
 ## Tester & CI
 
-73 tester i tre lager — ren logik, HTTP-felvägar och controller-lagret (MockMvc, tjänsterna mockas):
+74 tester i tre lager — ren logik, HTTP-felvägar och controller-lagret (MockMvc, tjänsterna mockas):
 
 | Testklass | Täcker |
 |-----------|--------|
 | `RouteServiceTest` (9) | Ruttmatte: haversine, stopp utifrån 75 % av räckvidden, stationsval per stopp |
 | `CarSpecServiceTest` (8) | Entitetsmappning, dubblettdedup, kontakttyper (CCS/CHAdeMO), DB-fel → hårdkodad fallback, cache |
 | `OperatorPriceServiceTest` (12) | Operatörsmatchning, stationsnamnsfallback, OCM-placeholder ignoreras |
-| `GroqServiceTest` (8) | Promptbygget (topplistor, stationslista, kostnadsjämförelse), fallbacksvar, 429-retry-parsning, sektionsextraktion |
+| `GroqServiceTest` (9) | Promptbygget (topplistor, stationslista, kostnadsjämförelse), fallbacksvar, 429-retry-parsning, sektionsextraktion |
 | `GroqServiceHttpTest` (6) | HTTP-felvägar mot lokal stubbserver: 429 sätter kvotspärr + kortsluter nästa anrop, trasigt JSON ger fallback, sektionsparsning av lyckat svar |
 | `EvSalesRankSyncServiceParseTest` (7) | Parsning av elbilsvaruhuset.se:s rankingtabell ur riktiga table/td-celler — modellnamn med siffror ("Polestar 4", "ID.7", "bZ4X") blandas inte ihop med antalskolumnen |
 | `EvSalesRankSyncServiceHttpTest` (4) | Full synk mot lokal stubbserver: lyckad parsning+spara, tomt svar/saknad tabell/HTTP-fel ger ERROR utan att röra befintliga rader |
