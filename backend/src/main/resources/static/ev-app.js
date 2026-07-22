@@ -796,6 +796,56 @@
   // ===== CHATTBOT =====
   let chatHistory = (function(){ try{ return JSON.parse(localStorage.getItem('ev-chat')||'[]'); }catch(e){ return []; } })();
 
+  // ── Demospärr: utloggade får EV_DEMO_MAX gratis chattfrågor ────────
+  // Prenumerationsfrågor (Vad ingår-knappen) och omförsök räknas inte.
+  // Samma konto som Bilrådgivningen/Bränslekostnad via ca_token på elitrobban.se.
+  var EV_DEMO_MAX = 3;
+  var evAuthValid = null; // null = ej serververifierad; true/false = svar från /api/auth/me
+  function evIsLoggedIn() {
+    if (document.body.classList.contains('logged-in')) return true; // WP-inloggad
+    if (evAuthValid !== null) return evAuthValid;                   // serververifierat
+    return !!localStorage.getItem('ca_token');                      // optimistiskt innan koll
+  }
+  function evDemoRemaining() {
+    var used = parseInt(localStorage.getItem('ev_demo_count') || '0', 10);
+    return Math.max(0, EV_DEMO_MAX - used);
+  }
+  function evConsumeDemo() {
+    var used = parseInt(localStorage.getItem('ev_demo_count') || '0', 10);
+    localStorage.setItem('ev_demo_count', Math.min(used + 1, EV_DEMO_MAX));
+    evUpdateChatDemoUI();
+  }
+  function evUpdateChatDemoUI() {
+    var bar = document.getElementById('ev-chat-demobar');
+    if (!bar) return;
+    if (evIsLoggedIn()) { bar.style.display = 'none'; return; }
+    bar.style.display = 'flex';
+    var left = document.getElementById('ev-chat-demoleft');
+    var info = document.getElementById('ev-chat-demoinfo');
+    var rem = evDemoRemaining();
+    if (left) left.textContent = rem;
+    if (info) info.innerHTML = rem > 0
+      ? 'Demoläge · <b>' + rem + ' gratis fråg' + (rem === 1 ? 'a' : 'or') + ' kvar</b>'
+      : 'Demo slut · <b>logga in för fler frågor</b>';
+  }
+  function evVerifyLogin() {
+    var token = localStorage.getItem('ca_token');
+    if (!token) { evAuthValid = false; evUpdateChatDemoUI(); return; }
+    fetch('https://caradvice.onrender.com/api/auth/me', { headers: { 'Authorization': 'Bearer ' + token } })
+      .then(function(res) {
+        if (res.ok) { evAuthValid = true; return res.json().then(function(u){ if (u && u.subscriptionStatus) localStorage.setItem('ca_status', u.subscriptionStatus); }); }
+        if (res.status === 401 || res.status === 403) {
+          evAuthValid = false;
+          localStorage.removeItem('ca_token'); localStorage.removeItem('ca_email'); localStorage.removeItem('ca_status');
+        }
+      }).catch(function(){}).then(function(){ evUpdateChatDemoUI(); });
+  }
+  function evOpenSubscribePopup() {
+    if (window.evOpenSubscribe) { window.evOpenSubscribe(); return; }
+    window.open('https://caradvice.onrender.com/subscribe.html?from=elbilsladdning', '_blank', 'width=480,height=650,resizable=yes');
+  }
+  var EV_SUB_QUESTION = 'Vad ingår i prenumerationen och vad kostar den?';
+
   function initChat() {
     const style = document.createElement("style");
     style.textContent = `
@@ -1026,6 +1076,10 @@
           <button class="ev-chat-quick-btn" data-q="Vilken elbil har längst räckvidd?">🛣️ Räckvidd</button>
           <button class="ev-chat-quick-btn" data-q="Var laddar jag billigast?">💰 Billigast</button>
         </div>
+        <div class="ev-chat-demobar" id="ev-chat-demobar" style="display:none;align-items:center;justify-content:space-between;gap:8px;padding:7px 12px;font-size:.74rem;color:rgba(147,197,253,.78);border-top:1px solid rgba(148,163,184,.12);">
+          <span id="ev-chat-demoinfo">Demoläge · <b><span id="ev-chat-demoleft">3</span> gratis frågor kvar</b></span>
+          <button id="ev-chat-subbtn" type="button" style="background:rgba(59,130,246,.15);border:1px solid rgba(59,130,246,.32);color:#93c5fd;border-radius:8px;padding:4px 10px;font-size:.72rem;font-weight:700;cursor:pointer;white-space:nowrap;">💳 Vad ingår?</button>
+        </div>
         <div class="ev-chat-input-row">
           <input class="ev-chat-input" id="ev-chat-input" type="text" placeholder="Skriv en fråga…" autocomplete="off" />
           <button class="ev-chat-send" id="ev-chat-send">
@@ -1054,6 +1108,29 @@
     document.querySelectorAll(".ev-chat-quick-btn").forEach(btn =>
       btn.addEventListener("click", () => chatSendMessage(btn.dataset.q))
     );
+
+    // Prenumerationsknappen: alltid gratis, räknas ej mot demogränsen
+    var subBtn = document.getElementById("ev-chat-subbtn");
+    if (subBtn) subBtn.addEventListener("click", () => chatSendMessage(EV_SUB_QUESTION, { free: true }));
+
+    // Visa demoräknaren för utloggade + verifiera ev. inloggning mot servern
+    evUpdateChatDemoUI();
+    evVerifyLogin();
+
+    // Inloggning via CarAdvice-popupen (samma konto som övriga tjänster)
+    window.addEventListener("message", function(ev) {
+      if (!ev.data || !ev.data.type) return;
+      if (ev.data.type === "CA_LOGIN" || ev.data.type === "CA_SUBSCRIBED") {
+        if (ev.data.token)  localStorage.setItem("ca_token", ev.data.token);
+        if (ev.data.email)  localStorage.setItem("ca_email", ev.data.email);
+        if (ev.data.status) localStorage.setItem("ca_status", ev.data.status);
+        evAuthValid = null; evVerifyLogin();
+      }
+      if (ev.data.type === "CA_LOGOUT") {
+        localStorage.removeItem("ca_token"); localStorage.removeItem("ca_email"); localStorage.removeItem("ca_status");
+        evAuthValid = false; evUpdateChatDemoUI();
+      }
+    });
   }
 
   function chatToggle() {
@@ -1255,7 +1332,20 @@
     outer.appendChild(wrap);
   }
 
-  async function chatSendMessage(message) {
+  async function chatSendMessage(message, opts) {
+    opts = opts || {};
+    // Demospärr: utloggade får EV_DEMO_MAX frågor. opts.free = prenumerationsknappen
+    // (alltid gratis), opts.retry = omförsök (ska inte dra en till).
+    if (!opts.free && !opts.retry && !evIsLoggedIn() && evDemoRemaining() <= 0) {
+      document.getElementById("ev-chat-quick").style.display = "none";
+      var gate = chatAppendBot("Du har använt dina " + EV_DEMO_MAX + " gratis frågor i demoläget. Logga in för obegränsad tillgång — eller klicka “Vad ingår?” nedan för att läsa om prenumerationen.", false);
+      var lb = document.createElement("button");
+      lb.className = "ev-chat-retry"; lb.textContent = "🔑 Logga in";
+      lb.onclick = evOpenSubscribePopup; gate.appendChild(lb);
+      evUpdateChatDemoUI();
+      return;
+    }
+    if (!opts.free && !opts.retry && !evIsLoggedIn()) evConsumeDemo();
     document.getElementById("ev-chat-quick").style.display = "none";
     chatAppendUser(message);
     chatHistory.push({ role: "user", content: message });
@@ -1281,7 +1371,7 @@
       typingDiv.remove();
       const errDiv = chatAppendBot("Kunde inte nå assistenten — kontrollera anslutningen.", false);
       const btn = document.createElement("button"); btn.className = "ev-chat-retry"; btn.textContent = "↺ Försök igen";
-      btn.onclick = function() { errDiv.remove(); chatHistory.pop(); saveChatHistory(); chatSendMessage(message); };
+      btn.onclick = function() { errDiv.remove(); chatHistory.pop(); saveChatHistory(); chatSendMessage(message, {retry:true}); };
       errDiv.appendChild(btn);
       return;
     }
@@ -1295,7 +1385,7 @@
     if (!resp.ok) {
       const errDiv = chatAppendBot("Något gick fel (fel " + resp.status + ").", false);
       const btn = document.createElement("button"); btn.className = "ev-chat-retry"; btn.textContent = "↺ Försök igen";
-      btn.onclick = function() { errDiv.remove(); chatHistory.pop(); saveChatHistory(); chatSendMessage(message); };
+      btn.onclick = function() { errDiv.remove(); chatHistory.pop(); saveChatHistory(); chatSendMessage(message, {retry:true}); };
       errDiv.appendChild(btn);
       return;
     }
@@ -1357,7 +1447,7 @@
         outer.remove();
         const errDiv = chatAppendBot(streamErr.message || "Kunde inte nå assistenten.", false);
         const btn = document.createElement("button"); btn.className = "ev-chat-retry"; btn.textContent = "↺ Försök igen";
-        btn.onclick = function() { errDiv.remove(); chatHistory.pop(); saveChatHistory(); chatSendMessage(message); };
+        btn.onclick = function() { errDiv.remove(); chatHistory.pop(); saveChatHistory(); chatSendMessage(message, {retry:true}); };
         errDiv.appendChild(btn);
         return;
       }
