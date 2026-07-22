@@ -818,15 +818,43 @@
   function evUpdateChatDemoUI() {
     var bar = document.getElementById('ev-chat-demobar');
     if (!bar) return;
-    if (evIsLoggedIn()) { bar.style.display = 'none'; return; }
-    bar.style.display = 'flex';
-    var left = document.getElementById('ev-chat-demoleft');
+    bar.style.display = 'flex'; // alltid synlig — Info & prenumeration-knappen ska alltid finnas
     var info = document.getElementById('ev-chat-demoinfo');
+    if (evIsLoggedIn()) { if (info) info.textContent = ''; return; } // dölj demoräknaren, behåll knappen
+    var left = document.getElementById('ev-chat-demoleft');
     var rem = evDemoRemaining();
     if (left) left.textContent = rem;
     if (info) info.innerHTML = rem > 0
       ? 'Demoläge · <b>' + rem + ' gratis fråg' + (rem === 1 ? 'a' : 'or') + ' kvar</b>'
       : 'Demo slut · <b>logga in för fler frågor</b>';
+  }
+
+  // Statiskt info-kort i chatten — ingen AI/backend-anrop, räknas aldrig mot demogränsen
+  function evShowSubscriptionInfo() {
+    var msgs = document.getElementById("ev-chat-messages");
+    if (!msgs) return;
+    var outer = document.createElement("div");
+    var bubble = document.createElement("div");
+    bubble.className = "ev-chat-bubble bot";
+    bubble.innerHTML =
+      '<div style="font-weight:800;margin-bottom:6px">💳 Prenumeration – 49 kr/mån</div>' +
+      '<div style="font-size:.82rem;opacity:.85;margin-bottom:8px">Utan konto är tjänsterna begränsade (demoläge). Som prenumerant får du <b>allt obegränsat</b>:</div>' +
+      '<div style="display:flex;flex-direction:column;gap:5px;font-size:.82rem">' +
+        '<div>🚗 <b>AI Bilrådgivning</b> – obegränsad chatt och bilförslag</div>' +
+        '<div>⚡ <b>AI EV Laddassistent</b> – obegränsad chatt, laddstationer och ruttplanering</div>' +
+        '<div>⛽ <b>Bränslekostnadsberäkning</b> – obegränsade beräkningar</div>' +
+      '</div>' +
+      '<div style="font-size:.75rem;opacity:.6;margin-top:8px">Avbryt när som helst.</div>';
+    var cta = document.createElement("button");
+    cta.textContent = "Prenumerera – 49 kr/mån →";
+    cta.style.cssText = "margin-top:10px;width:100%;background:linear-gradient(135deg,#2563eb,#4f46e5);color:#fff;border:none;border-radius:9px;padding:9px 14px;font-size:.82rem;font-weight:800;cursor:pointer";
+    cta.onclick = evOpenSubscribePopup;
+    bubble.appendChild(cta);
+    outer.appendChild(bubble);
+    msgs.appendChild(outer);
+    msgs.scrollTop = msgs.scrollHeight;
+    var panel = document.getElementById("ev-chat-panel");
+    if (panel && panel.style.display === "none") chatToggle(); // öppna chatten om stängd
   }
   function evVerifyLogin() {
     var token = localStorage.getItem('ca_token');
@@ -844,7 +872,6 @@
     if (window.evOpenSubscribe) { window.evOpenSubscribe(); return; }
     window.open('https://caradvice.onrender.com/subscribe.html?from=elbilsladdning', '_blank', 'width=480,height=650,resizable=yes');
   }
-  var EV_SUB_QUESTION = 'Vad ingår i prenumerationen och vad kostar den?';
 
   function initChat() {
     const style = document.createElement("style");
@@ -1076,9 +1103,9 @@
           <button class="ev-chat-quick-btn" data-q="Vilken elbil har längst räckvidd?">🛣️ Räckvidd</button>
           <button class="ev-chat-quick-btn" data-q="Var laddar jag billigast?">💰 Billigast</button>
         </div>
-        <div class="ev-chat-demobar" id="ev-chat-demobar" style="display:none;align-items:center;justify-content:space-between;gap:8px;padding:7px 12px;font-size:.74rem;color:rgba(147,197,253,.78);border-top:1px solid rgba(148,163,184,.12);">
+        <div class="ev-chat-demobar" id="ev-chat-demobar" style="display:none;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:6px 8px;padding:7px 12px;font-size:.74rem;color:rgba(147,197,253,.78);border-top:1px solid rgba(148,163,184,.12);">
           <span id="ev-chat-demoinfo">Demoläge · <b><span id="ev-chat-demoleft">3</span> gratis frågor kvar</b></span>
-          <button id="ev-chat-subbtn" type="button" style="background:rgba(59,130,246,.15);border:1px solid rgba(59,130,246,.32);color:#93c5fd;border-radius:8px;padding:4px 10px;font-size:.72rem;font-weight:700;cursor:pointer;white-space:nowrap;">💳 Vad ingår?</button>
+          <button id="ev-chat-subbtn" type="button" style="background:rgba(59,130,246,.15);border:1px solid rgba(59,130,246,.32);color:#93c5fd;border-radius:8px;padding:4px 10px;font-size:.72rem;font-weight:700;cursor:pointer;white-space:nowrap;">💳 Info &amp; prenumeration</button>
         </div>
         <div class="ev-chat-input-row">
           <input class="ev-chat-input" id="ev-chat-input" type="text" placeholder="Skriv en fråga…" autocomplete="off" />
@@ -1109,9 +1136,9 @@
       btn.addEventListener("click", () => chatSendMessage(btn.dataset.q))
     );
 
-    // Prenumerationsknappen: alltid gratis, räknas ej mot demogränsen
+    // Info & prenumeration-knappen: statiskt kort, ingen AI/backend, alltid gratis
     var subBtn = document.getElementById("ev-chat-subbtn");
-    if (subBtn) subBtn.addEventListener("click", () => chatSendMessage(EV_SUB_QUESTION, { free: true }));
+    if (subBtn) subBtn.addEventListener("click", evShowSubscriptionInfo);
 
     // Visa demoräknaren för utloggade + verifiera ev. inloggning mot servern
     evUpdateChatDemoUI();
