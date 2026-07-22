@@ -48,6 +48,16 @@ class GroqServiceTest {
     }
 
     @Test
+    void chattpromptenKraverUttryckligBekraftelseNarBilenKlararUtanStopp() {
+        String p = service.buildChatSystemPrompt(List.of(car("Tesla Model 3", 11, 250, 566, 499_000)));
+        // Regeln ska tvinga en tydlig bekraftelse (inte bara "lyft det positivt")
+        assertThat(p)
+                .contains("Bilen klarar sträckan utan laddningsstopp")
+                .contains("MÅSTE du inleda")
+                .contains("utan laddstopp");
+    }
+
+    @Test
     void bilarUtanPrisEllerRackviddFiltrerasBortUrTopplistorna() {
         List<CarSpec> cars = List.of(
                 car("Riktig bil", 11, 150, 400, 350_000),
