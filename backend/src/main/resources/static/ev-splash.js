@@ -19,16 +19,19 @@
   var CARS_KEY = 'ev_car_count';
 
   var CARS_FLOOR = 90; // siffran visas aldrig lägre än detta även innan /api/cars svarat
-  var CARS_ROW = 1;    // raden som visar antal elbilar
+  var CARS_ROW = 2;    // raden som visar antal elbilar
 
   var FORCE = /[?&]splash=1/.test(location.search);
 
+  // Alla datakällor appen faktiskt använder — de med tag:'ONLINE' får en pulsande grön pill.
   var ROWS = [
-    { ic: '🤖', t: 'Groq AI',        s: 'Startar laddassistenten' },
+    { ic: '🤖', t: 'Groq AI',        s: 'Spr\xe5kmodell startad', tag: 'ONLINE' },
+    { ic: '🗄️', t: 'PostgreSQL',     s: 'ev_spec-databasen ansluten', tag: 'ONLINE' },
     { ic: '🔋', t: 'Elbilar',        kind: 'cars' },
-    { ic: '🔌', t: 'Laddstationer',  s: 'Open Charge Map \xb7 realtidsdata' },
-    { ic: '💰', t: 'Priser',         s: 'Chargeprice \xb7 aktuella kWh-priser' },
-    { ic: '🗺️', t: 'Ruttplanering',  s: 'Laddstopp l\xe4ngs din resa' },
+    { ic: '🔌', t: 'Laddstationer',  s: 'Open Charge Map \xb7 realtidsdata', tag: 'LIVE' },
+    { ic: '💰', t: 'Laddpriser',     s: 'Chargeprice \xb7 aktuella kWh-priser' },
+    { ic: '📊', t: 'S\xe4ljstatistik', s: 'Mest s\xe5lda elbilar i Sverige' },
+    { ic: '🗺️', t: 'Ruttplanering',  s: 'Laddstopp l\xe4ngs din resa \xb7 OSRM' },
     { ic: '💡', t: 'Laddtips',       s: 'Smarta tips fr\xe5n databasen' }
   ];
 
@@ -67,23 +70,40 @@
       '.ev-splash::after{content:"";position:absolute;left:0;right:0;height:2px;top:0;pointer-events:none;',
         'background:linear-gradient(90deg,transparent,rgba(96,165,250,.7),rgba(34,197,94,.7),transparent);',
         'box-shadow:0 0 18px rgba(59,130,246,.6);animation:ev-sp-scan 3.4s linear infinite;opacity:.7;}',
-      '.ev-sp-inner{position:relative;z-index:1;width:100%;max-width:384px;',
+      '.ev-sp-inner{position:relative;z-index:1;width:100%;max-width:392px;',
         'display:flex;flex-direction:column;align-items:center;}',
+      // Glaskort — frostat panel med djup glow som håller hela boot-sekvensen
+      // OBS: topp/botten-glöden ligger som bakgrundslager (inte ::before) — ett absolut­positionerat
+      // ::before målas ovanpå den statiska texten och lägger en slöja som tvättar ur den.
+      '.ev-sp-card{position:relative;width:100%;padding:30px 22px 24px;border-radius:26px;',
+        'display:flex;flex-direction:column;align-items:center;',
+        'background:radial-gradient(120% 55% at 50% -8%,rgba(96,165,250,.28),transparent 68%),',
+          'radial-gradient(100% 45% at 50% 108%,rgba(34,197,94,.15),transparent 70%),',
+          'linear-gradient(160deg,rgba(19,33,60,.92),rgba(8,15,30,.95));',
+        '-webkit-backdrop-filter:blur(24px) saturate(150%);backdrop-filter:blur(24px) saturate(150%);',
+        'border:1px solid rgba(147,197,253,.22);',
+        'box-shadow:0 30px 80px rgba(0,0,0,.6),inset 0 1px 0 rgba(255,255,255,.18),',
+          'inset 0 0 50px rgba(59,130,246,.08),0 0 70px rgba(34,197,94,.18),0 0 120px rgba(37,99,235,.12);',
+        'animation:ev-sp-rise .55s ease both;}',
       // Laddningskärna (batteri + blixt)
       '.ev-sp-core{position:relative;width:96px;height:96px;margin-bottom:16px;',
         'display:flex;align-items:center;justify-content:center;animation:ev-sp-rise .5s ease both;}',
       '.ev-sp-ring{position:absolute;inset:0;border-radius:50%;',
-        'background:conic-gradient(from 0deg,rgba(34,197,94,0),#22c55e 18%,#3b82f6 52%,#818cf8 78%,rgba(129,140,248,0));',
-        '-webkit-mask:radial-gradient(farthest-side,transparent calc(100% - 3px),#000 calc(100% - 2px));',
-        'mask:radial-gradient(farthest-side,transparent calc(100% - 3px),#000 calc(100% - 2px));',
-        'animation:ev-sp-rot 1.5s linear infinite;}',
+        'background:conic-gradient(from 0deg,rgba(34,197,94,0),#22c55e 16%,#3b82f6 50%,#818cf8 76%,rgba(129,140,248,0));',
+        '-webkit-mask:radial-gradient(farthest-side,transparent calc(100% - 4px),#000 calc(100% - 3px));',
+        'mask:radial-gradient(farthest-side,transparent calc(100% - 4px),#000 calc(100% - 3px));',
+        'filter:drop-shadow(0 0 8px rgba(59,130,246,.6));animation:ev-sp-rot 1.5s linear infinite;}',
       '.ev-sp-pulse{position:absolute;inset:6px;border-radius:50%;border:1.5px solid rgba(59,130,246,.45);',
         'animation:ev-sp-pulse 2.1s ease-out infinite;}',
       '.ev-sp-pulse.p2{animation-delay:1.05s;border-color:rgba(34,197,94,.4);}',
       '.ev-sp-node{position:relative;width:62px;height:62px;border-radius:19px;',
-        'background:linear-gradient(145deg,#0f2038,#153a56);border:1px solid rgba(59,130,246,.35);',
+        'background:linear-gradient(145deg,rgba(23,44,74,.9),rgba(21,58,86,.85));',
+        '-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);',
+        'border:1px solid rgba(147,197,253,.4);',
         'display:flex;align-items:center;justify-content:center;',
-        'box-shadow:0 6px 24px rgba(37,99,235,.5),0 0 22px rgba(34,197,94,.28);}',
+        'box-shadow:0 8px 30px rgba(37,99,235,.55),0 0 34px rgba(34,197,94,.35),',
+          'inset 0 1px 0 rgba(255,255,255,.25),inset 0 0 18px rgba(59,130,246,.25);}',
+      '.ev-sp-node svg{filter:drop-shadow(0 0 6px rgba(74,222,128,.7));}',
       '.ev-sp-bolt{position:absolute;top:-5px;right:-5px;width:24px;height:24px;border-radius:50%;',
         'background:#04101c;border:1px solid rgba(34,197,94,.6);display:flex;align-items:center;justify-content:center;',
         'box-shadow:0 0 12px rgba(34,197,94,.65);animation:ev-sp-boltpulse 1.5s ease-in-out infinite;}',
@@ -92,6 +112,7 @@
       '.ev-sp-title{font-size:1.35rem;font-weight:800;letter-spacing:-.4px;margin:0 0 8px;',
         'background:linear-gradient(120deg,#fff 36%,#93c5fd 100%);',
         '-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;',
+        'filter:drop-shadow(0 1px 8px rgba(96,165,250,.55));',
         'animation:ev-sp-rise .5s ease .05s both;}',
       '.ev-sp-chip{display:inline-flex;align-items:center;gap:5px;margin:0 0 14px;padding:3px 11px;',
         'border-radius:20px;background:rgba(34,197,94,.1);border:1px solid rgba(34,197,94,.4);',
@@ -105,19 +126,29 @@
       '.ev-sp-boot .pr{color:#4ade80;font-weight:700;margin-right:5px;}',
       '.ev-sp-cur{display:inline-block;width:7px;height:.95em;background:#4ade80;margin-left:3px;',
         'vertical-align:-1px;animation:ev-sp-blink 1s steps(1) infinite;}',
-      // Rader
-      '.ev-sp-rows{width:100%;display:flex;flex-direction:column;gap:8px;}',
-      '.ev-sp-row{display:flex;align-items:center;gap:11px;text-align:left;padding:9px 13px;border-radius:12px;',
-        'background:rgba(255,255,255,.045);border:1px solid rgba(59,130,246,.16);',
-        'opacity:0;transform:translateY(8px);transition:opacity .35s ease,transform .35s ease,border-color .3s,background .3s;}',
+      // Rader (glasmorf)
+      '.ev-sp-rows{width:100%;display:flex;flex-direction:column;gap:7px;}',
+      '.ev-sp-row{display:flex;align-items:center;gap:11px;text-align:left;padding:9px 12px;border-radius:13px;',
+        'background:rgba(147,197,253,.08);border:1px solid rgba(147,197,253,.2);',
+        'box-shadow:inset 0 1px 0 rgba(255,255,255,.1);',
+        'opacity:0;transform:translateY(8px);transition:opacity .35s ease,transform .35s ease,border-color .3s,background .3s,box-shadow .3s;}',
       '.ev-sp-row.show{opacity:1;transform:translateY(0);}',
-      '.ev-sp-row.done{border-color:rgba(34,197,94,.35);background:rgba(34,197,94,.07);}',
-      '.ev-sp-ic{font-size:1.05rem;flex-shrink:0;width:22px;text-align:center;}',
+      '.ev-sp-row.done{border-color:rgba(52,211,153,.5);background:rgba(34,197,94,.14);',
+        'box-shadow:inset 0 1px 0 rgba(255,255,255,.12),0 0 22px rgba(34,197,94,.22);}',
+      '.ev-sp-ic{font-size:1.05rem;flex-shrink:0;width:22px;text-align:center;filter:drop-shadow(0 0 5px rgba(59,130,246,.4));}',
       '.ev-sp-tx{flex:1;min-width:0;display:flex;flex-direction:column;line-height:1.25;}',
-      '.ev-sp-tx b{font-size:.83rem;font-weight:700;color:#eaf2ff;}',
-      '.ev-sp-tx i{font-size:.69rem;font-style:normal;color:rgba(191,219,254,.6);',
+      '.ev-sp-tx b{font-size:.83rem;font-weight:700;color:#f4f8ff;display:flex;align-items:center;gap:7px;}',
+      '.ev-sp-tx i{font-size:.69rem;font-style:normal;color:rgba(191,219,254,.82);',
         'white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}',
-      '.ev-sp-tx i b{color:#7dd3fc;font-weight:800;font-style:normal;}',
+      '.ev-sp-tx i b{color:#7dd3fc;font-weight:800;font-style:normal;display:inline;}',
+      // "online"-pill med pulsande grön prick
+      '.ev-sp-onl{display:inline-flex;align-items:center;gap:4px;padding:1px 7px 1px 5px;border-radius:20px;',
+        'font-size:.52rem;font-weight:800;letter-spacing:.1em;text-transform:uppercase;',
+        'color:#6ee7b7;background:rgba(34,197,94,.14);border:1px solid rgba(34,197,94,.4);',
+        'box-shadow:0 0 10px rgba(34,197,94,.25);}',
+      '.ev-sp-onl.live{color:#7dd3fc;background:rgba(59,130,246,.14);border-color:rgba(59,130,246,.4);box-shadow:0 0 10px rgba(59,130,246,.25);}',
+      '.ev-sp-onl .dot{width:5px;height:5px;border-radius:50%;background:currentColor;',
+        'box-shadow:0 0 6px currentColor;animation:ev-sp-onlpulse 1.4s ease-in-out infinite;}',
       '.ev-sp-st{flex-shrink:0;width:20px;height:20px;display:flex;align-items:center;justify-content:center;}',
       '.ev-sp-spin{width:14px;height:14px;border-radius:50%;',
         'border:2px solid rgba(59,130,246,.2);border-top-color:#60a5fa;animation:ev-sp-spin .6s linear infinite;}',
@@ -163,9 +194,11 @@
       '@keyframes ev-sp-pop{0%{transform:scale(.4);opacity:0;}60%{transform:scale(1.15);}100%{transform:scale(1);opacity:1;}}',
       '@keyframes ev-sp-scan{0%{top:-2px;opacity:0;}12%{opacity:.7;}88%{opacity:.7;}100%{top:100%;opacity:0;}}',
       '@keyframes ev-sp-shine{0%{transform:translateX(-100%);}100%{transform:translateX(100%);}}',
+      '@keyframes ev-sp-onlpulse{0%,100%{opacity:1;transform:scale(1);}50%{opacity:.45;transform:scale(1.35);}}',
       // Mobil
       '@media (max-width:520px){',
-        '.ev-splash{justify-content:flex-start;padding:44px 14px 20px;}',
+        '.ev-splash{justify-content:flex-start;padding:34px 12px 20px;}',
+        '.ev-sp-card{padding:24px 15px 20px;border-radius:22px;}',
         '.ev-sp-title{font-size:1.2rem;}',
         '.ev-sp-core{width:78px;height:78px;margin-bottom:12px;}',
         '.ev-sp-node{width:54px;height:54px;border-radius:16px;}',
@@ -198,11 +231,17 @@
     return row.s;
   }
 
+  function tagHtml(tag) {
+    if (!tag) return '';
+    var cls = tag === 'LIVE' ? 'ev-sp-onl live' : 'ev-sp-onl';
+    return '<span class="' + cls + '"><span class="dot"></span>' + tag + '</span>';
+  }
+
   function rowsHtml() {
     return ROWS.map(function (r, i) {
       return '<div class="ev-sp-row" data-i="' + i + '">' +
         '<span class="ev-sp-ic">' + r.ic + '</span>' +
-        '<span class="ev-sp-tx"><b>' + r.t + '</b><i class="ev-sp-suba">' + subFor(r) + '</i></span>' +
+        '<span class="ev-sp-tx"><b>' + r.t + tagHtml(r.tag) + '</b><i class="ev-sp-suba">' + subFor(r) + '</i></span>' +
         '<span class="ev-sp-st"><span class="ev-sp-spin"></span></span>' +
       '</div>';
     }).join('');
@@ -212,17 +251,19 @@
     return '' +
       '<button class="ev-splash-skip" type="button" aria-label="Hoppa \xf6ver">Hoppa \xf6ver ✕</button>' +
       '<div class="ev-sp-inner">' +
-        '<div class="ev-sp-core">' +
-          '<span class="ev-sp-ring"></span>' +
-          '<span class="ev-sp-pulse"></span><span class="ev-sp-pulse p2"></span>' +
-          '<span class="ev-sp-node">' + BATT_SVG + '<span class="ev-sp-bolt">' + BOLT_SVG + '</span></span>' +
+        '<div class="ev-sp-card">' +
+          '<div class="ev-sp-core">' +
+            '<span class="ev-sp-ring"></span>' +
+            '<span class="ev-sp-pulse"></span><span class="ev-sp-pulse p2"></span>' +
+            '<span class="ev-sp-node">' + BATT_SVG + '<span class="ev-sp-bolt">' + BOLT_SVG + '</span></span>' +
+          '</div>' +
+          '<h3 class="ev-sp-title">EV Laddningsassistent</h3>' +
+          '<span class="ev-sp-chip">' + BOLT_SVG + ' Powered by Groq AI</span>' +
+          '<p class="ev-sp-boot"><span class="pr">▸</span><span class="ev-sp-boot-tx"></span><span class="ev-sp-cur"></span></p>' +
+          '<div class="ev-sp-rows">' + rowsHtml() + '</div>' +
+          '<div class="ev-sp-batt"><div class="ev-sp-fill"></div></div>' +
+          '<div class="ev-sp-pct">0% laddat</div>' +
         '</div>' +
-        '<h3 class="ev-sp-title">EV Laddningsassistent</h3>' +
-        '<span class="ev-sp-chip">' + BOLT_SVG + ' Powered by Groq AI</span>' +
-        '<p class="ev-sp-boot"><span class="pr">▸</span><span class="ev-sp-boot-tx"></span><span class="ev-sp-cur"></span></p>' +
-        '<div class="ev-sp-rows">' + rowsHtml() + '</div>' +
-        '<div class="ev-sp-batt"><div class="ev-sp-fill"></div></div>' +
-        '<div class="ev-sp-pct">0% laddat</div>' +
       '</div>';
   }
 
@@ -346,7 +387,7 @@
     }
 
     // ~5,5 s total: rader tickar in (laddkänsla), sen "fulladdad"-flärt
-    var START = 420, STAGGER = 500, FLIP = 360;
+    var START = 400, STAGGER = 440, FLIP = 340;
     rows.forEach(function (row, i) {
       var appear = START + i * STAGGER;
       timers.push(setTimeout(function () {
