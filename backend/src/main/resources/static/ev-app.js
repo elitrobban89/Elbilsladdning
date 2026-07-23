@@ -1,5 +1,18 @@
 (function () {
   const API = window.EV_API_URL || "https://elbilsladdning.onrender.com";
+
+  // Auto-injicera uppstartssplashen. WP-sidan är en manuell kopia och laddar denna fil;
+  // så här får den ev-splash.js utan att markupen behöver klistras om (samma mönster som
+  // CarAdvice). Hoppar över om skriptet redan finns i sidan.
+  (function injectSplash() {
+    if (document.getElementById("ev-splash-js") ||
+        document.querySelector('script[src*="ev-splash.js"]')) return;
+    var s = document.createElement("script");
+    s.id = "ev-splash-js";
+    s.src = API + "/ev-splash.js";
+    s.defer = true;
+    (document.head || document.documentElement).appendChild(s);
+  })();
   let state = { lat: null, lon: null, city: "", sort: "speed", carIndex: null, cars: [], filter: "all", operatorFilter: null, lastData: null, lastRoute: null, lastCalc: null, favorites: [], evSalesRank: [] };
   let evMap = null;
   let evMapMarkers = [];
