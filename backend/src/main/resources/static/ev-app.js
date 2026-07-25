@@ -382,6 +382,7 @@
 
     {
       const staticFacts = [
+        { icon: '💰', text: 'Fyndläge på begagnad premium-el: VW-koncernen skär ner och enligt rapporter är flera tyska fabriker hotade – bland dem Neckarsulm, där Audi e-tron GT byggs. Samtidigt har första generationens <strong>Audi e-tron</strong> (2019–2021) tappat <strong>65–70 %</strong> av nypriset: median ~<strong>325 000 kr</strong> på Blocket i juli 2026, billigaste exemplaren från ~210 000 kr. Haken: 1,63 kWh/mil är törstigt även för en stor SUV, och batterigarantin (8 år/160 000 km) börjar ta slut på 2019-bilarna.' },
         { icon: '🏆', text: 'Volvo EX40 var Sveriges mest sålda elbil 2025 med <strong>8 788</strong> nyregistreringar – och EX40/XC40 leder även första halvåret 2026, före Tesla Model Y (Mobility Sweden).' },
         { icon: '🌍', text: 'IONITY är Europas snabbaste offentliga laddnätverk med upp till <strong>350 kW</strong> per laddpunkt. I Norden finns 100+ stationer längs motorvägarna.' },
         { icon: '🇸🇪', text: 'Vattenfall InCharge är ett av Nordens största laddnätverk med över <strong>33 000 laddpunkter</strong> i Sverige, Norge, Danmark och Finland.' },
