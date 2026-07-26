@@ -1014,6 +1014,10 @@
         padding:10px 13px 6px;display:flex;flex-wrap:wrap;gap:7px;flex-shrink:0;
         background:rgba(4,8,20,0.55);border-top:1px solid rgba(147,197,253,0.1);
       }
+      /* JS-styrt lage: satts nar samtalet borjat sa att snabbknapparna forsvinner.
+         Egen klass i stallet for inline display, annars kan CSS-reglerna nedan
+         (platsbrist i liggande lage, expanderat lage) aldrig ta over. */
+      .ev-chat-quick.ev-chat-quick-off { display:none; }
       .ev-chat-quick-btn {
         background:rgba(59,130,246,0.1);border:1px solid rgba(147,197,253,0.22);color:#93c5fd;
         border-radius:20px;padding:5px 13px;font-size:12px;font-weight:600;
@@ -1102,7 +1106,7 @@
           width:auto;max-height:none;border-radius:16px;
         }
         body.ev-chat-max .ev-chat-fab-wrap{display:none;}
-        body.ev-chat-max .ev-chat-quick{display:flex;}
+        body.ev-chat-max .ev-chat-quick:not(.ev-chat-quick-off){display:flex;}
       }
     `;
     document.head.appendChild(style);
@@ -1191,7 +1195,7 @@
     chatAppendBot("Undrar du vilken elbil du bör köpa? 🚗 Jag kan ge dig tips! Välj ett ämne nedan eller ställ en egen fråga.", false);
 
     if (chatHistory.length > 0) {
-      document.getElementById("ev-chat-quick").style.display = "none";
+      document.getElementById("ev-chat-quick").classList.add("ev-chat-quick-off");
       chatHistory.forEach(function(m) {
         if (m.role === "user") chatAppendUser(m.content);
         else if (m.role === "assistant") chatAppendBot(m.content, false);
@@ -1412,7 +1416,7 @@
     try { localStorage.removeItem("ev-chat"); } catch(e) {}
     const msgs = document.getElementById("ev-chat-messages");
     msgs.innerHTML = "";
-    document.getElementById("ev-chat-quick").style.display = "flex";
+    document.getElementById("ev-chat-quick").classList.remove("ev-chat-quick-off");
     chatAppendBot("Undrar du vilken elbil du bör köpa? 🚗 Jag kan ge dig tips! Välj ett ämne nedan eller ställ en egen fråga.", false);
   }
 
@@ -1462,7 +1466,7 @@
     // Demospärr: utloggade får EV_DEMO_MAX frågor. opts.free = prenumerationsknappen
     // (alltid gratis), opts.retry = omförsök (ska inte dra en till).
     if (!opts.free && !opts.retry && !evIsLoggedIn() && evDemoRemaining() <= 0) {
-      document.getElementById("ev-chat-quick").style.display = "none";
+      document.getElementById("ev-chat-quick").classList.add("ev-chat-quick-off");
       var gate = chatAppendBot("Du har använt dina " + EV_DEMO_MAX + " gratis frågor i demoläget. Logga in för obegränsad tillgång — eller klicka “Vad ingår?” nedan för att läsa om prenumerationen.", false);
       var lb = document.createElement("button");
       lb.className = "ev-chat-retry"; lb.textContent = "🔑 Logga in";
@@ -1471,7 +1475,7 @@
       return;
     }
     if (!opts.free && !opts.retry && !evIsLoggedIn()) evConsumeDemo();
-    document.getElementById("ev-chat-quick").style.display = "none";
+    document.getElementById("ev-chat-quick").classList.add("ev-chat-quick-off");
     chatAppendUser(message);
     chatHistory.push({ role: "user", content: message });
     saveChatHistory();
@@ -1888,7 +1892,7 @@
       if (input) input.focus();
     }
     const quickEl = document.getElementById("ev-chat-quick");
-    if (quickEl) quickEl.style.display = "none";
+    if (quickEl) quickEl.classList.add("ev-chat-quick-off");
 
     let resp;
     try {
