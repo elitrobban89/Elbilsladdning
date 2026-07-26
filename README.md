@@ -47,6 +47,8 @@ Live: [elitrobban.se/elbilsladdning](https://elitrobban.se/elbilsladdning/)
 - **Billigaste laddning** — vid fråga om billigaste laddning rekommenderas alltid hemmaladdning (~1,50–3,50 kr/kWh) först, följt av billigaste publik station i listan med namn, pris och avstånd
 - **Ruttkontext** — om en rutt är planerad kan chattboten förklara varför ett specifikt laddstop valts, om bilen klarar sträckan utan stopp, och hur stopparna är utplacerade längs vägen
 - **Laddtidskalkylator** — interaktiv kalkylator visas under sökresultaten: dra sliders "Ladda från X% till Y%" och se beräknad tid, kostnad och tillkommen räckvidd i realtid; använder vald bils batteristorlek och den närmaste DC-stationens effektiva kW
+- **Expandera-läge i chatten** — chevron-knapp i chattens header växlar mellan normalt bottenkort och stort läge: helskärmsark på mobil (FAB:en döljs), 560 px bred panel med full höjd på desktop. Läget sparas i `localStorage` (`ev-chat-max`) och överlever omladdning. Panelen räknas som maximerad bara när den också är öppen, annars skulle FAB:en förbli dold och chatten bli oåtkomlig
+- **Mobilanpassad chattpanel** — chatten är ett bottenkort som lämnar sidan bakom synlig: höjdtaket är `min(440px, 58dvh)` (`dvh` så att mobilens adressfält inte spräcker höjden) och panelen spänner `left/right: 10px` i stället för fast bredd. Brytpunkten ligger på 640 px så att även bredare telefoner (Pixel 412 px, iPhone Pro Max 430 px) träffas. I liggande läge (`max-height: 480px`) sänks taket till `min(300px, 70dvh)` och snabbknapparna döljs
 - **Mobilanpassad** — fungerar på iOS och Android
 - **PWA-stöd** — `manifest.json` gör appen installerbar på Android/iOS via "Lägg till på startskärm"
 

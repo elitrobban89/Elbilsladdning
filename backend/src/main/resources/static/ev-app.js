@@ -809,6 +809,7 @@
 
   // ===== CHATTBOT =====
   let chatHistory = (function(){ try{ return JSON.parse(localStorage.getItem('ev-chat')||'[]'); }catch(e){ return []; } })();
+  let evChatExpanded = (function(){ try{ return localStorage.getItem('ev-chat-max') === '1'; }catch(e){ return false; } })();
 
   // ── Demospärr: utloggade får EV_DEMO_MAX gratis chattfrågor ────────
   // Prenumerationsfrågor (Vad ingår-knappen) och omförsök räknas inte.
@@ -972,6 +973,15 @@
         padding:0;line-height:1;transition:all .12s;
       }
       .ev-chat-header-close:hover { background:rgba(255,255,255,0.18);color:#fff; }
+      .ev-chat-header-expand {
+        background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.13);
+        color:rgba(255,255,255,0.7);width:26px;height:26px;
+        border-radius:50%;cursor:pointer;display:flex;align-items:center;justify-content:center;
+        padding:0;line-height:0;transition:all .12s;
+      }
+      .ev-chat-header-expand:hover { background:rgba(255,255,255,0.18);color:#fff; }
+      .ev-chat-header-expand svg { display:block;transition:transform .18s; }
+      body.ev-chat-max .ev-chat-header-expand svg { transform:rotate(180deg); }
       .ev-chat-messages {
         flex:1;overflow-y:auto;padding:16px 13px;
         display:flex;flex-direction:column;gap:11px;
@@ -1078,6 +1088,22 @@
         .ev-chat-fab{width:44px;height:44px;}
         .ev-chat-fab svg{width:27px;height:31px;}
       }
+      /* Expanderat lage. Klassen sitter pa body sa att aven .ev-chat-fab-wrap gar att na,
+         och sa att specificiteten (0,2,1) slar bade bas- och mediaregler ovan. */
+      body.ev-chat-max .ev-chat-panel{
+        width:min(560px, calc(100vw - 48px));
+        max-height:calc(100vh - 120px);
+        max-height:calc(100dvh - 120px);
+      }
+      /* Smal eller lag skarm: expanderat = helskarmsark, FAB:en i vagen doljs */
+      @media(max-width:640px),(max-height:480px){
+        body.ev-chat-max .ev-chat-panel{
+          left:8px;right:8px;top:8px;bottom:8px;
+          width:auto;max-height:none;border-radius:16px;
+        }
+        body.ev-chat-max .ev-chat-fab-wrap{display:none;}
+        body.ev-chat-max .ev-chat-quick{display:flex;}
+      }
     `;
     document.head.appendChild(style);
 
@@ -1135,6 +1161,9 @@
           </div>
           <div class="ev-chat-header-actions">
             <button class="ev-chat-header-clear" id="ev-chat-clear">Rensa</button>
+            <button class="ev-chat-header-expand" id="ev-chat-expand" title="Expandera chatten" aria-label="Expandera chatten" aria-expanded="false">
+              <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M6 15l6-6 6 6"/></svg>
+            </button>
             <button class="ev-chat-header-close" id="ev-chat-close">✕</button>
           </div>
         </div>
@@ -1171,12 +1200,15 @@
 
     document.getElementById("ev-chat-fab").addEventListener("click", chatToggle);
     document.getElementById("ev-chat-close").addEventListener("click", chatToggle);
+    document.getElementById("ev-chat-expand").addEventListener("click", chatToggleExpanded);
     document.getElementById("ev-chat-send").addEventListener("click", chatSend);
     document.getElementById("ev-chat-input").addEventListener("keydown", e => { if (e.key === "Enter") chatSend(); });
     document.getElementById("ev-chat-clear").addEventListener("click", chatClear);
     document.querySelectorAll(".ev-chat-quick-btn").forEach(btn =>
       btn.addEventListener("click", () => chatSendMessage(btn.dataset.q))
     );
+
+    chatSyncExpanded();
 
     // Info & prenumeration-knappen: statiskt kort, ingen AI/backend, alltid gratis
     var subBtn = document.getElementById("ev-chat-subbtn");
@@ -1206,7 +1238,31 @@
     const panel = document.getElementById("ev-chat-panel");
     const open = panel.style.display === "none";
     panel.style.display = open ? "flex" : "none";
+    chatSyncExpanded();
     if (open) document.getElementById("ev-chat-input").focus();
+  }
+
+  // Panelen raknas som maximerad bara nar den ocksa ar oppen — annars skulle
+  // .ev-chat-fab-wrap forbli dold pa mobil och chatten bli oatkomlig efter stangning.
+  function chatSyncExpanded() {
+    const panel = document.getElementById("ev-chat-panel");
+    const open = panel && panel.style.display !== "none";
+    document.body.classList.toggle("ev-chat-max", !!(open && evChatExpanded));
+    const btn = document.getElementById("ev-chat-expand");
+    if (btn) {
+      const lbl = evChatExpanded ? "Minska chatten" : "Expandera chatten";
+      btn.title = lbl;
+      btn.setAttribute("aria-label", lbl);
+      btn.setAttribute("aria-expanded", evChatExpanded ? "true" : "false");
+    }
+  }
+
+  function chatToggleExpanded() {
+    evChatExpanded = !evChatExpanded;
+    try { localStorage.setItem("ev-chat-max", evChatExpanded ? "1" : "0"); } catch(e) {}
+    chatSyncExpanded();
+    const msgs = document.getElementById("ev-chat-messages");
+    if (msgs) msgs.scrollTop = msgs.scrollHeight;
   }
 
   function chatMarkdown(text) {
@@ -1827,6 +1883,7 @@
 
     if (panel && panel.style.display === "none") {
       panel.style.display = "flex";
+      chatSyncExpanded();
       const input = document.getElementById("ev-chat-input");
       if (input) input.focus();
     }
