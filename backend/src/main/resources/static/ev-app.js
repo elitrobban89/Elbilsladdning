@@ -929,7 +929,9 @@
       .ev-chat-fab:hover{transform:scale(1.1);box-shadow:0 6px 22px rgba(29,78,216,.7);}
       .ev-chat-panel {
         position:fixed;bottom:92px;right:24px;z-index:9998;
-        width:390px;max-height:560px;
+        width:390px;
+        max-height:min(560px, calc(100vh - 130px));
+        max-height:min(560px, calc(100dvh - 130px));
         background:rgba(5,10,24,0.82);
         backdrop-filter:blur(32px) saturate(1.4);-webkit-backdrop-filter:blur(32px) saturate(1.4);
         border:1px solid rgba(147,197,253,0.22);border-radius:22px;
@@ -1046,9 +1048,35 @@
       .ev-chat-thumb.voted{border-color:rgba(147,197,253,0.6);color:#93c5fd;background:rgba(147,197,253,0.08);}
       .ev-chat-retry{background:none;border:1px solid rgba(239,68,68,0.3);color:rgba(239,68,68,0.65);font-size:11px;font-weight:600;padding:4px 11px;border-radius:20px;cursor:pointer;margin-top:7px;display:inline-block;transition:all .15s;}
       .ev-chat-retry:hover{border-color:rgba(239,68,68,0.6);color:#ef4444;}
-      @media(max-width:400px){
-        .ev-chat-panel{width:calc(100vw - 16px);right:8px;bottom:88px;}
-        .ev-chat-fab-wrap{right:12px;bottom:12px;}
+      @media(max-width:640px){
+        /* Panelen ska vara ett kort i underkanten — inte ta over hela skarmen */
+        .ev-chat-panel{
+          width:auto;left:10px;right:10px;bottom:88px;border-radius:18px;
+          max-height:min(440px, 58vh);
+          max-height:min(440px, 58dvh);
+        }
+        .ev-chat-fab-wrap{right:12px;bottom:12px;gap:4px;}
+        .ev-chat-fab{width:48px;height:48px;border-radius:15px;}
+        .ev-chat-fab svg{width:29px;height:34px;}
+        .ev-chat-fab-label{font-size:10px;padding:2px 8px;}
+        .ev-chat-spark{font-size:12px;}
+        .ev-chat-spark:nth-child(2){top:15px;left:-16px;}
+        .ev-chat-spark:nth-child(3){top:15px;right:-16px;}
+        .ev-chat-header{padding:11px 12px 10px;}
+        .ev-chat-header-name{font-size:13px;}
+        .ev-chat-messages{padding:12px 10px;gap:9px;}
+        .ev-chat-bubble{max-width:90%;padding:9px 12px;}
+        .ev-chat-quick{padding:8px 10px 4px;gap:6px;}
+        .ev-chat-quick-btn{font-size:11px;padding:4px 11px;}
+        .ev-chat-input-row{padding:8px 10px 9px;}
+      }
+      /* Liggande mobil: nastan ingen hojd kvar — hall panelen riktigt lag */
+      @media(max-width:900px) and (max-height:480px){
+        .ev-chat-panel{bottom:72px;max-height:min(300px, 70vh);max-height:min(300px, 70dvh);}
+        .ev-chat-quick{display:none;}
+        .ev-chat-fab-label{display:none;}
+        .ev-chat-fab{width:44px;height:44px;}
+        .ev-chat-fab svg{width:27px;height:31px;}
       }
     `;
     document.head.appendChild(style);
