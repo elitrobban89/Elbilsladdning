@@ -438,7 +438,10 @@
       html += `
         <div class="ev-funfact-card" id="ev-funfact-carousel" style="flex-direction:column;gap:0;">
           <div id="ev-funfact-slides" style="position:relative;min-height:48px;">${fSlideHtml}</div>
-          <div style="display:flex;justify-content:center;gap:6px;margin-top:10px;">${fDotHtml}</div>
+          <!-- flex-wrap: prickarna har flex-shrink:0, sa raden kan inte krympa. 20 fakta ger
+               286px prickar mot 254px innermatt vid 320px viewport - utan wrap spiller de
+               over kortkanten. Radbrytning haller den robust nar fler fakta tillkommer. -->
+          <div style="display:flex;flex-wrap:wrap;justify-content:center;gap:6px;margin-top:10px;">${fDotHtml}</div>
         </div>`;
     }
 
