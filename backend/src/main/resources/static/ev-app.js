@@ -399,9 +399,12 @@
         // kommande modeller hör hemma i CarAdvice kommande-kö, inte i en publik faktakarusell.
         { icon: '⏱️', text: 'Låg förbrukning slår stort batteri på långresa: <strong>Mercedes CLA 250+</strong> drar bara <strong>16,5 kWh/100 km</strong> och klarar därför 80 mil med ett enda laddstopp på <strong>14 minuter</strong> (Vi Bilägare).' },
         { icon: '🔋', text: '<strong>Volvo EX30</strong> tar sig 80 mil på totalt <strong>59 minuters</strong> laddning och håller sig under 20 kWh/100 km – ett bra riktvärde för hur mycket laddtid en långresa faktiskt kostar (Vi Bilägare).' },
-        // ID. Cross-tipset borttaget 08-14: bilen lanseras forst hosten 2026 och brot darmed mot
-        // urvalsregeln ovan (kommande modeller hor hemma i CarAdvice kommande-ko). V2L-poangen
-        // tacks nu av BYD Shark-tipset langre ner, som ar en bil som gar att kopa i dag.
+        // ID. Cross ar ett MEDVETET undantag fran urvalsregeln ovan och ska INTE tas bort som
+        // "kommande modell". Den lanseras hosten 2026 och vi ar i mitten av augusti - det ar
+        // veckor bort, inte ar, sa tipset hinner knappt bli fel innan bilen star hos handlarna.
+        // Togs bort 08-14 och lades tillbaka samma dag av just det skalet. Gransen gar vid
+        // modeller som ligger LANGT bort eller aldrig kommer hit (EX60, Cupra Raval).
+        { icon: '🏠', text: 'Nya elbilar blir reservkraft: <strong>Volkswagen ID. Cross</strong> har både <strong>V2L</strong> (upp till 3,6 kW till externa prylar) och <strong>V2H</strong> som standard – bilen kan alltså mata ström tillbaka till hemmet (Teknikens Värld / Vi Bilägare).' },
         { icon: '⚡', text: '800 volt sprider sig nedåt i prisklasserna: <strong>BYD Atto 3 Evo</strong> fick större batteri och 800 V-laddning, och maxeffekten steg från <strong>88 kW till 220 kW</strong> (Elbilen).' },
         { icon: '🛞', text: 'Praktiskt knep i backarna: <strong>B-läget</strong> motorbromsar och laddar batteriet i stället för att elda upp farten i bromsarna. I Volvo XC40 uppges det ge <strong>en till två mils</strong> extra räckvidd – och mindre slitage på bromsbeläggen (CarUp).' },
         { icon: '🛣️', text: 'Längst på en laddning: <strong>Mercedes EQS 450+</strong> klarar <strong>925 km</strong> enligt WLTP – men räkna med mindre i verklig fart och kyla, WLTP mäts i betydligt snällare förhållanden (CarUp).' },
