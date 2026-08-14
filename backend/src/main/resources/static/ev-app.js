@@ -178,7 +178,7 @@
 
   function renderSpecs() {
     const box = document.getElementById("ev-specs");
-    if (state.carIndex === null) { box.style.display = "none"; return; }
+    if (state.carIndex === null) { box.style.display = "none"; renderChargingNotice(false); return; }
     const c = state.cars[state.carIndex];
     const rangeMil  = c.rangeKm ? Math.round(c.rangeKm / 10) : null;
     const realMil   = rangeMil ? Math.round(rangeMil * 0.85) : null;
@@ -186,12 +186,72 @@
     const priceStr  = c.priceKr ? `från ${(c.priceKr / 1000).toFixed(0)} tkr` : null;
     box.style.display = "flex";
     box.innerHTML = `
-      <span class="ev-spec-badge badge-ac">AC max ${c.maxAcKw} kW</span>
-      <span class="ev-spec-badge badge-dc">DC max ${c.maxDcKw} kW</span>
+      <span class="ev-spec-badge badge-ac" title="Toppeffekt från laddbox. Taket sitter i bilens ombordladdare – en kraftigare laddbox ger ändå inte mer än så här mycket.">AC max ${c.maxAcKw} kW</span>
+      <span class="ev-spec-badge badge-dc" title="Toppeffekt vid publik snabbladdare. Verklig effekt beror på batteriets temperatur och laddnivå, och på vad stolpen klarar.">DC max ${c.maxDcKw} kW</span>
       ${rangeMil ? `<span class="ev-spec-badge badge-range">~${rangeMil} mil WLTP · ~${realMil} mil verklig</span>` : ""}
       ${priceStr ? `<span class="ev-spec-badge badge-price">${priceStr}</span>` : ""}
       ${freqBadge ? `<span class="ev-spec-badge badge-freq">${freqBadge}</span>` : ""}
       ${c.connectors.map(t => `<span class="ev-spec-badge badge-con">${conLabel(t)}</span>`).join("")}`;
+    renderChargingNotice(true);
+  }
+
+  /**
+   * Utfallbar forklaring av AC max / DC max, portad fran CarAdvice (car-advice-main.js
+   * ca-charging-notice). Talen har alltid statt i badgesarna men aldrig forklarats, och en
+   * anvandare som inte vet vad de betyder kan inte anvanda dem for att valja bil.
+   *
+   * Inbyggd <details> och ingen list-style:none - den inbyggda triangeln ar det enda som
+   * visar att rutan gar att falla ut, och den vander sig sjalv nar den oppnas. Stangd som
+   * default: den som redan vet ska inte behova scrolla forbi en textvagg varje gang.
+   */
+  function renderChargingNotice(show) {
+    const id = "ev-charging-notice";
+    const existing = document.getElementById(id);
+    if (!show) { if (existing) existing.parentNode.removeChild(existing); return; }
+    if (existing) return;
+
+    const box = document.getElementById("ev-specs");
+    if (!box || !box.parentNode) return;
+
+    const el = document.createElement("details");
+    el.id = id;
+    el.setAttribute("style", "margin:12px 0 0;padding:10px 14px;background:rgba(56,189,248,.06);" +
+      "border:1px solid rgba(56,189,248,.28);border-radius:10px;font-size:.82rem;line-height:1.55;" +
+      "color:rgba(255,255,255,.78)");
+    el.innerHTML =
+      '<summary style="cursor:pointer;color:#38bdf8;font-weight:600">' +
+        '&#x26A1; Vad betyder DC max och AC max?</summary>' +
+      '<div style="margin-top:10px">' +
+        '<strong style="color:rgba(255,255,255,.92)">DC max &mdash; likström, snabbladdning</strong><br>' +
+        'Högsta effekt bilen kan ta emot vid en publik snabbladdare. Taket sätts av batteriets ' +
+        'kemi, temperatur och hälsa, och ligger i praktiken mellan ca 50 kW för äldre eller ' +
+        'enklare modeller och 250&#x2013;350 kW för modern snabbladdningsteknik. Högre värde ger ' +
+        'betydligt kortare stopp på långresa &#x2013; typiskt 10&#x2013;80&nbsp;% på 20&#x2013;30 minuter &#x2013; ' +
+        'förutsatt att laddstolpen kan leverera lika mycket.' +
+        '<div style="height:8px"></div>' +
+        '<strong style="color:rgba(255,255,255,.92)">AC max &mdash; växelström, normalladdning</strong><br>' +
+        'Högsta effekt bilen klarar från en laddbox eller normalladdstolpe. Den gränsen sitter i ' +
+        'bilens interna ombordladdare, inte i elen: vanliga värden är 11 kW (trefas 16&nbsp;A) och ' +
+        '22 kW (trefas 32&nbsp;A). Har bilen AC max 11 kW spelar det ingen roll om laddboxen klarar ' +
+        '22 kW &#x2013; bilen laddar ändå i högst 11 kW.' +
+        '<div style="height:8px"></div>' +
+        '<strong style="color:rgba(255,255,255,.92)">Varför AC max sällan avgör valet</strong><br>' +
+        'AC-laddning sker nästan alltid hemma eller på jobbet, och då står bilen parkerad i ' +
+        'timmar ändå. 11 kW fyller ett normalstort batteri på 6&#x2013;8 timmar, alltså över en ' +
+        'natt &#x2013; att bilen skulle klara 22 kW ändrar inget när den står stilla till morgonen. ' +
+        'De flesta svenska hemmainstallationer ger dessutom 11 kW; 22 kW kräver särskild el dragen ' +
+        'till huset.' +
+        '<div style="height:6px"></div>' +
+        'Viktigare att jämföra är <strong>DC-effekten</strong> (hur korta pauserna blir på ' +
+        'långresa), <strong>räckvidden</strong> (hur ofta du behöver stanna alls) och ' +
+        '<strong>förbrukningen per mil</strong> (vad bilen kostar att äga över tid).' +
+        '<div style="height:8px"></div>' +
+        '<span style="color:rgba(255,255,255,.55)">Båda talen är toppeffekt under ideala ' +
+        'förhållanden. Verklig effekt sjunker med kallt batteri och stigande laddnivå &#x2013; ' +
+        'sista biten till 100&nbsp;% är alltid långsam. Ruttplaneraren här räknar redan med ' +
+        'bilens DC max mot vad varje stolpe klarar, och tar det lägsta av de två.</span>' +
+      '</div>';
+    box.parentNode.insertBefore(el, box.nextSibling);
   }
 
   function conLabel(t) { return { type2:"Type 2", ccs:"CCS", chademo:"CHAdeMO" }[t] || t; }
