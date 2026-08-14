@@ -399,10 +399,24 @@
         // kommande modeller hör hemma i CarAdvice kommande-kö, inte i en publik faktakarusell.
         { icon: '⏱️', text: 'Låg förbrukning slår stort batteri på långresa: <strong>Mercedes CLA 250+</strong> drar bara <strong>16,5 kWh/100 km</strong> och klarar därför 80 mil med ett enda laddstopp på <strong>14 minuter</strong> (Vi Bilägare).' },
         { icon: '🔋', text: '<strong>Volvo EX30</strong> tar sig 80 mil på totalt <strong>59 minuters</strong> laddning och håller sig under 20 kWh/100 km – ett bra riktvärde för hur mycket laddtid en långresa faktiskt kostar (Vi Bilägare).' },
-        { icon: '🏠', text: 'Nya elbilar blir reservkraft: <strong>Volkswagen ID. Cross</strong> har både <strong>V2L</strong> (upp till 3,6 kW till externa prylar) och <strong>V2H</strong> som standard – bilen kan alltså mata ström tillbaka till hemmet (Teknikens Värld / Vi Bilägare).' },
+        // ID. Cross-tipset borttaget 08-14: bilen lanseras forst hosten 2026 och brot darmed mot
+        // urvalsregeln ovan (kommande modeller hor hemma i CarAdvice kommande-ko). V2L-poangen
+        // tacks nu av BYD Shark-tipset langre ner, som ar en bil som gar att kopa i dag.
         { icon: '⚡', text: '800 volt sprider sig nedåt i prisklasserna: <strong>BYD Atto 3 Evo</strong> fick större batteri och 800 V-laddning, och maxeffekten steg från <strong>88 kW till 220 kW</strong> (Elbilen).' },
         { icon: '🛞', text: 'Praktiskt knep i backarna: <strong>B-läget</strong> motorbromsar och laddar batteriet i stället för att elda upp farten i bromsarna. I Volvo XC40 uppges det ge <strong>en till två mils</strong> extra räckvidd – och mindre slitage på bromsbeläggen (CarUp).' },
         { icon: '🛣️', text: 'Längst på en laddning: <strong>Mercedes EQS 450+</strong> klarar <strong>925 km</strong> enligt WLTP – men räkna med mindre i verklig fart och kyla, WLTP mäts i betydligt snällare förhållanden (CarUp).' },
+        // Andra omgången ur CarAdvice-insikterna (08-14). Samma urvalsregel som ovan. Fem av
+        // dem slår ihop flera insiktsrader till ETT tips: batterihälsan är fem rader ur samma
+        // CarUp-studie och testräckvidderna tre ur samma AMS-test — en rad per bil hade fyllt
+        // karusellen med samma faktum om och om igen.
+        { icon: '🔌', text: 'Laddbox är ingen lyx: <strong>Mercedes CLA 350 EQ</strong> tappar <strong>över 24 %</strong> av den tillförda energin i laddförluster när den laddas i ett vanligt hushållsuttag. Förlusterna skiljer sig dessutom mellan bilar – <strong>Hyundai Ioniq</strong> hade de största av fem testade elbilar i ADAC:s mätning (Vi Bilägare).' },
+        { icon: '🩺', text: 'Batteriet håller bättre än ryktet: efter <strong>10 000 mil</strong> hade <strong>Kia e-Niro</strong> i snitt <strong>97,25 %</strong> av kapaciteten kvar, <strong>Hyundai Kona Electric</strong> 97,18 %, <strong>Kia EV6</strong> 95,95 %, <strong>Volvo XC40 Recharge</strong> 94,70 % och <strong>BMW i3</strong> knappt 94 % (CarUp).' },
+        { icon: '📜', text: 'Läs batterigarantins finstil: <strong>Nissan Leaf</strong> har åtta år eller 16 000 mil på kapaciteten – men <strong>bara fem år eller 10 000 mil</strong> för enstaka battericellfel. Samtidigt har farhågan om batteribyte efter 6–7 år kommit på skam: livslängden liknar i dag bensin- och dieselbilars (Vi Bilägare / Auto Motor & Sport).' },
+        { icon: '📏', text: 'Planera efter uppmätt räckvidd, inte WLTP: i Auto Motor & Sports test kom <strong>BMW iX3 50 xDrive</strong> <strong>502 km</strong> (108,7 kWh), <strong>Mercedes GLC 400 4Matic EQ</strong> 455 km (94 kWh) och <strong>Porsche Macan 4S</strong> 401 km (94,9 kWh).' },
+        { icon: '🎒', text: 'Taklasten kostar räckvidd: ett taktält på <strong>Hyundai Ioniq 9</strong> ökade luftmotståndet så mycket att energiförbrukningen steg markant. Räkna med tätare laddstopp när takboxen eller tältet sitter uppe (Teknikens Värld).' },
+        { icon: '🛠️', text: 'Bilen som byggström: <strong>BYD Shark</strong> kan leverera upp till <strong>6 kW</strong> via V2L – nog för att driva hantverkarens maskinpark direkt ur batteriet (Teknikens Värld / M3).' },
+        { icon: '🏕️', text: '<strong>Volkswagen ID.Buzz</strong> har ett "god-natt-paket" med campingläge som håller kupéns temperatur i upp till <strong>48 timmar</strong>, plus V2L som låter högspänningsbatteriet driva externa prylar (Vi Bilägare).' },
+        { icon: '🧭', text: 'Ett laddstopp räcker långt: <strong>Mercedes GLC</strong> klarar <strong>100 mil motorväg</strong> på ett enda stopp, och <strong>Citroën e-C5 Aircross</strong> har ett 97 kWh-batteri som ger över <strong>67 mils</strong> räckvidd med 565 liter bagage på köpet (Elbilen / CarUp).' },
       ];
       const dynamicRankFacts = [];
       if (state.evSalesRank && state.evSalesRank.length > 0) {
