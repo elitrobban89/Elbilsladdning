@@ -526,7 +526,40 @@
       const selectedName = state.cars[state.carIndex]?.name;
       const allValid = state.cars.filter(c => c.priceKr > 0 && c.rangeKm > 0);
 
+      // Uppmätt förbrukning ur Autocars "vardagstest", refererat av Vi Bilägare 2026-08-17:
+      // https://www.vibilagare.se/nyheter/volvo-ex30-sticker-ut-en-av-de-torstigaste-elbilarna
+      // Metoden är fyra varv på en bana i 30–80 km/tim med två stopp per varv, så att bilen
+      // hinner återvinna energi vid inbromsning.
+      //
+      // EGEN TABELL och inte en kolumn i tabellerna nedan, av en konkret anledning: de
+      // räknar på WLTP ur ev_spec, alltså typgodkännande, medan detta är UPPMÄTTA värden ur
+      // ett enda test med en enda metod. Blandade i samma tabell hade de sett jämförbara ut
+      // utan att vara det. Samma skäl till att Vi Bilägares egen EX30-långtestsiffra
+      // (22,1 kWh/100 km över ett helt testår inklusive vintertest) står i brödtexten och
+      // inte som en rad — ett annat test, alltså en annan skala.
+      //
+      // Renault 4 och MG4 Urban beskrivs i artikeln som "nästan lika snåla" men får ingen
+      // egen siffra där. De står därför bara i brödtexten. Hitta aldrig på ett mätvärde för
+      // att fylla en rad — samma regel som gäller priser i CarAdvice.
+      const autocarForbrukning = [
+        { name: 'Ford Puma Gen-E',                 val: 10.0 },
+        { name: 'Honda Super-N',                   val: 11.0, approx: true },
+        { name: 'BYD Dolphin Surf',                val: 11.0, approx: true },
+        { name: 'Volvo ES90 (bakhjulsdrift)',      val: 12.4 },
+        { name: 'Mini Aceman',                     val: 14.5 },
+        { name: 'Citroën ë-C3',                    val: 15.5 },
+        { name: 'Volvo EX30 ER Single Motor',      val: 17.3 }
+      ];
+      const kwh = v => v.toFixed(1).replace('.', ',');
+
       const modes = [
+        {
+          icon: '🥤', kind: 'cons', label: 'Lägst uppmätt förbrukning', colHeader: 'kWh/100 km',
+          // lägst är bäst här, tvärtemot de andra tabellerna som sorterar fallande
+          data: [...autocarForbrukning].sort((a, b) => a.val - b.val),
+          formatVal: v => `${kwh(v)} kWh`,
+          factFn: (best) => `Småbil är inte samma sak som snål elbil: <strong>${best.name}</strong> drar minst av alla med <strong>${kwh(best.val)} kWh/100 km</strong> trots att den är en ombyggd bensinbil, medan <strong>Volvo EX30 ER Single Motor</strong> drar <strong>17,3</strong> – 70 % mer än den ungefär lika stora Puma och 40 % mer än den större ES90. <em>Autocars vardagstest via Vi Bilägare (2026-08-17); förbrukningen är avläst ur bilarnas egna mätare och alla kördes inte i samma väder. Renault 4 och MG4 Urban ligger nära toppen men fick ingen egen siffra.</em>`
+        },
         {
           icon: '📊', label: 'Räckvidd per 100 000 kr', colHeader: 'km/100 tkr',
           data: allValid.map(c => ({ name: c.name, val: Math.round(c.rangeKm * 100000 / c.priceKr), price: c.priceKr })).sort((a, b) => b.val - a.val),
@@ -546,7 +579,7 @@
           factFn: (best) => `Längst räckvidd: ${best.name} med ${best.val} km WLTP – kostar ${(best.price / 1000).toFixed(0)} 000 kr.`
         },
         {
-          icon: '🎯', label: 'WLTP vs verklig räckvidd', colHeader: 'Tappar',
+          icon: '🎯', kind: 'wltp', label: 'WLTP vs verklig räckvidd', colHeader: 'Tappar',
           data: allValid.map(c => {
             const real = Math.round(c.rangeKm * 0.85);
             return { name: c.name, val: c.rangeKm - real, price: c.priceKr, wltp: c.rangeKm, real };
@@ -556,19 +589,32 @@
         }
       ];
 
-      const buildRow = (c, rank, hl, stripe, isWltp, formatVal) => {
+      const buildRow = (c, rank, hl, stripe, kind, formatVal) => {
         const rowBg  = hl ? 'background:rgba(59,130,246,0.12);border-left:3px solid #3b82f6;'
                          : stripe ? 'background:#dbeafe;' : 'background:#ffffff;';
         const bold   = hl ? 'font-weight:700;' : '';
         const td     = `padding:6px 10px;color:#111827;${bold}`;
-        return isWltp
-          ? `<tr style="${rowBg}">
+        if (kind === 'wltp') {
+          return `<tr style="${rowBg}">
               <td style="${td}color:#9ca3af;font-size:12px;">${rank}</td>
               <td style="${td}">${c.name}</td>
               <td style="${td}text-align:right;color:#374151;">${c.wltp} km</td>
               <td style="${td}text-align:right;color:#16a34a;">~${c.real} km</td>
-            </tr>`
-          : `<tr style="${rowBg}">
+            </tr>`;
+        }
+        if (kind === 'cons') {
+          // approx-raderna står som "omkring 11" i artikeln — tilde i stället för att låtsas
+          // att 11,0 är avläst med en decimal. Lägst förbrukning är bäst, så gröntonen ligger
+          // på siffran i stället för på en prisjämförelse som saknas här.
+          const tilde = c.approx ? '~' : '';
+          return `<tr style="${rowBg}">
+              <td style="${td}color:#9ca3af;font-size:12px;">${rank}</td>
+              <td style="${td}">${c.name}</td>
+              <td style="${td}text-align:right;color:#1d4ed8;">${tilde}${formatVal(c.val)}</td>
+              <td style="${td}text-align:right;color:#374151;">${tilde}${(c.val / 10).toFixed(2).replace('.', ',')}</td>
+            </tr>`;
+        }
+        return `<tr style="${rowBg}">
               <td style="${td}color:#9ca3af;font-size:12px;">${rank}</td>
               <td style="${td}">${c.name}</td>
               <td style="${td}text-align:right;color:#1d4ed8;">${formatVal(c.val)}</td>
@@ -580,10 +626,12 @@
         const { icon, label, colHeader, data, formatVal, factFn } = mode;
         if (!data.length) return '';
         const factText = factFn(data[0]);
-        const isWltp = icon === '🎯';
-        const th1 = isWltp ? 'WLTP' : colHeader;
-        const th2 = isWltp ? '~Verklig' : 'Pris';
-        const rows = data.map((c, i) => buildRow(c, i + 1, c.name === selectedName, i % 2 === 1, isWltp, formatVal)).join('');
+        // kind sätts explicit på moden. Förut lästes den ur ikonen (icon === '🎯'), vilket
+        // band radlayouten till en emoji — en ikonändring hade tyst gett fel kolumner.
+        const kind = mode.kind || 'default';
+        const th1 = kind === 'wltp' ? 'WLTP' : colHeader;
+        const th2 = kind === 'wltp' ? '~Verklig' : kind === 'cons' ? 'kWh/mil' : 'Pris';
+        const rows = data.map((c, i) => buildRow(c, i + 1, c.name === selectedName, i % 2 === 1, kind, formatVal)).join('');
         return `<div class="ev-fact-slide" data-slide="${mi}" style="display:${mi===0?'flex':'none'};gap:12px;align-items:flex-start;">
           <div class="ev-funfact-icon">${icon}</div>
           <div style="flex:1">
