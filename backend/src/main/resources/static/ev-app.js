@@ -13,7 +13,7 @@
     s.defer = true;
     (document.head || document.documentElement).appendChild(s);
   })();
-  let state = { lat: null, lon: null, city: "", sort: "speed", carIndex: null, cars: [], filter: "all", operatorFilter: null, lastData: null, lastRoute: null, lastCalc: null, favorites: [], evSalesRank: [], stationsOpen: false };
+  let state = { lat: null, lon: null, city: "", sort: "speed", carIndex: null, cars: [], filter: "all", operatorFilter: null, lastData: null, lastRoute: null, lastCalc: null, favorites: [], evSalesRank: [], stationsOpen: false, valueRetention: [], valueRetentionKalla: "" };
   // ===== PRISLOGIK BÖRJAR — ren, testas av backend/src/test/js/pris-prov.js =====
   //
   // Låg förut inline på TRE ställen (stationskorten, chattens stationskontext och
@@ -284,6 +284,19 @@
     .catch(() => {})
     // Rita om tipsen när försäljningstoppen hunnit hem, så den dynamiska raden kommer med.
     // renderTipsOnly avstår själv om en sökning redan hunnit rendera.
+    .finally(() => renderTipsOnly());
+
+  // Värdetappslistan: nypris ur Kvdbils artikel, medianpriset räknat på Blocket varje vecka.
+  // Tom före första synken — då visas varken fyndtabellen eller faktaraden.
+  fetch(API + "/api/value-retention")
+    .then(r => r.json())
+    .then(d => {
+      if (d && Array.isArray(d.modeller)) {
+        state.valueRetention = d.modeller;
+        state.valueRetentionKalla = d.nyprisKalla || "";
+      }
+    })
+    .catch(() => {})
     .finally(() => renderTipsOnly());
 
   // Tipsen syns direkt, utan bil och utan position. Väntar vi på användaren möts hen av en
@@ -594,6 +607,20 @@
       const kwh = v => v.toFixed(1).replace('.', ',');
 
       const modes = [
+        // FYNDTABELLEN ligger först med flit — det är den enda tabellen som pekar på en
+        // affär i stället för på en egenskap, och den bygger på två källor: nypriset från
+        // Kvdbil och medianpriset från vår egen veckovisa Blocket-mätning. Tom lista före
+        // första synken, och då faller moden bort av sig själv i filter(Boolean) nedan.
+        ...(state.valueRetention.length ? [{
+          icon: '📉', kind: 'varde', label: 'Störst värdetapp — fynd på begagnatmarknaden',
+          colHeader: 'Kvar av nypris',
+          data: state.valueRetention.map(v => ({
+            name: v.model, val: v.retentionPct, price: v.medianPriceKr,
+            ny: v.newPriceKr, antal: v.adCount, billigast: v.cheapestPriceKr
+          })),
+          formatVal: v => `${v} %`,
+          factFn: (b) => `<strong>${b.name}</strong> har tappat mest: <strong>${100 - b.val} %</strong> av nypriset är borta på fem år. Ny kostade den <strong>${b.ny.toLocaleString('sv-SE')} kr</strong>, idag ligger medianen på <strong>${b.price.toLocaleString('sv-SE')} kr</strong>${b.billigast ? ` och billigaste exemplaret på ${b.billigast.toLocaleString('sv-SE')} kr` : ''}. <em>Årsmodell 2021, ${b.antal} annonser under 15 000 mil. ${state.valueRetentionKalla}; medianpriset är vår egen mätning på Blocket.</em>`
+        }] : []),
         {
           icon: '🥤', kind: 'cons', label: 'Lägst uppmätt förbrukning', colHeader: 'kWh/100 km',
           // lägst är bäst här, tvärtemot de andra tabellerna som sorterar fallande
@@ -671,7 +698,7 @@
         // band radlayouten till en emoji — en ikonändring hade tyst gett fel kolumner.
         const kind = mode.kind || 'default';
         const th1 = kind === 'wltp' ? 'WLTP' : colHeader;
-        const th2 = kind === 'wltp' ? '~Verklig' : kind === 'cons' ? 'kWh/mil' : 'Pris';
+        const th2 = kind === 'wltp' ? '~Verklig' : kind === 'cons' ? 'kWh/mil' : kind === 'varde' ? 'Median idag' : 'Pris';
         const rows = data.map((c, i) => buildRow(c, i + 1, c.name === selectedName, i % 2 === 1, kind, formatVal)).join('');
         return `<div class="ev-fact-slide" data-slide="${mi}" style="display:${mi===0?'flex':'none'};gap:12px;align-items:flex-start;">
           <div class="ev-funfact-icon">${icon}</div>
@@ -1012,6 +1039,21 @@
         // poängen är just att de två hakar i varandra.
         { icon: '⚖️', text: 'Batterihälsan blir mätbar och garanterad: <strong>Euro 7</strong> kräver att en ny elbil har minst <strong>80 %</strong> av batterikapaciteten kvar efter <strong>5 år eller 10 000 mil</strong> och <strong>72 %</strong> efter <strong>8 år eller 16 000 mil</strong> – nya typgodkännanden från <strong>29 november 2026</strong>, alla nyregistrerade från november 2027. Från <strong>18 februari 2027</strong> får varje ny elbil dessutom ett <strong>digitalt batteripass</strong> med samma uppgifter oavsett märke: kapacitet, kemi, ursprung och hälsa. Passet kommer ur EU:s batteriförordning, inte ur Euro 7 – men tillsammans gör de batterihälsa till något du kan läsa av i stället för att lita på (EU-förordning 2024/1257 respektive 2023/1542).' },
       ];
+      /*
+       * Fyndraden. Ersätter på sikt den handskrivna Audi e-tron-raden ovan — samma sorts tips,
+       * men uppdaterad varje vecka i stället för när någon råkar komma på det.
+       *
+       * Källorna skrivs ut BÅDA två, för de gör olika saker: Kvdbil står för nypriset (ett
+       * historiskt faktum om årsmodell 2021) och Blocket för vad bilen kostar idag. Utan den
+       * uppdelningen ser det ut som att en enda källa påstått hela siffran.
+       */
+      const dynamicVardeFacts = [];
+      if (state.valueRetention && state.valueRetention.length > 0) {
+        const v = state.valueRetention[0];
+        dynamicVardeFacts.push({ icon: '📉', text:
+          `Fyndläge på begagnad el: <strong>${v.model}</strong> har tappat <strong>${100 - v.retentionPct} %</strong> av nypriset på fem år. Ny kostade den ${v.newPriceKr.toLocaleString('sv-SE')} kr — idag ligger medianen på <strong>${v.medianPriceKr.toLocaleString('sv-SE')} kr</strong>${v.cheapestPriceKr ? `, billigaste exemplaret på ${v.cheapestPriceKr.toLocaleString('sv-SE')} kr` : ''}. Räknat på ${v.adCount} annonser av årsmodell 2021 under 15 000 mil (${state.valueRetentionKalla}; medianpriset är vår egen mätning på Blocket).` });
+      }
+
       const dynamicRankFacts = [];
       if (state.evSalesRank && state.evSalesRank.length > 0) {
         const top = state.evSalesRank[0];
@@ -1025,6 +1067,9 @@
       }
       const facts = [
         ...(funFact ? [{ icon: '💡', text: funFact }] : []),
+        // Fyndraden tidigt: den är det mest köpvärda tipset i hela kortleken, och den är
+        // dessutom färsk varje vecka till skillnad från de statiska.
+        ...dynamicVardeFacts,
         ...dynamicRankFacts,
         ...staticFacts
       ];
