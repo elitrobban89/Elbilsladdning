@@ -61,6 +61,22 @@
     ".ev-fact-nav:hover{background:rgba(59,130,246,0.2);color:#93c5fd;}" +
     ".ev-fact-dot{width:8px;height:8px;border-radius:50%;border:none;background:rgba(147,197,253,0.2);cursor:pointer;padding:0;transition:all .25s;flex-shrink:0;}" +
     ".ev-fact-dot.ev-fact-dot-active{background:#3b82f6;width:20px;border-radius:4px;}" +
+    // Paus/spela-knappen har TEXT och inte bara en ikon. En ensam ⏸-symbol är gissningsbar
+    // men inte självklar, och knappen finns just för den som vill stanna upp och läsa en
+    // tabell i lugn och ro — då ska den inte kräva en gissning till.
+    ".ev-fact-play{display:inline-flex;align-items:center;gap:7px;background:rgba(59,130,246,0.08);border:1.5px solid rgba(59,130,246,0.2);border-radius:999px;color:rgba(147,197,253,0.85);font-size:12px;font-weight:600;height:32px;padding:0 14px;cursor:pointer;transition:all .15s;line-height:1;white-space:nowrap;font-family:inherit;}" +
+    ".ev-fact-play:hover{background:rgba(59,130,246,0.2);color:#93c5fd;}" +
+    // Pausat läge byter färg till samma gula som avdelarens badge, så det syns på en meter
+    // att karusellen står still med flit och inte har hängt sig.
+    ".ev-fact-play[aria-pressed='true']{background:rgba(251,191,36,0.12);border-color:rgba(251,191,36,0.38);color:#fbbf24;}" +
+    ".ev-fact-play-icon{font-size:11px;line-height:1;}" +
+    // Förloppslinjen gör pausen begriplig: utan den ser en pausad karusell exakt likadan ut
+    // som en trasig. Den fylls på 9 s, alltså samma intervall som rotationen, och fryser
+    // mitt i sitt lopp när man pausar.
+    ".ev-fact-progress{height:2px;border-radius:2px;background:rgba(147,197,253,0.14);overflow:hidden;margin-top:12px;}" +
+    ".ev-fact-progress-bar{height:100%;width:0;background:linear-gradient(90deg,#3b82f6,#60a5fa);border-radius:2px;}" +
+    ".ev-fact-progress-bar.ev-run{animation:ev-fact-fill 9s linear forwards;}" +
+    "@keyframes ev-fact-fill{from{width:0}to{width:100%}}" +
     "@keyframes ev-slide-in{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}" +
     "@keyframes ev-slide-out{from{opacity:1;transform:none}to{opacity:0;transform:translateY(-8px)}}" +
     ".ev-slide-entering{animation:ev-slide-in .5s cubic-bezier(.22,1,.36,1) forwards;}" +
@@ -527,11 +543,17 @@
 
       html += `
         <div class="ev-funfact-card" id="ev-funfact-carousel" style="flex-direction:column;gap:0;">
-          <div id="ev-funfact-slides" style="position:relative;min-height:48px;">${fSlideHtml}</div>
+          <div id="ev-funfact-slides" data-slides style="position:relative;min-height:48px;">${fSlideHtml}</div>
           <!-- flex-wrap: prickarna har flex-shrink:0, sa raden kan inte krympa. 20 fakta ger
                286px prickar mot 254px innermatt vid 320px viewport - utan wrap spiller de
                over kortkanten. Radbrytning haller den robust nar fler fakta tillkommer. -->
           <div style="display:flex;flex-wrap:wrap;justify-content:center;gap:6px;margin-top:10px;">${fDotHtml}</div>
+          <div class="ev-fact-progress"><div class="ev-fact-progress-bar"></div></div>
+          <div style="display:flex;justify-content:center;margin-top:10px;">
+            <button class="ev-fact-play" data-carousel-play aria-pressed="false" title="Pausa karusellen">
+              <span class="ev-fact-play-icon">⏸</span><span data-carousel-play-label>Paus</span>
+            </button>
+          </div>
         </div>`;
     }
 
@@ -651,7 +673,11 @@
             <div class="ev-funfact-label">${label}</div>
             <div class="ev-funfact-text" style="margin-bottom:10px;">${factText}</div>
             <div style="border:1px solid #e5e7eb;border-radius:8px;overflow:hidden;margin-top:4px;">
-              <div style="overflow-y:auto;max-height:220px;">
+              <!-- FAST höjd, inte max-height: tabellerna har olika många rader (förbruknings-
+                   listan ett tiotal, de andra 73), så med max-height krympte rutan för de
+                   korta och kortet hoppade i storlek vid varje slidebyte. Med en fast höjd
+                   ligger tabellen still och bara innehållet scrollar. -->
+              <div style="overflow-y:auto;height:220px;">
                 <table style="width:100%;border-collapse:collapse;font-size:13px;">
                   <thead style="position:sticky;top:0;z-index:1;"><tr style="background:#f3f4f6;border-bottom:1px solid #e5e7eb;">
                     <th style="padding:6px 10px;text-align:left;color:#9ca3af;font-weight:600;font-size:11px;text-transform:uppercase;letter-spacing:0.5px;width:24px;">#</th>
@@ -678,11 +704,17 @@
           <div class="ev-divider-line"></div>
         </div>
         <div class="ev-funfact-card" id="ev-fact-carousel" style="flex-direction:column;gap:0;">
-          <div id="ev-fact-slides" style="position:relative;">${slides}</div>
+          <div id="ev-fact-slides" data-slides style="position:relative;">${slides}</div>
           <div style="display:flex;align-items:center;justify-content:space-between;margin-top:12px;">
-            <button class="ev-fact-nav" id="ev-fact-prev">‹</button>
-            <div style="display:flex;gap:6px;">${dots}</div>
-            <button class="ev-fact-nav" id="ev-fact-next">›</button>
+            <button class="ev-fact-nav" data-carousel-prev>‹</button>
+            <div style="display:flex;flex-wrap:wrap;justify-content:center;gap:6px;">${dots}</div>
+            <button class="ev-fact-nav" data-carousel-next>›</button>
+          </div>
+          <div class="ev-fact-progress"><div class="ev-fact-progress-bar"></div></div>
+          <div style="display:flex;justify-content:center;margin-top:10px;">
+            <button class="ev-fact-play" data-carousel-play aria-pressed="false" title="Pausa karusellen">
+              <span class="ev-fact-play-icon">⏸</span><span data-carousel-play-label>Paus</span>
+            </button>
           </div>
         </div>`;
     }
@@ -898,63 +930,120 @@
       dots.forEach((d, i) => d.classList.toggle('ev-fact-dot-active', i === next._idx));
     }
 
-    const funfactCarousel = document.getElementById('ev-funfact-carousel');
-    if (funfactCarousel) {
-      let fc = 0;
-      const fSlides = Array.from(funfactCarousel.querySelectorAll('.ev-funfact-slide'));
-      const fDots   = Array.from(funfactCarousel.querySelectorAll('.ev-fact-dot'));
-      const ftotal  = fSlides.length;
-      let ftimer;
-      function showF(n) {
-        const prev = fc;
-        fc = (n + ftotal) % ftotal;
-        fSlides[fc]._idx = fc; fSlides[fc]._prev = prev;
-        evFadeSlide(fSlides, fDots, fSlides[fc], ftotal);
-      }
-      function startF() { clearInterval(ftimer); ftimer = setInterval(() => showF(fc + 1), 9000); }
-      fDots.forEach((d, i) => d.addEventListener('click', () => { showF(i); startF(); }));
-      startF();
-    }
+    /**
+     * Gemensam karusellmotor för båda korten ("Visste du att"-fakta och faktatabellerna).
+     *
+     * Skrevs ihop 2026-08-18 när paus/spela skulle in på båda. Två nästan identiska kopior
+     * hade betytt två ställen att glömma vid nästa ändring — och det var precis så den
+     * första versionen fick prickar på båda korten men pilar bara på det ena.
+     *
+     * @param cardId   kortets id
+     * @param slideSel slidernas CSS-klass
+     * @param onShow   valfritt, körs efter varje slidebyte (tabellkortet scrollar fram raden)
+     */
+    function evInitCarousel(cardId, slideSel, onShow) {
+      const card = document.getElementById(cardId);
+      if (!card) return;
 
-    const carousel = document.getElementById('ev-fact-carousel');
-    if (carousel) {
-      let current = 0;
-      const allSlides = Array.from(carousel.querySelectorAll('.ev-fact-slide'));
-      const allDots   = Array.from(carousel.querySelectorAll('.ev-fact-dot'));
-      const total = allSlides.length;
-      let timer = null;
+      const slides = Array.from(card.querySelectorAll(slideSel));
+      const dots   = Array.from(card.querySelectorAll('.ev-fact-dot'));
+      const wrap   = card.querySelector('[data-slides]');
+      const bar    = card.querySelector('.ev-fact-progress-bar');
+      const btn    = card.querySelector('[data-carousel-play]');
+      const total  = slides.length;
+      if (!total) return;
+
+      let current = 0, timer = null, paused = false;
+
+      /**
+       * Låser höjden till den HÖGSTA sliden.
+       *
+       * Utan den hoppade kortet i storlek vid varje byte: faktatexterna är olika långa
+       * (Audi e-tron-tipset är ett helt stycke, IONITY-raden en mening) och en slide som
+       * lämnar är position:absolute, så behållaren hann kollapsa mitt i övergången.
+       * Mäts dolt — visibility:hidden i stället för display:none, annars är höjden 0.
+       */
+      function equalizeHeight() {
+        if (!wrap) return;
+        let max = 0;
+        slides.forEach(s => {
+          const d = s.style.display;
+          s.style.visibility = 'hidden';
+          s.style.display = 'flex';
+          max = Math.max(max, s.offsetHeight);
+          s.style.display = d;
+          s.style.visibility = '';
+        });
+        if (max) wrap.style.minHeight = max + 'px';
+      }
+
+      /** Startar om förloppslinjen. Reflow-raden krävs för att animationen ska tas om. */
+      function restartBar() {
+        if (!bar) return;
+        bar.classList.remove('ev-run');
+        void bar.offsetWidth;
+        bar.classList.add('ev-run');
+        bar.style.animationPlayState = paused ? 'paused' : 'running';
+      }
 
       function showSlide(n) {
         const prev = current;
         current = (n + total) % total;
-        allSlides[current]._idx = current; allSlides[current]._prev = prev;
-        evFadeSlide(allSlides, allDots, allSlides[current], total);
-        scrollToSelectedRow();
+        slides[current]._idx = current; slides[current]._prev = prev;
+        evFadeSlide(slides, dots, slides[current], total);
+        restartBar();
+        if (onShow) onShow(slides[current]);
       }
 
       function startAuto() {
         clearInterval(timer);
+        // Pausat läge överlever navigering: den som pausat för att läsa en tabell vill
+        // kunna bläddra vidare för hand utan att rotationen smyger igång igen.
+        if (paused) return;
         timer = setInterval(() => showSlide(current + 1), 9000);
       }
 
-      function scrollToSelectedRow() {
-        const activeSlide = allSlides[current];
-        if (!activeSlide) return;
-        const highlighted = activeSlide.querySelector('tr[style*="rgba(59,130,246"]');
-        if (!highlighted) return;
-        const tableWrap = highlighted.closest('[style*="overflow"]') || highlighted.closest('div');
-        setTimeout(() => {
-          if (tableWrap && tableWrap.scrollHeight > tableWrap.clientHeight) {
-            tableWrap.scrollTop = highlighted.offsetTop - tableWrap.offsetTop - 40;
-          }
-        }, 200);
+      function setPaused(p) {
+        paused = p;
+        clearInterval(timer);
+        if (bar) bar.style.animationPlayState = p ? 'paused' : 'running';
+        if (btn) {
+          btn.setAttribute('aria-pressed', p ? 'true' : 'false');
+          btn.title = p ? 'Fortsätt karusellen' : 'Pausa karusellen';
+          const icon = btn.querySelector('.ev-fact-play-icon');
+          const label = btn.querySelector('[data-carousel-play-label]');
+          if (icon) icon.textContent = p ? '▶' : '⏸';
+          if (label) label.textContent = p ? 'Spela' : 'Paus';
+        }
+        if (!p) { restartBar(); startAuto(); }
       }
 
-      carousel.querySelector('#ev-fact-prev')?.addEventListener('click', () => { showSlide(current - 1); startAuto(); });
-      carousel.querySelector('#ev-fact-next')?.addEventListener('click', () => { showSlide(current + 1); startAuto(); });
-      allDots.forEach((d, i) => d.addEventListener('click', () => { showSlide(i); startAuto(); }));
+      card.querySelector('[data-carousel-prev]')?.addEventListener('click', () => { showSlide(current - 1); startAuto(); });
+      card.querySelector('[data-carousel-next]')?.addEventListener('click', () => { showSlide(current + 1); startAuto(); });
+      dots.forEach((d, i) => d.addEventListener('click', () => { showSlide(i); startAuto(); }));
+      btn?.addEventListener('click', () => setPaused(!paused));
+
+      equalizeHeight();
+      // Höjden är mätt i pixlar och måste räknas om när radbrytningarna ändras.
+      let rz;
+      window.addEventListener('resize', () => { clearTimeout(rz); rz = setTimeout(equalizeHeight, 150); });
+
+      restartBar();
       startAuto();
     }
+
+    evInitCarousel('ev-funfact-carousel', '.ev-funfact-slide');
+
+    evInitCarousel('ev-fact-carousel', '.ev-fact-slide', (activeSlide) => {
+      const highlighted = activeSlide.querySelector('tr[style*="rgba(59,130,246"]');
+      if (!highlighted) return;
+      const tableWrap = highlighted.closest('[style*="overflow"]') || highlighted.closest('div');
+      setTimeout(() => {
+        if (tableWrap && tableWrap.scrollHeight > tableWrap.clientHeight) {
+          tableWrap.scrollTop = highlighted.offsetTop - tableWrap.offsetTop - 40;
+        }
+      }, 200);
+    });
   }
 
   // ===== CHATTBOT =====
