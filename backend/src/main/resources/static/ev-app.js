@@ -203,7 +203,14 @@
   fetch(API + "/api/ev-sales-rank")
     .then(r => r.json())
     .then(rows => { if (Array.isArray(rows)) state.evSalesRank = rows; })
-    .catch(() => {});
+    .catch(() => {})
+    // Rita om tipsen när försäljningstoppen hunnit hem, så den dynamiska raden kommer med.
+    // renderTipsOnly avstår själv om en sökning redan hunnit rendera.
+    .finally(() => renderTipsOnly());
+
+  // Tipsen syns direkt, utan bil och utan position. Väntar vi på användaren möts hen av en
+  // tom yta, och de statiska fakta är läsvärda i sig.
+  renderTipsOnly();
 
   document.getElementById("ev-car-select").addEventListener("change", function () {
     const idx = parseInt(this.value);
@@ -476,107 +483,7 @@
         </div>`;
     }
 
-    let funfactHtml = "";
-    {
-      const staticFacts = [
-        { icon: '💰', text: 'Fyndläge på begagnad premium-el: VW-koncernen skär ner och enligt rapporter är flera tyska fabriker hotade – bland dem Neckarsulm, där Audi e-tron GT byggs. Samtidigt har första generationens <strong>Audi e-tron</strong> (2019–2021) tappat <strong>65–70 %</strong> av nypriset: median ~<strong>325 000 kr</strong> på Blocket i juli 2026, billigaste exemplaren från ~210 000 kr. Haken: 1,63 kWh/mil är törstigt även för en stor SUV, och batterigarantin (8 år/160 000 km) börjar ta slut på 2019-bilarna.' },
-        { icon: '🏆', text: 'Volvo EX40 var Sveriges mest sålda elbil 2025 med <strong>8 788</strong> nyregistreringar – och EX40/XC40 leder även första halvåret 2026, före Tesla Model Y (Mobility Sweden).' },
-        { icon: '🌍', text: 'IONITY är Europas snabbaste offentliga laddnätverk med upp till <strong>350 kW</strong> per laddpunkt. I Norden finns 100+ stationer längs motorvägarna.' },
-        { icon: '🇸🇪', text: 'Vattenfall InCharge är ett av Nordens största laddnätverk med över <strong>33 000 laddpunkter</strong> i Sverige, Norge, Danmark och Finland.' },
-        { icon: '❄️', text: 'På kall vinterdag kan räckvidden minska med <strong>20–40%</strong> jämfört med WLTP. Värm bilen medan den laddar för att spara batterienergi.' },
-        { icon: '⚡', text: 'Tesla öppnade sitt Supercharger-nätverk för andra elbilsmärken i Sverige <strong>2023</strong>. CCS (Combo) är Europas dominerande DC-laddstandard.' },
-        { icon: '📈', text: 'Elbilarna går framåt: <strong>45%</strong> av Sveriges nyregistreringar 2026 väntas bli elbilar enligt Mobility Swedens prognos (justerad juli 2026) – upp från 36,5% helåret 2025.' },
-        { icon: '🚗', text: 'Mercedes eldrivna CLA utsågs till <strong>Årets Bil 2026</strong> (europeiska Car of the Year) – före Škoda Elroq och Kia EV4. 2025 vann Renault 5 E-Tech.' },
-        { icon: '📊', text: 'Volvo dominerar den svenska nybilsmarknaden med <strong>16,5%</strong> marknadsandel i juni 2026, före Volkswagen (13,2%) och Kia (7,4%). Tesla ligger åtta med 4,4% (Mobility Sweden).' },
-        { icon: '🥇', text: 'I maj 2026 var Volkswagen ID.4 Sveriges mest sålda renodlade elbil med <strong>687</strong> nyregistreringar – tätt följt av Tesla Model Y (683) och Polestar 2 (526) (Carla.se elbilsindex).' },
-        { icon: '🔌', text: 'Kia EV6 (339), Volkswagen ID.3 (285) och Škoda Enyaq (276) rundade av majitoppen bland Sveriges mest sålda elbilar 2026 – före Nissan Leaf (260) och Volvo EX40 (205) (Carla.se elbilsindex).' },
-        { icon: '🚀', text: 'Elbilar gick om laddhybrider i försäljning kring årsskiftet 2025/2026 och har inte tittat tillbaka – i april 2026 passerade elbilsförsäljningen till och med diesel och närmade sig bensin, fortfarande den största kategorin (Carla.se).' },
-        // Nedan: hämtade ur CarAdvice-insikterna (samma skrapade motorpress som bilkortens
-        // "Vad experterna säger"). Bara laddningsrelevanta rader om bilar som går att köpa —
-        // kommande modeller hör hemma i CarAdvice kommande-kö, inte i en publik faktakarusell.
-        { icon: '⏱️', text: 'Låg förbrukning slår stort batteri på långresa: <strong>Mercedes CLA 250+</strong> drar bara <strong>16,5 kWh/100 km</strong> och klarar därför 80 mil med ett enda laddstopp på <strong>14 minuter</strong> (Vi Bilägare).' },
-        { icon: '🔋', text: '<strong>Volvo EX30</strong> tar sig 80 mil på totalt <strong>59 minuters</strong> laddning och håller sig under 20 kWh/100 km – ett bra riktvärde för hur mycket laddtid en långresa faktiskt kostar (Vi Bilägare).' },
-        // ID. Cross ar ett MEDVETET undantag fran urvalsregeln ovan och ska INTE tas bort som
-        // "kommande modell". Den lanseras hosten 2026 och vi ar i mitten av augusti - det ar
-        // veckor bort, inte ar, sa tipset hinner knappt bli fel innan bilen star hos handlarna.
-        // Togs bort 08-14 och lades tillbaka samma dag av just det skalet. Gransen gar vid
-        // modeller som ligger LANGT bort eller aldrig kommer hit (EX60, Cupra Raval).
-        { icon: '🏠', text: 'Nya elbilar blir reservkraft: <strong>Volkswagen ID. Cross</strong> har både <strong>V2L</strong> (upp till 3,6 kW till externa prylar) och <strong>V2H</strong> som standard – bilen kan alltså mata ström tillbaka till hemmet (Teknikens Värld / Vi Bilägare).' },
-        { icon: '⚡', text: '800 volt sprider sig nedåt i prisklasserna: <strong>BYD Atto 3 Evo</strong> fick större batteri och 800 V-laddning, och maxeffekten steg från <strong>88 kW till 220 kW</strong> (Elbilen).' },
-        { icon: '🛞', text: 'Praktiskt knep i backarna: <strong>B-läget</strong> motorbromsar och laddar batteriet i stället för att elda upp farten i bromsarna. I Volvo XC40 uppges det ge <strong>en till två mils</strong> extra räckvidd – och mindre slitage på bromsbeläggen (CarUp).' },
-        { icon: '🛣️', text: 'Längst på en laddning: <strong>Mercedes EQS 450+</strong> klarar <strong>925 km</strong> enligt WLTP – men räkna med mindre i verklig fart och kyla, WLTP mäts i betydligt snällare förhållanden (CarUp).' },
-        // Andra omgången ur CarAdvice-insikterna (08-14). Samma urvalsregel som ovan. Fem av
-        // dem slår ihop flera insiktsrader till ETT tips: batterihälsan är fem rader ur samma
-        // CarUp-studie och testräckvidderna tre ur samma AMS-test — en rad per bil hade fyllt
-        // karusellen med samma faktum om och om igen.
-        { icon: '🔌', text: 'Laddbox är ingen lyx: <strong>Mercedes CLA 350 EQ</strong> tappar <strong>över 24 %</strong> av den tillförda energin i laddförluster när den laddas i ett vanligt hushållsuttag. Förlusterna skiljer sig dessutom mellan bilar – <strong>Hyundai Ioniq</strong> hade de största av fem testade elbilar i ADAC:s mätning (Vi Bilägare).' },
-        { icon: '🩺', text: 'Batteriet håller bättre än ryktet: efter <strong>10 000 mil</strong> hade <strong>Kia e-Niro</strong> i snitt <strong>97,25 %</strong> av kapaciteten kvar, <strong>Hyundai Kona Electric</strong> 97,18 %, <strong>Kia EV6</strong> 95,95 %, <strong>Volvo XC40 Recharge</strong> 94,70 % och <strong>BMW i3</strong> knappt 94 % (CarUp).' },
-        { icon: '📜', text: 'Läs batterigarantins finstil: <strong>Nissan Leaf</strong> har åtta år eller 16 000 mil på kapaciteten – men <strong>bara fem år eller 10 000 mil</strong> för enstaka battericellfel. Samtidigt har farhågan om batteribyte efter 6–7 år kommit på skam: livslängden liknar i dag bensin- och dieselbilars (Vi Bilägare / Auto Motor & Sport).' },
-        { icon: '📏', text: 'Planera efter uppmätt räckvidd, inte WLTP: i Auto Motor & Sports test kom <strong>BMW iX3 50 xDrive</strong> <strong>502 km</strong> (108,7 kWh), <strong>Mercedes GLC 400 4Matic EQ</strong> 455 km (94 kWh) och <strong>Porsche Macan 4S</strong> 401 km (94,9 kWh).' },
-        { icon: '🎒', text: 'Taklasten kostar räckvidd: ett taktält på <strong>Hyundai Ioniq 9</strong> ökade luftmotståndet så mycket att energiförbrukningen steg markant. Räkna med tätare laddstopp när takboxen eller tältet sitter uppe (Teknikens Värld).' },
-        { icon: '🛠️', text: 'Bilen som byggström: <strong>BYD Shark</strong> kan leverera upp till <strong>6 kW</strong> via V2L – nog för att driva hantverkarens maskinpark direkt ur batteriet (Teknikens Värld / M3).' },
-        { icon: '🏕️', text: '<strong>Volkswagen ID.Buzz</strong> har ett "god-natt-paket" med campingläge som håller kupéns temperatur i upp till <strong>48 timmar</strong>, plus V2L som låter högspänningsbatteriet driva externa prylar (Vi Bilägare).' },
-        { icon: '🧭', text: 'Ett laddstopp räcker långt: <strong>Mercedes GLC</strong> klarar <strong>100 mil motorväg</strong> på ett enda stopp, och <strong>Citroën e-C5 Aircross</strong> har ett 97 kWh-batteri som ger över <strong>67 mils</strong> räckvidd med 565 liter bagage på köpet (Elbilen / CarUp).' },
-        // Euro 7 och batteripasset, tillagda 2026-08-18. TVÅ OLIKA förordningar som är lätta
-        // att blanda ihop, och de får inte slås ihop i en rad:
-        //   Euro 7 (EU 2024/1257) ställer kravet på batteriets HÄLSA — golvet nedan.
-        //   Batteripasset kommer ur EU:s BATTERIFÖRORDNING (2023/1542), som gäller från
-        //   18 februari 2027 och alltså är en helt annan rättsakt.
-        // Skriv aldrig att batteripasset är en del av Euro 7. Det är passet som gör
-        // uppgifterna läsbara på samma sätt oavsett märke, men det är Euro 7 som gör att
-        // det finns ett garanterat golv att läsa av.
-        //
-        // De ligger MEDVETET i EN rad och inte i två: karusellen visar en slide i taget, så
-        // delade upp hade läsaren sett golvet utan passet eller passet utan golvet — och
-        // poängen är just att de två hakar i varandra.
-        { icon: '⚖️', text: 'Batterihälsan blir mätbar och garanterad: <strong>Euro 7</strong> kräver att en ny elbil har minst <strong>80 %</strong> av batterikapaciteten kvar efter <strong>5 år eller 10 000 mil</strong> och <strong>72 %</strong> efter <strong>8 år eller 16 000 mil</strong> – nya typgodkännanden från <strong>29 november 2026</strong>, alla nyregistrerade från november 2027. Från <strong>18 februari 2027</strong> får varje ny elbil dessutom ett <strong>digitalt batteripass</strong> med samma uppgifter oavsett märke: kapacitet, kemi, ursprung och hälsa. Passet kommer ur EU:s batteriförordning, inte ur Euro 7 – men tillsammans gör de batterihälsa till något du kan läsa av i stället för att lita på (EU-förordning 2024/1257 respektive 2023/1542).' },
-      ];
-      const dynamicRankFacts = [];
-      if (state.evSalesRank && state.evSalesRank.length > 0) {
-        const top = state.evSalesRank[0];
-        const second = state.evSalesRank[1];
-        const period = top.periodLabel ? ' ' + top.periodLabel : '';
-        const rankText =
-          `${top.model} var Sveriges mest sålda elbil${period} med <strong>${top.units.toLocaleString('sv-SE')}</strong> nyregistreringar` +
-          (second ? `, före ${second.model} (${second.units.toLocaleString('sv-SE')})` : '') +
-          ' (elbilsvaruhuset.se / Mobility Sweden).';
-        dynamicRankFacts.push({ icon: '🔋', text: rankText });
-      }
-      const facts = [
-        ...(data.funFact ? [{ icon: '💡', text: data.funFact }] : []),
-        ...dynamicRankFacts,
-        ...staticFacts
-      ];
-
-      const fSlideHtml = facts.map((f, i) =>
-        `<div class="ev-funfact-slide" style="display:${i===0?'flex':'none'};align-items:flex-start;gap:10px;">
-          <div class="ev-funfact-icon">${f.icon}</div>
-          <div>
-            <div class="ev-funfact-label">Visste du att</div>
-            <div class="ev-funfact-text">${f.text}</div>
-          </div>
-        </div>`
-      ).join('');
-
-      const fDotHtml = facts.map((_, i) =>
-        `<button class="ev-fact-dot${i===0?' ev-fact-dot-active':''}" aria-label="Fakta ${i+1}"></button>`
-      ).join('');
-
-      funfactHtml += `
-        <div class="ev-funfact-card" id="ev-funfact-carousel" style="flex-direction:column;align-items:stretch;gap:0;">
-          <div id="ev-funfact-slides" data-slides style="position:relative;min-height:48px;">${fSlideHtml}</div>
-          <!-- flex-wrap: prickarna har flex-shrink:0, sa raden kan inte krympa. 20 fakta ger
-               286px prickar mot 254px innermatt vid 320px viewport - utan wrap spiller de
-               over kortkanten. Radbrytning haller den robust nar fler fakta tillkommer. -->
-          <div style="display:flex;flex-wrap:wrap;justify-content:center;gap:6px;margin-top:10px;">${fDotHtml}</div>
-          <div class="ev-fact-progress"><div class="ev-fact-progress-bar"></div></div>
-          <div style="display:flex;justify-content:center;margin-top:10px;">
-            <button class="ev-fact-play" data-carousel-play aria-pressed="false" title="Pausa karusellen">
-              <span class="ev-fact-play-icon">⏸</span><span data-carousel-play-label>Paus</span>
-            </button>
-          </div>
-        </div>`;
-    }
+    const funfactHtml = buildFunfactHtml(data.funFact);
 
     if (state.carIndex !== null && state.cars.length > 0) {
       const selectedName = state.cars[state.carIndex]?.name;
@@ -904,19 +811,7 @@
      * Nu: AI-kort och favoriter → KARUSELLOMRÅDET (båda korten under en gemensam rubrik) →
      * stationslistan hopfälld bakom en knapp → laddkalkylen.
      */
-    const carouselBody = funfactHtml + factHtml;
-    const carouselSection = carouselBody
-      ? `<div class="ev-carousel-area">
-           <div class="ev-carousel-head">
-             <div class="ev-carousel-head-icon">💡</div>
-             <div>
-               <div class="ev-carousel-head-title">AI-tips &amp; Visste du att</div>
-               <div class="ev-carousel-head-sub">Bläddra själv, eller pausa och läs i lugn och ro</div>
-             </div>
-           </div>
-           ${carouselBody}
-         </div>`
-      : '';
+    const carouselSection = carouselArea(funfactHtml + factHtml);
 
     /*
      * Stationslistan är hopfälld från start. Öppet läge lever i state och inte i DOM:en:
@@ -935,11 +830,164 @@
          <div id="ev-stations-body" style="display:${stationsOpen ? 'block' : 'none'};">${stationsHtml}</div>`
       : '';
 
-    setOutput(html + carouselSection + stationsSection + calcHtml);
+    // Stationsknappen FÖRST i utdatan, alltså direkt under kartan — #ev-map ligger
+    // omedelbart ovanför #ev-output i elbilsladdning-web.html. Kartan visar samma
+    // stationer som listan, så knappen hör hemma i anslutning till den.
+    setOutput(stationsSection + html + carouselSection + calcHtml);
 
     if (state.lat && state.lon && top.length > 0)
       setTimeout(() => renderMap(state.lat, state.lon, top), 50);
   }
+  /**
+   * Bygger "Visste du att"-kortet. Egen funktion sedan 2026-08-18 for att tipsen ska ga att
+   * visa INNAN man valt bil - de statiska fakta behover varken bil eller position, och en
+   * tom sida ar ett samre forsta intryck an ett tips.
+   *
+   * @param funFact AI-genererat fakta ur sokresultatet, eller null fore sokning
+   */
+  /**
+   * Ramar in karusellkorten med den gemensamma rubriken.
+   *
+   * Egen funktion for att BADA vagarna in ska ge samma rubrik: sokresultatet (dar bade
+   * faktakortet och tabellkortet finns) och forstavyn innan man valt bil (dar bara
+   * faktakortet finns). Tva kopior hade betytt tva rubriker att glomma vid nasta andring.
+   */
+  function carouselArea(bodyHtml) {
+    if (!bodyHtml) return '';
+    return `<div class="ev-carousel-area">
+        <div class="ev-carousel-head">
+          <div class="ev-carousel-head-icon">💡</div>
+          <div>
+            <div class="ev-carousel-head-title">AI-tips &amp; Visste du att</div>
+            <div class="ev-carousel-head-sub">Bläddra själv, eller pausa och läs i lugn och ro</div>
+          </div>
+        </div>
+        ${bodyHtml}
+      </div>`;
+  }
+
+  /**
+   * Forstavyn: tipsen ensamma, innan man valt bil och sokt.
+   *
+   * Utan den motts man av en tom yta, och de statiska fakta behover varken bil eller
+   * position for att vara lasvarda. Kors direkt vid start och en gang till nar
+   * forsaljningstoppen hunnit hem, sa den dynamiska raden kommer med nar den finns.
+   *
+   * Ror ALDRIG en fardig sokning - state.lastData satts av renderResults, och den vyn
+   * ar rikare an den har.
+   */
+  function renderTipsOnly() {
+    if (state.lastData) return;
+    const el = document.getElementById("ev-output");
+    if (!el || el.querySelector('.ev-status')) return;   // spinnern far vara ifred
+    setOutput(carouselArea(buildFunfactHtml(null)));
+  }
+
+  function buildFunfactHtml(funFact) {
+    let funfactHtml = "";
+    {
+      const staticFacts = [
+        { icon: '💰', text: 'Fyndläge på begagnad premium-el: VW-koncernen skär ner och enligt rapporter är flera tyska fabriker hotade – bland dem Neckarsulm, där Audi e-tron GT byggs. Samtidigt har första generationens <strong>Audi e-tron</strong> (2019–2021) tappat <strong>65–70 %</strong> av nypriset: median ~<strong>325 000 kr</strong> på Blocket i juli 2026, billigaste exemplaren från ~210 000 kr. Haken: 1,63 kWh/mil är törstigt även för en stor SUV, och batterigarantin (8 år/160 000 km) börjar ta slut på 2019-bilarna.' },
+        { icon: '🏆', text: 'Volvo EX40 var Sveriges mest sålda elbil 2025 med <strong>8 788</strong> nyregistreringar – och EX40/XC40 leder även första halvåret 2026, före Tesla Model Y (Mobility Sweden).' },
+        { icon: '🌍', text: 'IONITY är Europas snabbaste offentliga laddnätverk med upp till <strong>350 kW</strong> per laddpunkt. I Norden finns 100+ stationer längs motorvägarna.' },
+        { icon: '🇸🇪', text: 'Vattenfall InCharge är ett av Nordens största laddnätverk med över <strong>33 000 laddpunkter</strong> i Sverige, Norge, Danmark och Finland.' },
+        { icon: '❄️', text: 'På kall vinterdag kan räckvidden minska med <strong>20–40%</strong> jämfört med WLTP. Värm bilen medan den laddar för att spara batterienergi.' },
+        { icon: '⚡', text: 'Tesla öppnade sitt Supercharger-nätverk för andra elbilsmärken i Sverige <strong>2023</strong>. CCS (Combo) är Europas dominerande DC-laddstandard.' },
+        { icon: '📈', text: 'Elbilarna går framåt: <strong>45%</strong> av Sveriges nyregistreringar 2026 väntas bli elbilar enligt Mobility Swedens prognos (justerad juli 2026) – upp från 36,5% helåret 2025.' },
+        { icon: '🚗', text: 'Mercedes eldrivna CLA utsågs till <strong>Årets Bil 2026</strong> (europeiska Car of the Year) – före Škoda Elroq och Kia EV4. 2025 vann Renault 5 E-Tech.' },
+        { icon: '📊', text: 'Volvo dominerar den svenska nybilsmarknaden med <strong>16,5%</strong> marknadsandel i juni 2026, före Volkswagen (13,2%) och Kia (7,4%). Tesla ligger åtta med 4,4% (Mobility Sweden).' },
+        { icon: '🥇', text: 'I maj 2026 var Volkswagen ID.4 Sveriges mest sålda renodlade elbil med <strong>687</strong> nyregistreringar – tätt följt av Tesla Model Y (683) och Polestar 2 (526) (Carla.se elbilsindex).' },
+        { icon: '🔌', text: 'Kia EV6 (339), Volkswagen ID.3 (285) och Škoda Enyaq (276) rundade av majitoppen bland Sveriges mest sålda elbilar 2026 – före Nissan Leaf (260) och Volvo EX40 (205) (Carla.se elbilsindex).' },
+        { icon: '🚀', text: 'Elbilar gick om laddhybrider i försäljning kring årsskiftet 2025/2026 och har inte tittat tillbaka – i april 2026 passerade elbilsförsäljningen till och med diesel och närmade sig bensin, fortfarande den största kategorin (Carla.se).' },
+        // Nedan: hämtade ur CarAdvice-insikterna (samma skrapade motorpress som bilkortens
+        // "Vad experterna säger"). Bara laddningsrelevanta rader om bilar som går att köpa —
+        // kommande modeller hör hemma i CarAdvice kommande-kö, inte i en publik faktakarusell.
+        { icon: '⏱️', text: 'Låg förbrukning slår stort batteri på långresa: <strong>Mercedes CLA 250+</strong> drar bara <strong>16,5 kWh/100 km</strong> och klarar därför 80 mil med ett enda laddstopp på <strong>14 minuter</strong> (Vi Bilägare).' },
+        { icon: '🔋', text: '<strong>Volvo EX30</strong> tar sig 80 mil på totalt <strong>59 minuters</strong> laddning och håller sig under 20 kWh/100 km – ett bra riktvärde för hur mycket laddtid en långresa faktiskt kostar (Vi Bilägare).' },
+        // ID. Cross ar ett MEDVETET undantag fran urvalsregeln ovan och ska INTE tas bort som
+        // "kommande modell". Den lanseras hosten 2026 och vi ar i mitten av augusti - det ar
+        // veckor bort, inte ar, sa tipset hinner knappt bli fel innan bilen star hos handlarna.
+        // Togs bort 08-14 och lades tillbaka samma dag av just det skalet. Gransen gar vid
+        // modeller som ligger LANGT bort eller aldrig kommer hit (EX60, Cupra Raval).
+        { icon: '🏠', text: 'Nya elbilar blir reservkraft: <strong>Volkswagen ID. Cross</strong> har både <strong>V2L</strong> (upp till 3,6 kW till externa prylar) och <strong>V2H</strong> som standard – bilen kan alltså mata ström tillbaka till hemmet (Teknikens Värld / Vi Bilägare).' },
+        { icon: '⚡', text: '800 volt sprider sig nedåt i prisklasserna: <strong>BYD Atto 3 Evo</strong> fick större batteri och 800 V-laddning, och maxeffekten steg från <strong>88 kW till 220 kW</strong> (Elbilen).' },
+        { icon: '🛞', text: 'Praktiskt knep i backarna: <strong>B-läget</strong> motorbromsar och laddar batteriet i stället för att elda upp farten i bromsarna. I Volvo XC40 uppges det ge <strong>en till två mils</strong> extra räckvidd – och mindre slitage på bromsbeläggen (CarUp).' },
+        { icon: '🛣️', text: 'Längst på en laddning: <strong>Mercedes EQS 450+</strong> klarar <strong>925 km</strong> enligt WLTP – men räkna med mindre i verklig fart och kyla, WLTP mäts i betydligt snällare förhållanden (CarUp).' },
+        // Andra omgången ur CarAdvice-insikterna (08-14). Samma urvalsregel som ovan. Fem av
+        // dem slår ihop flera insiktsrader till ETT tips: batterihälsan är fem rader ur samma
+        // CarUp-studie och testräckvidderna tre ur samma AMS-test — en rad per bil hade fyllt
+        // karusellen med samma faktum om och om igen.
+        { icon: '🔌', text: 'Laddbox är ingen lyx: <strong>Mercedes CLA 350 EQ</strong> tappar <strong>över 24 %</strong> av den tillförda energin i laddförluster när den laddas i ett vanligt hushållsuttag. Förlusterna skiljer sig dessutom mellan bilar – <strong>Hyundai Ioniq</strong> hade de största av fem testade elbilar i ADAC:s mätning (Vi Bilägare).' },
+        { icon: '🩺', text: 'Batteriet håller bättre än ryktet: efter <strong>10 000 mil</strong> hade <strong>Kia e-Niro</strong> i snitt <strong>97,25 %</strong> av kapaciteten kvar, <strong>Hyundai Kona Electric</strong> 97,18 %, <strong>Kia EV6</strong> 95,95 %, <strong>Volvo XC40 Recharge</strong> 94,70 % och <strong>BMW i3</strong> knappt 94 % (CarUp).' },
+        { icon: '📜', text: 'Läs batterigarantins finstil: <strong>Nissan Leaf</strong> har åtta år eller 16 000 mil på kapaciteten – men <strong>bara fem år eller 10 000 mil</strong> för enstaka battericellfel. Samtidigt har farhågan om batteribyte efter 6–7 år kommit på skam: livslängden liknar i dag bensin- och dieselbilars (Vi Bilägare / Auto Motor & Sport).' },
+        { icon: '📏', text: 'Planera efter uppmätt räckvidd, inte WLTP: i Auto Motor & Sports test kom <strong>BMW iX3 50 xDrive</strong> <strong>502 km</strong> (108,7 kWh), <strong>Mercedes GLC 400 4Matic EQ</strong> 455 km (94 kWh) och <strong>Porsche Macan 4S</strong> 401 km (94,9 kWh).' },
+        { icon: '🎒', text: 'Taklasten kostar räckvidd: ett taktält på <strong>Hyundai Ioniq 9</strong> ökade luftmotståndet så mycket att energiförbrukningen steg markant. Räkna med tätare laddstopp när takboxen eller tältet sitter uppe (Teknikens Värld).' },
+        { icon: '🛠️', text: 'Bilen som byggström: <strong>BYD Shark</strong> kan leverera upp till <strong>6 kW</strong> via V2L – nog för att driva hantverkarens maskinpark direkt ur batteriet (Teknikens Värld / M3).' },
+        { icon: '🏕️', text: '<strong>Volkswagen ID.Buzz</strong> har ett "god-natt-paket" med campingläge som håller kupéns temperatur i upp till <strong>48 timmar</strong>, plus V2L som låter högspänningsbatteriet driva externa prylar (Vi Bilägare).' },
+        { icon: '🧭', text: 'Ett laddstopp räcker långt: <strong>Mercedes GLC</strong> klarar <strong>100 mil motorväg</strong> på ett enda stopp, och <strong>Citroën e-C5 Aircross</strong> har ett 97 kWh-batteri som ger över <strong>67 mils</strong> räckvidd med 565 liter bagage på köpet (Elbilen / CarUp).' },
+        // Euro 7 och batteripasset, tillagda 2026-08-18. TVÅ OLIKA förordningar som är lätta
+        // att blanda ihop, och de får inte slås ihop i en rad:
+        //   Euro 7 (EU 2024/1257) ställer kravet på batteriets HÄLSA — golvet nedan.
+        //   Batteripasset kommer ur EU:s BATTERIFÖRORDNING (2023/1542), som gäller från
+        //   18 februari 2027 och alltså är en helt annan rättsakt.
+        // Skriv aldrig att batteripasset är en del av Euro 7. Det är passet som gör
+        // uppgifterna läsbara på samma sätt oavsett märke, men det är Euro 7 som gör att
+        // det finns ett garanterat golv att läsa av.
+        //
+        // De ligger MEDVETET i EN rad och inte i två: karusellen visar en slide i taget, så
+        // delade upp hade läsaren sett golvet utan passet eller passet utan golvet — och
+        // poängen är just att de två hakar i varandra.
+        { icon: '⚖️', text: 'Batterihälsan blir mätbar och garanterad: <strong>Euro 7</strong> kräver att en ny elbil har minst <strong>80 %</strong> av batterikapaciteten kvar efter <strong>5 år eller 10 000 mil</strong> och <strong>72 %</strong> efter <strong>8 år eller 16 000 mil</strong> – nya typgodkännanden från <strong>29 november 2026</strong>, alla nyregistrerade från november 2027. Från <strong>18 februari 2027</strong> får varje ny elbil dessutom ett <strong>digitalt batteripass</strong> med samma uppgifter oavsett märke: kapacitet, kemi, ursprung och hälsa. Passet kommer ur EU:s batteriförordning, inte ur Euro 7 – men tillsammans gör de batterihälsa till något du kan läsa av i stället för att lita på (EU-förordning 2024/1257 respektive 2023/1542).' },
+      ];
+      const dynamicRankFacts = [];
+      if (state.evSalesRank && state.evSalesRank.length > 0) {
+        const top = state.evSalesRank[0];
+        const second = state.evSalesRank[1];
+        const period = top.periodLabel ? ' ' + top.periodLabel : '';
+        const rankText =
+          `${top.model} var Sveriges mest sålda elbil${period} med <strong>${top.units.toLocaleString('sv-SE')}</strong> nyregistreringar` +
+          (second ? `, före ${second.model} (${second.units.toLocaleString('sv-SE')})` : '') +
+          ' (elbilsvaruhuset.se / Mobility Sweden).';
+        dynamicRankFacts.push({ icon: '🔋', text: rankText });
+      }
+      const facts = [
+        ...(funFact ? [{ icon: '💡', text: data.funFact }] : []),
+        ...dynamicRankFacts,
+        ...staticFacts
+      ];
+
+      const fSlideHtml = facts.map((f, i) =>
+        `<div class="ev-funfact-slide" style="display:${i===0?'flex':'none'};align-items:flex-start;gap:10px;">
+          <div class="ev-funfact-icon">${f.icon}</div>
+          <div>
+            <div class="ev-funfact-label">Visste du att</div>
+            <div class="ev-funfact-text">${f.text}</div>
+          </div>
+        </div>`
+      ).join('');
+
+      const fDotHtml = facts.map((_, i) =>
+        `<button class="ev-fact-dot${i===0?' ev-fact-dot-active':''}" aria-label="Fakta ${i+1}"></button>`
+      ).join('');
+
+      funfactHtml += `
+        <div class="ev-funfact-card" id="ev-funfact-carousel" style="flex-direction:column;align-items:stretch;gap:0;">
+          <div id="ev-funfact-slides" data-slides style="position:relative;min-height:48px;">${fSlideHtml}</div>
+          <!-- flex-wrap: prickarna har flex-shrink:0, sa raden kan inte krympa. 20 fakta ger
+               286px prickar mot 254px innermatt vid 320px viewport - utan wrap spiller de
+               over kortkanten. Radbrytning haller den robust nar fler fakta tillkommer. -->
+          <div style="display:flex;flex-wrap:wrap;justify-content:center;gap:6px;margin-top:10px;">${fDotHtml}</div>
+          <div class="ev-fact-progress"><div class="ev-fact-progress-bar"></div></div>
+          <div style="display:flex;justify-content:center;margin-top:10px;">
+            <button class="ev-fact-play" data-carousel-play aria-pressed="false" title="Pausa karusellen">
+              <span class="ev-fact-play-icon">⏸</span><span data-carousel-play-label>Paus</span>
+            </button>
+          </div>
+        </div>`;
+    }
+    return funfactHtml;
+  }
+
 
   function setOutput(html) {
     document.getElementById("ev-output").innerHTML = html;
