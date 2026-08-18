@@ -13,7 +13,7 @@
     s.defer = true;
     (document.head || document.documentElement).appendChild(s);
   })();
-  let state = { lat: null, lon: null, city: "", sort: "speed", carIndex: null, cars: [], filter: "all", operatorFilter: null, lastData: null, lastRoute: null, lastCalc: null, favorites: [], evSalesRank: [] };
+  let state = { lat: null, lon: null, city: "", sort: "speed", carIndex: null, cars: [], filter: "all", operatorFilter: null, lastData: null, lastRoute: null, lastCalc: null, favorites: [], evSalesRank: [], stationsOpen: false };
   let evMap = null;
   let evMapMarkers = [];
   let evRoutePolyline = null;
@@ -73,6 +73,26 @@
     // Förloppslinjen gör pausen begriplig: utan den ser en pausad karusell exakt likadan ut
     // som en trasig. Den fylls på 9 s, alltså samma intervall som rotationen, och fryser
     // mitt i sitt lopp när man pausar.
+    // Stationslistans öppna-knapp. Full bredd och tydlig text — den ersätter innehåll som
+    // låg framme förut, så den får inte gå att missa.
+    // Karusellområdet: en tonad ram som håller ihop de två korten till EN sak. Utan den
+    // läste de som två lösryckta rutor mitt i resultatlistan.
+    ".ev-carousel-area{background:linear-gradient(180deg,rgba(251,191,36,0.05),rgba(251,191,36,0));border:1px solid rgba(251,191,36,0.16);border-radius:16px;padding:15px 13px 7px;margin:22px 0 6px;}" +
+    ".ev-carousel-head{display:flex;align-items:center;gap:11px;padding:0 3px 13px;}" +
+    ".ev-carousel-head-icon{font-size:19px;line-height:1;flex-shrink:0;filter:drop-shadow(0 0 9px rgba(251,191,36,0.5));}" +
+    ".ev-carousel-head-title{font-size:14px;font-weight:800;color:#fbbf24;letter-spacing:0.02em;line-height:1.2;}" +
+    ".ev-carousel-head-sub{font-size:11.5px;color:rgba(147,197,253,0.55);margin-top:3px;line-height:1.35;}" +
+    // Korten inne i området behöver luft mellan sig, annars ser de ut som ett enda långt kort.
+    ".ev-carousel-area .ev-funfact-card{margin-bottom:12px;}" +
+    ".ev-stations-toggle{width:100%;display:flex;align-items:center;justify-content:center;gap:9px;background:linear-gradient(135deg,rgba(59,130,246,0.16),rgba(37,99,235,0.10));border:1.5px solid rgba(59,130,246,0.38);border-radius:12px;color:#93c5fd;font-size:13.5px;font-weight:700;font-family:inherit;padding:13px 16px;cursor:pointer;transition:background .2s,border-color .2s,color .2s;margin:4px 0 14px;}" +
+    ".ev-stations-toggle:hover{background:linear-gradient(135deg,rgba(59,130,246,0.26),rgba(37,99,235,0.16));border-color:rgba(59,130,246,0.62);color:#bfdbfe;}" +
+    ".ev-stations-toggle .ev-chevron{font-size:10px;transition:transform .25s;}" +
+    ".ev-stations-toggle[aria-expanded='true'] .ev-chevron{transform:rotate(180deg);}" +
+    // Glödet pulsar BARA i hopfällt läge. Öppet är innehållet redan framme, och en knapp som
+    // fortsätter blinka när den gjort sitt är bara störande.
+    "@keyframes ev-glow-pulse{0%,100%{box-shadow:0 0 16px rgba(59,130,246,0.16)}50%{box-shadow:0 0 30px rgba(59,130,246,0.40)}}" +
+    ".ev-stations-toggle[aria-expanded='false']{animation:ev-glow-pulse 2.8s ease-in-out infinite;}" +
+    "@media (prefers-reduced-motion:reduce){.ev-stations-toggle[aria-expanded='false']{animation:none;box-shadow:0 0 18px rgba(59,130,246,0.22);}}" +
     ".ev-fact-progress{height:2px;border-radius:2px;background:rgba(147,197,253,0.14);overflow:hidden;margin-top:12px;}" +
     ".ev-fact-progress-bar{height:100%;width:0;background:linear-gradient(90deg,#3b82f6,#60a5fa);border-radius:2px;}" +
     ".ev-fact-progress-bar.ev-run{animation:ev-fact-fill 9s linear forwards;}" +
@@ -456,6 +476,7 @@
         </div>`;
     }
 
+    let funfactHtml = "";
     {
       const staticFacts = [
         { icon: '💰', text: 'Fyndläge på begagnad premium-el: VW-koncernen skär ner och enligt rapporter är flera tyska fabriker hotade – bland dem Neckarsulm, där Audi e-tron GT byggs. Samtidigt har första generationens <strong>Audi e-tron</strong> (2019–2021) tappat <strong>65–70 %</strong> av nypriset: median ~<strong>325 000 kr</strong> på Blocket i juli 2026, billigaste exemplaren från ~210 000 kr. Haken: 1,63 kWh/mil är törstigt även för en stor SUV, och batterigarantin (8 år/160 000 km) börjar ta slut på 2019-bilarna.' },
@@ -541,8 +562,8 @@
         `<button class="ev-fact-dot${i===0?' ev-fact-dot-active':''}" aria-label="Fakta ${i+1}"></button>`
       ).join('');
 
-      html += `
-        <div class="ev-funfact-card" id="ev-funfact-carousel" style="flex-direction:column;gap:0;">
+      funfactHtml += `
+        <div class="ev-funfact-card" id="ev-funfact-carousel" style="flex-direction:column;align-items:stretch;gap:0;">
           <div id="ev-funfact-slides" data-slides style="position:relative;min-height:48px;">${fSlideHtml}</div>
           <!-- flex-wrap: prickarna har flex-shrink:0, sa raden kan inte krympa. 20 fakta ger
                286px prickar mot 254px innermatt vid 320px viewport - utan wrap spiller de
@@ -697,13 +718,11 @@
         `<button class="ev-fact-dot${i===0?' ev-fact-dot-active':''}" data-dot="${i}" aria-label="Fakta ${i+1}"></button>`
       ).join('');
 
+      // Avdelaren låg förut här, före tabellkarusellen. Den är flyttad till en gemensam
+      // rubrik över BÅDA karusellerna (se evCarouselSection) — de hör ihop och ska läsas
+      // som ett område, inte som två lösryckta kort med var sitt avbrott emellan.
       factHtml += `
-        <div class="ev-section-divider">
-          <div class="ev-divider-line"></div>
-          <div class="ev-divider-badge">💡 Visste du att?</div>
-          <div class="ev-divider-line"></div>
-        </div>
-        <div class="ev-funfact-card" id="ev-fact-carousel" style="flex-direction:column;gap:0;">
+        <div class="ev-funfact-card" id="ev-fact-carousel" style="flex-direction:column;align-items:stretch;gap:0;">
           <div id="ev-fact-slides" data-slides style="position:relative;">${slides}</div>
           <div style="display:flex;align-items:center;justify-content:space-between;margin-top:12px;">
             <button class="ev-fact-nav" data-carousel-prev>‹</button>
@@ -877,7 +896,46 @@
       }
     }
 
-    setOutput(html + stationsHtml + factHtml + calcHtml);
+    /*
+     * Ordningen lagd om 2026-08-18. Förut: AI-kort → faktakarusell → favoriter → stationslista
+     * → tabellkarusell. De två karusellerna hörde uppenbart ihop men hade fem stationskort
+     * emellan sig, så den som ville jämföra tabellerna fick skrolla förbi listan varje gång.
+     *
+     * Nu: AI-kort och favoriter → KARUSELLOMRÅDET (båda korten under en gemensam rubrik) →
+     * stationslistan hopfälld bakom en knapp → laddkalkylen.
+     */
+    const carouselBody = funfactHtml + factHtml;
+    const carouselSection = carouselBody
+      ? `<div class="ev-carousel-area">
+           <div class="ev-carousel-head">
+             <div class="ev-carousel-head-icon">💡</div>
+             <div>
+               <div class="ev-carousel-head-title">AI-tips &amp; Visste du att</div>
+               <div class="ev-carousel-head-sub">Bläddra själv, eller pausa och läs i lugn och ro</div>
+             </div>
+           </div>
+           ${carouselBody}
+         </div>`
+      : '';
+
+    /*
+     * Stationslistan är hopfälld från start. Öppet läge lever i state och inte i DOM:en:
+     * operatörschippen och sorteringen renderar om HELA utdatan, så utan det hade listan
+     * fällts ihop mitt under att man filtrerade i den.
+     */
+    const stationsOpen = !!state.stationsOpen;
+    const oppnaEtikett = `Visa ${stations.length} kompatibla stationer inom 15 km`;
+    const stationsSection = stationsHtml
+      ? `<button class="ev-stations-toggle" id="ev-stations-toggle" aria-expanded="${stationsOpen}"
+                 aria-controls="ev-stations-body" data-open-label="${oppnaEtikett}">
+           <span aria-hidden="true">⚡</span>
+           <span id="ev-stations-toggle-label">${stationsOpen ? 'Dölj stationerna' : oppnaEtikett}</span>
+           <span class="ev-chevron" aria-hidden="true">▼</span>
+         </button>
+         <div id="ev-stations-body" style="display:${stationsOpen ? 'block' : 'none'};">${stationsHtml}</div>`
+      : '';
+
+    setOutput(html + carouselSection + stationsSection + calcHtml);
 
     if (state.lat && state.lon && top.length > 0)
       setTimeout(() => renderMap(state.lat, state.lon, top), 50);
@@ -887,6 +945,21 @@
     document.getElementById("ev-output").innerHTML = html;
 
     if (document.getElementById('ev-calc-card')) evCalcUpdate();
+
+    // Stationslistans öppna/stäng. Etiketten för stängt läge bärs i data-open-label, så
+    // antalet stationer inte behöver räknas om här — det är renderingen som vet det.
+    const stToggle = document.getElementById('ev-stations-toggle');
+    if (stToggle) {
+      stToggle.addEventListener('click', () => {
+        const oppen = stToggle.getAttribute('aria-expanded') !== 'true';
+        state.stationsOpen = oppen;
+        stToggle.setAttribute('aria-expanded', String(oppen));
+        const body = document.getElementById('ev-stations-body');
+        if (body) body.style.display = oppen ? 'block' : 'none';
+        const label = document.getElementById('ev-stations-toggle-label');
+        if (label) label.textContent = oppen ? 'Dölj stationerna' : stToggle.dataset.openLabel;
+      });
+    }
 
     document.querySelectorAll(".ev-op-chip").forEach(btn => {
       btn.addEventListener("click", () => {
