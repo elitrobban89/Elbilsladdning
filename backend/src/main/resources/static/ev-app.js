@@ -951,7 +951,7 @@
         dynamicRankFacts.push({ icon: '🔋', text: rankText });
       }
       const facts = [
-        ...(funFact ? [{ icon: '💡', text: data.funFact }] : []),
+        ...(funFact ? [{ icon: '💡', text: funFact }] : []),
         ...dynamicRankFacts,
         ...staticFacts
       ];
