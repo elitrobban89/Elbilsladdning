@@ -26,6 +26,7 @@ Live: [elitrobban.se/elbilsladdning](https://elitrobban.se/elbilsladdning/)
 - **AI-rekommendation** — Groq LLM (`openai/gpt-oss-20b`, `reasoning_effort: low` så reasoning inte äter tokenbudgeten) ger ett konkret råd per sökning, märkt med ⚡ GROQ-badge; 30 min cache per bil+stationskombination sparar tokens och ger snabbare svar
 - **Groq 429-fallback** — vid dagsgräns returneras regelbaserat svar (bästa stationen med km/kW) direkt utan AI-anrop; `quotaExceededUntil`-backoff nollställs automatiskt vid nästa lyckade anrop; chat-endpointen kontrollerar samma backoff-flagga
 - **Rekommendations-cache** — 30 min TTL per bil+stationskombination; rensas automatiskt vid >200 entries för att hålla minnesanvändningen i schack
+- **Prislogiken är utbruten och provad** (2026-08-18) — `tolkaLaddpris`, `fullLaddningKr`, `verkligaMil`, `krPerMilAv` och `merKostnadMotHemma` ligger mellan markörerna `PRISLOGIK BÖRJAR/SLUTAR` i `ev-app.js`. Låg förut inline på **tre** ställen (stationskorten, chattens stationskontext, laddkalkylen) med var sin kopia av växelkursen; nu finns `EUR_SEK` och `HEMMA_KR_PER_KWH` på var sin rad. **19 prov** körs med `node backend/src/test/js/pris-prov.js` — provfilen klipper ut blocket ur den riktiga ev-app.js och kör det, så ingen kopia av logiken finns i provet. Bakgrund: frontenden är 2 300 rader utan prov, och ett `data is not defined` gick till drift samma dag eftersom en utbrytning bara syntaxkollades — en ReferenceError syns först när raden körs
 - **IP-begränsning på stationssök** — max 10 förfrågningar per timme och IP (sliding window), 429 med svensk feltext vid överskridning; IP-poster rensas i schemalagd task varje timme
 - **Parallell exekvering** — OCM och NOBIL körs samtidigt; prisberikning för alla 5 stationer körs parallellt via Java 21 virtuella trådar (`newVirtualThreadPerTaskExecutor`); sparar ~1–2 s per sökning vid cold cache
 - **Stationslistan är hopfälld** bakom en glödande knapp ("⚡ Visa N kompatibla stationer inom 15 km") som ligger **först i `#ev-output`, alltså direkt under kartan** — `#ev-map` sitter omedelbart ovanför i `elbilsladdning-web.html`, och kartan visar samma stationer som listan. Glödet pulsar bara i hopfällt läge — en knapp som fortsätter blinka när den gjort sitt är bara störande — och stängs av vid `prefers-reduced-motion`. **Öppet läge lever i `state.stationsOpen`, inte i DOM:en:** operatörschippen och sorteringen renderar om hela utdatan, så utan det hade listan fällts ihop mitt under att man filtrerade i den. Kartan ligger i WP-skalet utanför `#ev-output` och påverkas inte av hopfällningen
@@ -77,7 +78,7 @@ Live: [elitrobban.se/elbilsladdning](https://elitrobban.se/elbilsladdning/)
 
 ## Tester & CI
 
-74 tester i tre lager — ren logik, HTTP-felvägar och controller-lagret (MockMvc, tjänsterna mockas):
+74 backendtester i tre lager — ren logik, HTTP-felvägar och controller-lagret (MockMvc, tjänsterna mockas):
 
 | Testklass | Täcker |
 |-----------|--------|

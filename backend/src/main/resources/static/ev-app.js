@@ -14,6 +14,84 @@
     (document.head || document.documentElement).appendChild(s);
   })();
   let state = { lat: null, lon: null, city: "", sort: "speed", carIndex: null, cars: [], filter: "all", operatorFilter: null, lastData: null, lastRoute: null, lastCalc: null, favorites: [], evSalesRank: [], stationsOpen: false };
+  // ===== PRISLOGIK BÖRJAR — ren, testas av backend/src/test/js/pris-prov.js =====
+  //
+  // Låg förut inline på TRE ställen (stationskorten, chattens stationskontext och
+  // laddkalkylen) med var sin kopia av växelkursen. Tre kopior av ett tal som driver
+  // betyder att en rättning missar två av dem — och det här är siffror användaren
+  // ser som kronor, inte interna mellanvärden.
+  //
+  // Blocket mellan markörerna klipps ut av provfilen, så flytta inte markörerna utan
+  // att köra `node backend/src/test/js/pris-prov.js`.
+
+  /**
+   * Växelkurs EUR→SEK för utländska laddpriser.
+   *
+   * HÅRDKODAD MED FLIT, men på ETT ställe. En riktig kurstjänst är rätt lösning den dag
+   * priserna ska stämma på kronan; tills dess är det viktiga att talet går att hitta och
+   * ändra på en rad. Uppdaterad 2026-08-18.
+   */
+  const EUR_SEK = 11.5;
+
+  /**
+   * Antaget hemmapris per kWh, för jämförelsen "+X kr jämfört med hemmaladdning".
+   *
+   * Spannet i texten är 1,50–3,50 kr/kWh beroende på elavtal; 2,00 är mitten nedåt och
+   * medvetet försiktig — jämförelsen ska hellre underdriva vad du sparar än överdriva.
+   */
+  const HEMMA_KR_PER_KWH = 2.0;
+
+  /**
+   * Tolkar ett laddpris från OpenChargeMap, som är fritext och inte ett belopp.
+   *
+   * {@code varEur} finns för att stationskorten visar det omräknade priset i stället för
+   * råtexten just när källan angett euro — utan flaggan hade anroparen fått leta i strängen
+   * en andra gång, och då är det två ställen som kan glida isär.
+   *
+   * @return {{krPerKwh: number|null, gratis: boolean, varEur: boolean}}
+   */
+  function tolkaLaddpris(raw) {
+    const text = String(raw || "");
+    const lower = text.toLowerCase();
+    const gratis = lower.includes("gratis") || lower.includes("free");
+    const varEur = text.includes("EUR");
+
+    // Första talet i strängen. Notera att "1.234,56" INTE hanteras: OpenChargeMap skriver
+    // inte tusentalsavgränsare i kr/kWh-priser, och att gissa på formatet gör mer skada
+    // än nytta — ett felparsat pris blir en trovärdig men fel krona på skärmen.
+    const traff = text.match(/\d+(?:[.,]\d+)?/);
+    if (!traff) return { krPerKwh: null, gratis, varEur };
+
+    const tal = parseFloat(traff[0].replace(",", "."));
+    if (!isFinite(tal)) return { krPerKwh: null, gratis, varEur };
+
+    return { krPerKwh: varEur ? tal * EUR_SEK : tal, gratis, varEur };
+  }
+
+  /** Vad en full laddning kostar, eller null när något saknas. Gratis ger null, inte 0. */
+  function fullLaddningKr(batteryKwh, krPerKwh, gratis) {
+    if (gratis || !batteryKwh || !krPerKwh) return null;
+    return Math.round(batteryKwh * krPerKwh);
+  }
+
+  /** Verklig räckvidd i mil — WLTP minus 15 %, samma påslag som resten av appen. */
+  function verkligaMil(rangeKm) {
+    return rangeKm ? Math.round(rangeKm / 10 * 0.85) : null;
+  }
+
+  /** Kronor per mil, eller null när underlaget saknas. */
+  function krPerMilAv(fullKr, mil) {
+    return (fullKr && mil) ? Math.round(fullKr / mil) : null;
+  }
+
+  /** Vad samma laddning kostat hemma, och merkostnaden — null när stationen inte är dyrare. */
+  function merKostnadMotHemma(batteryKwh, fullKr) {
+    if (!batteryKwh || !fullKr) return null;
+    const hemma = Math.round(batteryKwh * HEMMA_KR_PER_KWH);
+    return fullKr > hemma ? fullKr - hemma : null;
+  }
+  // ===== PRISLOGIK SLUTAR =====
+
   let evMap = null;
   let evMapMarkers = [];
   let evRoutePolyline = null;
@@ -676,30 +754,25 @@
         <span>Topp ${top.length}${filterNote}${opNote}</span>
       </div>`;
 
-    const HOME_RATE = 2.0;
-
     top.forEach((s, i) => {
       const speedClass = s.maxEffKw >= 100 ? "fast" : s.maxEffKw >= 22 ? "medium" : "slow";
       const kwClass    = speedClass === "fast" ? "kw-fast" : speedClass === "medium" ? "kw-medium" : "kw-slow";
       const rawPrice   = s.chargepricePerKwh || s.usageCost || "";
-      const isFree     = rawPrice.toLowerCase().includes("gratis") || rawPrice.toLowerCase().includes("free");
       const car        = state.carIndex !== null ? state.cars[state.carIndex] : null;
       const battery    = car?.batteryKwh ?? null;
-      const realMil    = car?.rangeKm ? Math.round(car.rangeKm / 10 * 0.85) : null;
-      const isEur      = rawPrice.includes("EUR");
-      const priceNum   = rawPrice.match(/[\d,.]+/)?.[0] ? parseFloat(rawPrice.match(/[\d,.]+/)[0].replace(",",".")) : null;
-      const priceKr    = (priceNum && isEur) ? priceNum * 11.5 : priceNum;
-      const fullCost   = (battery && priceKr && !isFree) ? Math.round(battery * priceKr) : null;
-      const krPerMil   = (fullCost && realMil) ? Math.round(fullCost / realMil) : null;
-      const homeCost   = battery ? Math.round(battery * HOME_RATE) : null;
-      const extraKr    = (fullCost && homeCost && fullCost > homeCost) ? fullCost - homeCost : null;
+      const realMil    = verkligaMil(car?.rangeKm);
+      const pris       = tolkaLaddpris(rawPrice);
+      const isFree     = pris.gratis;
+      const fullCost   = fullLaddningKr(battery, pris.krPerKwh, pris.gratis);
+      const krPerMil   = krPerMilAv(fullCost, realMil);
+      const extraKr    = merKostnadMotHemma(battery, fullCost);
       const costHint   = fullCost
         ? `<div class="ev-cost-hint">🔋 Full laddning ~${fullCost} kr${krPerMil ? " · ~" + krPerMil + " kr/mil" : ""}</div>`
         : "";
       const homeHint   = extraKr
         ? `<div class="ev-home-compare">🏠 +${extraKr} kr jämfört med hemmaladdning</div>`
         : "";
-      const displayPrice = (isEur && priceKr) ? `${priceKr.toFixed(2)} kr/kWh` : rawPrice;
+      const displayPrice = (pris.varEur && pris.krPerKwh) ? `${pris.krPerKwh.toFixed(2)} kr/kWh` : rawPrice;
       const priceBadgeCls = isFree ? " free" : "";
       const priceBadge = rawPrice ? `<div class="ev-price-badge${priceBadgeCls}">${displayPrice}</div>${costHint}${homeHint}` : "";
       const addr       = s.address ? `<div class="ev-station-addr">${s.address}</div>` : "";
@@ -1736,10 +1809,7 @@
     }
     const stationsSorted = d.stations.slice(0, 5).map(function(s) {
       const raw = s.chargepricePerKwh || s.usageCost || "";
-      const isEur = raw.includes("EUR");
-      const num = raw.match(/[\d,.]+/)?.[0] ? parseFloat(raw.match(/[\d,.]+/)[0].replace(",",".")) : null;
-      const priceKr = num ? (isEur ? num * 11.5 : num) : null;
-      return Object.assign({}, s, { priceKr: priceKr });
+      return Object.assign({}, s, { priceKr: tolkaLaddpris(raw).krPerKwh });
     });
     stationsSorted.forEach(function(s, i) {
       const priceStr = s.chargepricePerKwh || s.usageCost || "okänt pris";
@@ -1975,10 +2045,8 @@
     const timeStr    = timeMin < 60 ? `${timeMin} min` : `${Math.floor(timeMin / 60)} tim ${timeMin % 60} min`;
 
     const rawPrice   = dcStation?.chargepricePerKwh || dcStation?.usageCost || '';
-    const isEur      = rawPrice.includes('EUR');
-    const priceNum   = rawPrice.match(/[\d,.]+/)?.[0] ? parseFloat(rawPrice.match(/[\d,.]+/)[0].replace(',', '.')) : null;
-    const priceKr    = priceNum ? (isEur ? priceNum * 11.5 : priceNum) : null;
-    const cost       = priceKr ? Math.round(kwhCharge * priceKr) : null;
+    const pris       = tolkaLaddpris(rawPrice);
+    const cost       = pris.krPerKwh ? Math.round(kwhCharge * pris.krPerKwh) : null;
 
     const realRange  = car.rangeKm ? Math.round(car.rangeKm * 0.85) : null;
     const rangeAdded = realRange   ? Math.round(realRange * (toPct - fromPct) / 100) : null;
