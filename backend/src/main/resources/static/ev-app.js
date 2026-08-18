@@ -480,6 +480,19 @@
         { icon: '🛠️', text: 'Bilen som byggström: <strong>BYD Shark</strong> kan leverera upp till <strong>6 kW</strong> via V2L – nog för att driva hantverkarens maskinpark direkt ur batteriet (Teknikens Värld / M3).' },
         { icon: '🏕️', text: '<strong>Volkswagen ID.Buzz</strong> har ett "god-natt-paket" med campingläge som håller kupéns temperatur i upp till <strong>48 timmar</strong>, plus V2L som låter högspänningsbatteriet driva externa prylar (Vi Bilägare).' },
         { icon: '🧭', text: 'Ett laddstopp räcker långt: <strong>Mercedes GLC</strong> klarar <strong>100 mil motorväg</strong> på ett enda stopp, och <strong>Citroën e-C5 Aircross</strong> har ett 97 kWh-batteri som ger över <strong>67 mils</strong> räckvidd med 565 liter bagage på köpet (Elbilen / CarUp).' },
+        // Euro 7 och batteripasset, tillagda 2026-08-18. TVÅ OLIKA förordningar som är lätta
+        // att blanda ihop, och de får inte slås ihop i en rad:
+        //   Euro 7 (EU 2024/1257) ställer kravet på batteriets HÄLSA — golvet nedan.
+        //   Batteripasset kommer ur EU:s BATTERIFÖRORDNING (2023/1542), som gäller från
+        //   18 februari 2027 och alltså är en helt annan rättsakt.
+        // Skriv aldrig att batteripasset är en del av Euro 7. Det är passet som gör
+        // uppgifterna läsbara på samma sätt oavsett märke, men det är Euro 7 som gör att
+        // det finns ett garanterat golv att läsa av.
+        //
+        // De ligger MEDVETET i EN rad och inte i två: karusellen visar en slide i taget, så
+        // delade upp hade läsaren sett golvet utan passet eller passet utan golvet — och
+        // poängen är just att de två hakar i varandra.
+        { icon: '⚖️', text: 'Batterihälsan blir mätbar och garanterad: <strong>Euro 7</strong> kräver att en ny elbil har minst <strong>80 %</strong> av batterikapaciteten kvar efter <strong>5 år eller 10 000 mil</strong> och <strong>72 %</strong> efter <strong>8 år eller 16 000 mil</strong> – nya typgodkännanden från <strong>29 november 2026</strong>, alla nyregistrerade från november 2027. Från <strong>18 februari 2027</strong> får varje ny elbil dessutom ett <strong>digitalt batteripass</strong> med samma uppgifter oavsett märke: kapacitet, kemi, ursprung och hälsa. Passet kommer ur EU:s batteriförordning, inte ur Euro 7 – men tillsammans gör de batterihälsa till något du kan läsa av i stället för att lita på (EU-förordning 2024/1257 respektive 2023/1542).' },
       ];
       const dynamicRankFacts = [];
       if (state.evSalesRank && state.evSalesRank.length > 0) {
