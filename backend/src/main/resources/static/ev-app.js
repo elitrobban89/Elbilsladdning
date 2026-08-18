@@ -987,7 +987,6 @@
     let funfactHtml = "";
     {
       const staticFacts = [
-        { icon: '💰', text: 'Fyndläge på begagnad premium-el: VW-koncernen skär ner och enligt rapporter är flera tyska fabriker hotade – bland dem Neckarsulm, där Audi e-tron GT byggs. Samtidigt har första generationens <strong>Audi e-tron</strong> (2019–2021) tappat <strong>65–70 %</strong> av nypriset: median ~<strong>325 000 kr</strong> på Blocket i juli 2026, billigaste exemplaren från ~210 000 kr. Haken: 1,63 kWh/mil är törstigt även för en stor SUV, och batterigarantin (8 år/160 000 km) börjar ta slut på 2019-bilarna.' },
         { icon: '🏆', text: 'Volvo EX40 var Sveriges mest sålda elbil 2025 med <strong>8 788</strong> nyregistreringar – och EX40/XC40 leder även första halvåret 2026, före Tesla Model Y (Mobility Sweden).' },
         { icon: '🌍', text: 'IONITY är Europas snabbaste offentliga laddnätverk med upp till <strong>350 kW</strong> per laddpunkt. I Norden finns 100+ stationer längs motorvägarna.' },
         { icon: '🇸🇪', text: 'Vattenfall InCharge är ett av Nordens största laddnätverk med över <strong>33 000 laddpunkter</strong> i Sverige, Norge, Danmark och Finland.' },
@@ -1040,8 +1039,11 @@
         { icon: '⚖️', text: 'Batterihälsan blir mätbar och garanterad: <strong>Euro 7</strong> kräver att en ny elbil har minst <strong>80 %</strong> av batterikapaciteten kvar efter <strong>5 år eller 10 000 mil</strong> och <strong>72 %</strong> efter <strong>8 år eller 16 000 mil</strong> – nya typgodkännanden från <strong>29 november 2026</strong>, alla nyregistrerade från november 2027. Från <strong>18 februari 2027</strong> får varje ny elbil dessutom ett <strong>digitalt batteripass</strong> med samma uppgifter oavsett märke: kapacitet, kemi, ursprung och hälsa. Passet kommer ur EU:s batteriförordning, inte ur Euro 7 – men tillsammans gör de batterihälsa till något du kan läsa av i stället för att lita på (EU-förordning 2024/1257 respektive 2023/1542).' },
       ];
       /*
-       * Fyndraden. Ersätter på sikt den handskrivna Audi e-tron-raden ovan — samma sorts tips,
-       * men uppdaterad varje vecka i stället för när någon råkar komma på det.
+       * Fyndraden. ERSATTE den handskrivna Audi e-tron-raden 2026-08-18 — samma sorts tips, men
+       * uppdaterad varje vecka i stället för när någon råkar komma på det. Den gamla raden togs
+       * bort för att slippa samma bil på två ställen med olika siffror; det som gick förlorat i
+       * bytet var två varningar den automatiska raden inte bär, om 1,63 kWh/mil och om att
+       * batterigarantin börjar ta slut på 2019-bilarna.
        *
        * Källorna skrivs ut BÅDA två, för de gör olika saker: Kvdbil står för nypriset (ett
        * historiskt faktum om årsmodell 2021) och Blocket för vad bilen kostar idag. Utan den
@@ -1198,7 +1200,7 @@
        * Låser höjden till den HÖGSTA sliden.
        *
        * Utan den hoppade kortet i storlek vid varje byte: faktatexterna är olika långa
-       * (Audi e-tron-tipset är ett helt stycke, IONITY-raden en mening) och en slide som
+       * (Euro 7-raden är ett helt stycke, IONITY-raden en mening) och en slide som
        * lämnar är position:absolute, så behållaren hann kollapsa mitt i övergången.
        * Mäts dolt — visibility:hidden i stället för display:none, annars är höjden 0.
        */
