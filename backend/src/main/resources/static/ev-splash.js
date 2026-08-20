@@ -414,6 +414,11 @@
 
   function shouldShow() {
     if (FORCE) return true;
+    // Kallstart trumfar "har redan setts". Datatjänsten somnar efter ~15 min, och utan
+    // det här ser en aterkommande besokare en sida som laddat men inte fyllts — vilket
+    // laser som ett fel, medan en splash laser som att nagot hander. Flaggan sätts av
+    // kallstartsvakten i ev-app.js nar API:t inte svarat inom tidsgransen.
+    if (window.EV_COLD_START) return true;
     try { return !localStorage.getItem(SEEN_KEY); } catch (e) { return true; }
   }
 

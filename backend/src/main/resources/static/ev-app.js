@@ -1,6 +1,22 @@
 (function () {
   const API = window.EV_API_URL || "https://elbilsladdning.onrender.com";
 
+  // Var FILERNA ligger — härlett ur var den här filen själv laddades ifrån.
+  //
+  // Skilt från API med flit: DATAN bor hos Elbilsladdning, som ligger på Renders
+  // gratisnivå och somnar efter ~15 min, medan FILERNA serveras av CarAdvice som
+  // ligger på betald plan och är vaken. Splashen är just det som ska synas MEDAN
+  // datatjänsten vaknar — hämtas den från datatjänsten kommer den fram först när
+  // den inte längre behövs.
+  //
+  // currentScript i stället för en hårdkodad värd: filen finns i två repon och måste
+  // vara identisk i båda, så den måste fungera oavsett vem som serverar den.
+  const ASSETS = (function () {
+    var s = document.currentScript;
+    if (s && s.src) { var i = s.src.lastIndexOf("/"); if (i > 0) return s.src.slice(0, i); }
+    return "https://caradvice.onrender.com";
+  })();
+
   // Auto-injicera uppstartssplashen. WP-sidan är en manuell kopia och laddar denna fil;
   // så här får den ev-splash.js utan att markupen behöver klistras om (samma mönster som
   // CarAdvice). Hoppar över om skriptet redan finns i sidan.
@@ -9,10 +25,35 @@
         document.querySelector('script[src*="ev-splash.js"]')) return;
     var s = document.createElement("script");
     s.id = "ev-splash-js";
-    s.src = API + "/ev-splash.js";
+    s.src = ASSETS + "/ev-splash.js";
     s.defer = true;
     (document.head || document.documentElement).appendChild(s);
   })();
+  // ── Kallstartsvakt: hellre splash än halvtom sida ─────────────────────────
+  //
+  // Datatjänsten somnar, och en uppvakning tar ~15-30 s. Utan det här står besökaren
+  // framför en sida som laddat men inte fyllts — och en tom sida ser ut som ett fel
+  // medan en splash ser ut som att något händer.
+  //
+  // Probe med tidsgräns i stället för att mäta svarstiden: ett svar som dröjer ÄR en
+  // kallstart, oavsett varför. Anropet väcker dessutom tjänsten, så väntan börjar
+  // tidigare än om första riktiga datahämtningen fick göra det.
+  //
+  // Två vägar att visa splashen, för den kan ha hunnit olika långt: flaggan läses av
+  // shouldShow() om splashskriptet ännu inte startat, och evReplaySplash() används om
+  // det redan bestämt sig för att inte visa något. Guard mot att ta över ett lager
+  // som redan ligger uppe.
+  (function kallstartsvakt() {
+    const TROSKEL_MS = 900;
+    const larm = setTimeout(function () {
+      window.EV_COLD_START = true;
+      if (window.evReplaySplash && !document.querySelector(".ev-splash")) window.evReplaySplash();
+    }, TROSKEL_MS);
+    fetch(API + "/api/health", { cache: "no-store" })
+      .catch(function () {})
+      .then(function () { clearTimeout(larm); });
+  })();
+
   let state = { lat: null, lon: null, city: "", sort: "speed", carIndex: null, cars: [], filter: "all", operatorFilter: null, lastData: null, lastRoute: null, lastCalc: null, favorites: [], evSalesRank: [], stationsOpen: false, valueRetention: [], valueRetentionKalla: "" };
   // ===== PRISLOGIK BÖRJAR — ren, testas av backend/src/test/js/pris-prov.js =====
   //
