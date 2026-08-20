@@ -206,8 +206,11 @@ async function kor(svarEfterMs, avvisa) {
   }
 
   ok("källans varma tak är 9000 ms", splashKalla.includes("var MAX_HALL_VARM_MS = 9000;"));
-  ok("källans kalla tak är 75000 ms — uppmätta uppvakningar 13,3 s, 73 s och 121 s",
-     splashKalla.includes("var MAX_HALL_KALL_MS = 75000;"));
+  // Talet är medvetet KORTARE än uppvakningen (uppmätt 115-121 s). Ett tak som ändå brinner
+  // av före datan ska inte vara långt — då är det bara en låst sida. Höjs det tillbaka mot
+  // uppvakningstiden är det en återgång, och det är det här provet som säger ifrån.
+  ok("källans kalla tak är 20000 ms — kort MED FLIT, väntan bärs av rullgardinen",
+     splashKalla.includes("var MAX_HALL_KALL_MS = 20000;"));
   ok("taket VÄLJS av EV_COLD_START, inte hårdkodat i timern",
      splashKalla.includes("var tak_ms = window.EV_COLD_START ? MAX_HALL_KALL_MS : MAX_HALL_VARM_MS;") &&
      splashKalla.includes("setTimeout(ga, tak_ms)"));
