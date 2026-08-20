@@ -47,6 +47,7 @@ function klippUr(kalla, start, slutRad, namn) {
 }
 
 const DATAKLAR_BLOCK = klipp("  function evDataKlar() {", "  }", "evDataKlar");
+const VANTETEXT_BLOCK = klipp("  function bilVantetext(sel) {", "  }", "bilVantetext");
 const HALL_BLOCK = klippUr(splashKalla, "  function narDataFinns(cb) {", "  }", "narDataFinns");
 
 let fel = 0;
@@ -205,8 +206,8 @@ async function kor(svarEfterMs, avvisa) {
   }
 
   ok("källans varma tak är 9000 ms", splashKalla.includes("var MAX_HALL_VARM_MS = 9000;"));
-  ok("källans kalla tak är 45000 ms — uppmätt uppvakning 08-20 var 73 s, 9 s hade gett upp först",
-     splashKalla.includes("var MAX_HALL_KALL_MS = 45000;"));
+  ok("källans kalla tak är 75000 ms — uppmätta uppvakningar 13,3 s, 73 s och 121 s",
+     splashKalla.includes("var MAX_HALL_KALL_MS = 75000;"));
   ok("taket VÄLJS av EV_COLD_START, inte hårdkodat i timern",
      splashKalla.includes("var tak_ms = window.EV_COLD_START ? MAX_HALL_KALL_MS : MAX_HALL_VARM_MS;") &&
      splashKalla.includes("setTimeout(ga, tak_ms)"));
@@ -237,6 +238,44 @@ async function kor(svarEfterMs, avvisa) {
      splashKalla.split("setTimeout(slutfor,").length - 1 === 2 &&
      !splashKalla.includes("setTimeout(finish, 2200)") &&
      !splashKalla.includes("setTimeout(finish, 500)"));
+
+  // ── 5. Väntan som blir kvar när splashen gett upp ──────────────────────────
+  // Mätt mot en verkligt nedspunnen tjänst 2026-08-20: uppvakningen tog 121 s medan taket
+  // brann av vid 51 s. Sidan stod då färdigladdad med "Välj bilmodell…" och noll bilar i
+  // 70 sekunder. Ingen splashlängd löser det — gränssnittet måste säga att det väntar.
+  console.log("");
+  console.log("Rullgardinen under kallstart");
+
+  function fejkSelect(text) {
+    return { options: text === null ? [] : [{ textContent: text }] };
+  }
+  function vantetext(sel) {
+    let bilVantetext;
+    eval(VANTETEXT_BLOCK.replace("  function bilVantetext(sel)", "bilVantetext = function (sel)"));
+    return bilVantetext(sel);
+  }
+
+  {
+    const sel = fejkSelect("Välj bilmodell…");
+    const aterstall = vantetext(sel);
+    ok("rullgardinen säger att tjänsten startar", sel.options[0].textContent === "Tjänsten startar — bilarna dyker upp strax…");
+    // Återställaren bär originaltexten själv — ingen annan ska behöva minnas den, och en
+    // hårdkodad "Välj bilmodell…" i två filer hade glidit isär vid första omformuleringen.
+    aterstall();
+    ok("återställaren sätter tillbaka EXAKT den text som stod där", sel.options[0].textContent === "Välj bilmodell…");
+  }
+  {
+    ok("tom rullgardin ger ingen återställare i stället för att krascha", vantetext(fejkSelect(null)) === null);
+    ok("ingen rullgardin alls ger ingen återställare", vantetext(null) === null && vantetext(undefined) === null);
+  }
+
+  ok("texten väntar 1200 ms så den inte blinkar förbi på en vaken tjänst",
+     kalla.includes("const VANTETEXT_MS = 1200;"));
+  ok("BÅDA vägarna ur hämtningen släcker väntetimern",
+     kalla.split("clearTimeout(bilVantetimer)").length - 1 === 2);
+  ok("träffgrenen återställer texten innan bilarna läggs in",
+     kalla.indexOf("if (aterstallBilText) { aterstallBilText(); aterstallBilText = null; }") <
+     kalla.indexOf("sel.appendChild(o)"));
 
   console.log(fel === 0 ? "\nAlla prov gröna" : "\n" + fel + " prov FÖLL");
   process.exit(fel === 0 ? 0 : 1);
