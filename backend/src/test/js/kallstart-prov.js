@@ -141,8 +141,9 @@ async function kor(svarEfterMs, avvisa) {
     ok("evDataKlar sätter flaggan och signalerar EN gång", global.window.EV_DATA_READY === true && signaler === 1);
   }
 
-  // Kort tak i provet; att källans tak är 9000 ms kollas separat längre ner.
-  const MAX_HALL_MS = 300;
+  // Korta tak i provet; källans riktiga värden kollas separat längre ner.
+  const MAX_HALL_VARM_MS = 300;
+  const MAX_HALL_KALL_MS = 900;
   function hall(fonster) {
     global.window = fonster;
     let narDataFinns;
@@ -177,14 +178,59 @@ async function kor(svarEfterMs, avvisa) {
     const w = fejkFonster();
     let anrop = 0;
     hall(w)(() => anrop++);
-    await vanta(MAX_HALL_MS + 120);
+    await vanta(MAX_HALL_VARM_MS + 120);
     ok("data som aldrig kommer släpper vid taket", anrop === 1);
     w.dispatchEvent(new Event("ev-data-ready"));
     ok("en sen signal efter taket släpper inte en gång till", anrop === 1);
   }
 
-  ok("källans tak är 9000 ms — täcker uppmätt kallstart 13,3 s även efter animationen",
-     splashKalla.includes("var MAX_HALL_MS = 9000;"));
+  {
+    // Poängen med två tak: en varm tjänst som ändå tiger är trasig och ska ge upp, medan
+    // en tjänst som vaknar har ett känt slut på väntan. Provet mäter mot det KORTA taket
+    // och kräver att kallstarten fortfarande håller kvar när det har passerat.
+    const w = fejkFonster(); w.EV_COLD_START = true;
+    let anrop = 0;
+    hall(w)(() => anrop++);
+    await vanta(MAX_HALL_VARM_MS + 120);
+    ok("kallstart tar det långa taket — släpper INTE vid det korta", anrop === 0);
+    await vanta(MAX_HALL_KALL_MS - MAX_HALL_VARM_MS + 120);
+    ok("men släpper vid det långa taket", anrop === 1);
+  }
+  {
+    const w = fejkFonster();
+    let anrop = 0;
+    hall(w)(() => anrop++);
+    await vanta(MAX_HALL_VARM_MS + 120);
+    ok("varm tjänst som ändå tiger ger upp vid det korta taket", anrop === 1);
+  }
+
+  ok("källans varma tak är 9000 ms", splashKalla.includes("var MAX_HALL_VARM_MS = 9000;"));
+  ok("källans kalla tak är 45000 ms — uppmätt uppvakning 08-20 var 73 s, 9 s hade gett upp först",
+     splashKalla.includes("var MAX_HALL_KALL_MS = 45000;"));
+  ok("taket VÄLJS av EV_COLD_START, inte hårdkodat i timern",
+     splashKalla.includes("var tak_ms = window.EV_COLD_START ? MAX_HALL_KALL_MS : MAX_HALL_VARM_MS;") &&
+     splashKalla.includes("setTimeout(ga, tak_ms)"));
+
+  // ── 4. Stapeln ljuger inte under väntan ────────────────────────────────────
+  // Den stod på "100 % laddat" under hela väntan — kortet läste som klart medan datan,
+  // det enda som saknades, var just det man väntade på. Animationen fyller till 92 %
+  // och finish() tar de sista åtta.
+  console.log("");
+  console.log("Stapeln under väntan");
+
+  ok("animationen fyller till 92 %, inte 100", splashKalla.includes("var ANIM_PCT = 92;"));
+  ok("båda vägarna ur animationen slutar på ANIM_PCT",
+     splashKalla.includes("var pct = (i + 1) / rows.length * ANIM_PCT;") &&
+     splashKalla.includes("fill.style.width = ANIM_PCT + '%'") &&
+     splashKalla.includes("setPct(pctEl, ANIM_PCT)"));
+  ok("ingen väg sätter 100 % före finish",
+     splashKalla.split("setPct(pctEl, 100)").length - 1 === 1);
+  // Den enda 100-sättningen måste ligga INNE i finish(), inte någonstans före den.
+  ok("finish tar de sista åtta procenten",
+     splashKalla.indexOf("setPct(pctEl, 100)") > splashKalla.indexOf("overlay.classList.add('ev-sp-ready')") &&
+     splashKalla.indexOf("setPct(pctEl, 100)") < splashKalla.indexOf("function slutfor()"));
+  ok("väntetexten säger VARFÖR det dröjer när tjänsten vaknar",
+     splashKalla.includes("window.EV_COLD_START ? 'tjänsten vaknar — det kan ta en stund…' : 'väntar på datan…'"));
   ok("skip-knappen går förbi väntan och kallar finish direkt",
      splashKalla.includes("addEventListener('click', finish)"));
   ok("båda vägarna ur animationen väntar på datan",
