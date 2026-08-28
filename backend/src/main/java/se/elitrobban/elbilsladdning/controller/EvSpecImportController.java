@@ -43,6 +43,28 @@ public class EvSpecImportController {
         this.jdbc = jdbc;
     }
 
+    /**
+     * Rå läsvy över {@code ev_spec} — namn och {@code car_type}, inget annat.
+     *
+     * <p>Byggd 2026-08-28 efter att importen av 58 "saknade" modeller svarade
+     * {@code fannsRedan: 58}. Raderna fanns alltså, men syntes inte i {@code /api/cars}, som
+     * bara läser {@code car_type = 'EV'}. Utan den här vyn går det inte att skilja "raden
+     * saknas" från "raden har fel typ", och att gissa mellan dem hade betytt en INSERT som
+     * skapat dubbletter av rader som redan låg där.
+     */
+    @GetMapping("/admin/ev-specs")
+    public ResponseEntity<?> listEvSpecs(@RequestHeader(value = "X-Admin-Key", required = false) String key) {
+        if (isAdminUnauthorized(key)) return ResponseEntity.status(403).body(Map.of("error", "Unauthorized"));
+        List<Map<String, Object>> rader = jdbc.queryForList(
+                "SELECT car_name, car_type, battery_kwh, range_km, max_dc_kw FROM ev_spec ORDER BY car_name");
+        Map<String, Integer> perTyp = new java.util.LinkedHashMap<>();
+        for (Map<String, Object> r : rader) {
+            String t = r.get("car_type") == null ? "(null)" : String.valueOf(r.get("car_type"));
+            perTyp.merge(t, 1, Integer::sum);
+        }
+        return ResponseEntity.ok(Map.of("total", rader.size(), "perTyp", perTyp, "rader", rader));
+    }
+
     @PostMapping("/admin/import/ev-specs")
     public ResponseEntity<?> importEvSpecs(@RequestHeader(value = "X-Admin-Key", required = false) String key,
                                            @RequestBody List<Map<String, Object>> rader) {
