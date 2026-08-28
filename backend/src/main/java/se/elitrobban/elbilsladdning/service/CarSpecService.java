@@ -30,7 +30,9 @@ public class CarSpecService {
         long now = System.currentTimeMillis();
         if (cache != null && now - cacheTime < CACHE_TTL_MS) return cache;
         try {
-            List<EvSpecEntity> rows = evSpecRepo.findByCarTypeOrderByCarNameAsc("EV");
+            // NULL i car_type raknas som elbil, precis som CarAdvice gor pa samma tabell -
+            // annars ar 58 bilar osynliga har men synliga dar. Se EvSpecRepository.
+            List<EvSpecEntity> rows = evSpecRepo.findElbilar();
             if (!rows.isEmpty()) {
                 // Deduplicate: one entry per car_name, keep the variant with highest rangeKm
                 Map<String, EvSpecEntity> best = new LinkedHashMap<>();

@@ -46,7 +46,7 @@ class CarSpecServiceTest {
 
     @Test
     void mapparEntitetTillCarSpec() {
-        when(repo.findByCarTypeOrderByCarNameAsc("EV"))
+        when(repo.findElbilar())
                 .thenReturn(List.of(entity("Tesla Model 3", 11.0, 250.0, 500)));
 
         List<CarSpec> cars = service().getCars();
@@ -59,7 +59,7 @@ class CarSpecServiceTest {
 
     @Test
     void duplikatBehallerVariantenMedLangstRackvidd() {
-        when(repo.findByCarTypeOrderByCarNameAsc("EV")).thenReturn(List.of(
+        when(repo.findElbilar()).thenReturn(List.of(
                 entity("Volvo EX30", 11.0, 150.0, 340),
                 entity("Volvo EX30", 11.0, 150.0, 480)));
 
@@ -70,45 +70,45 @@ class CarSpecServiceTest {
 
     @Test
     void dcBilFarType2OchCcs() {
-        when(repo.findByCarTypeOrderByCarNameAsc("EV"))
+        when(repo.findElbilar())
                 .thenReturn(List.of(entity("Volvo EX30", 11.0, 150.0, 340)));
         assertThat(service().getCars().get(0).connectors()).containsExactly("type2", "ccs");
     }
 
     @Test
     void nissanLeafFarChademo() {
-        when(repo.findByCarTypeOrderByCarNameAsc("EV"))
+        when(repo.findElbilar())
                 .thenReturn(List.of(entity("Nissan Leaf", 6.6, 50.0, 270)));
         assertThat(service().getCars().get(0).connectors()).containsExactly("type2", "chademo");
     }
 
     @Test
     void bilUtanDcLaddningFarBaraType2() {
-        when(repo.findByCarTypeOrderByCarNameAsc("EV"))
+        when(repo.findElbilar())
                 .thenReturn(List.of(entity("Renault Zoe", 22.0, null, 300)));
         assertThat(service().getCars().get(0).connectors()).containsExactly("type2");
     }
 
     @Test
     void tomDatabasGerHardkodadFallbackLista() {
-        when(repo.findByCarTypeOrderByCarNameAsc("EV")).thenReturn(List.of());
+        when(repo.findElbilar()).thenReturn(List.of());
         assertThat(service().getCars()).isSameAs(CarDatabase.CARS);
     }
 
     @Test
     void databasfelGerHardkodadFallbackLista() {
-        when(repo.findByCarTypeOrderByCarNameAsc("EV")).thenThrow(new RuntimeException("DB nere"));
+        when(repo.findElbilar()).thenThrow(new RuntimeException("DB nere"));
         assertThat(service().getCars()).isSameAs(CarDatabase.CARS);
     }
 
     @Test
     void andraAnropetKommerFranCachen() {
-        when(repo.findByCarTypeOrderByCarNameAsc("EV"))
+        when(repo.findElbilar())
                 .thenReturn(List.of(entity("Tesla Model 3", 11.0, 250.0, 500)));
 
         CarSpecService s = service();
         s.getCars();
         s.getCars();
-        verify(repo, times(1)).findByCarTypeOrderByCarNameAsc("EV"); // bara ett DB-anrop
+        verify(repo, times(1)).findElbilar(); // bara ett DB-anrop
     }
 }
