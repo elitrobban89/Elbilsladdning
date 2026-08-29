@@ -86,6 +86,11 @@ public class GroqService {
         }
     }
 
+    /** kWh utan onödig decimal: 60.0 blir "60", 77.4 blir "77.4". */
+    private static String kwh(double v) {
+        return v == Math.floor(v) ? String.valueOf((long) v) : String.valueOf(v);
+    }
+
     String buildChatSystemPrompt(List<CarSpec> cars) {
         var sb = new StringBuilder();
         sb.append("""
@@ -115,6 +120,15 @@ KONTEXTUELLA FÖLJDFRÅGOR (använd alltid den skickade kontexten för att svara
 - Om kontexten visar "Faktaruta visad" — du känner till vilket faktum som visades och kan fördjupa det.
 - Om kontexten visar "AI-rekommendation" — det är rekommendationen användaren redan sett; du kan förklara/fördjupa den.
 
+SIFFROR OM EN VISS BIL — batteri i kWh, räckvidd, DC-effekt, laddtid:
+- Ta dem ENDAST ur kontexten ("Vald bil: ...", "Laddtidskalkylator: ...") eller ur BILDATA nedan.
+- Härled ALDRIG batteriets storlek ur modellnamnet. EX60, ID.4, iX3 och Q4 är NAMN, inte kWh.
+  Uppmätt 2026-08-29: utan kontext svarade du "1,2-1,3 timmar" för en Volvo EX60 på en 50 kW-laddare,
+  räknat på ett påhittat 60 kWh-batteri. Bilen har 112 kWh och tar 2 timmar 14 minuter — med kontext
+  svarade du rätt. Ett rimligt klingande tal ur namnet är alltså det enda felet som uppstår här.
+- Har du inte bilens siffror: säg det rakt ut och be användaren välja bilmodellen i väljaren högst
+  upp på sidan, så räknar appen på riktiga värden. Gissa inte, och räkna inte på ett antaget batteri.
+
 RUTTPLANERING (om stationskontexten innehåller en "PLANERAD RUTT"-sektion ska du använda den informationen):
 - Om användaren frågar om sin rutt, laddstoppar, om de klarar sträckan eller vilket stopp som är bäst, svara baserat på ruttkontexten.
 - Berätta vilket laddningsstopp som rekommenderas och varför (t.ex. strategisk placering halvvägs, snabbast laddning, bäst pris).
@@ -132,19 +146,21 @@ BUDGET-REGLER (följ dessa exakt):
 - Om du föreslår en begagnad bil, säg "begagnad [modell] (~XX–YY tkr)" med prisintervall.
 
 """)
-          .append("BILDATA (73 modeller i databasen):\n\n");
+          // Talet var hårdkodat till 73 medan tabellen bar 520 rader. En prompt som säger fel
+          // antal är en prompt modellen inte kan lita på — och den listar ändå bara topp 5.
+          .append("BILDATA (" + cars.size() + " modeller i databasen, topplistor nedan):\n\n");
 
         sb.append("Snabbaste DC-laddning:\n");
         cars.stream().filter(c -> c.maxDcKw() > 0 && c.priceKr() > 0)
             .sorted((a, b) -> Double.compare(b.maxDcKw(), a.maxDcKw())).limit(5)
-            .forEach(c -> sb.append(String.format("  %s: %d kW DC, %d tkr%n",
-                c.name(), (int) c.maxDcKw(), c.priceKr() / 1000)));
+            .forEach(c -> sb.append(String.format("  %s: %d kW DC, %d tkr, %s kWh batteri%n",
+                c.name(), (int) c.maxDcKw(), c.priceKr() / 1000, kwh(c.batteryKwh()))));
 
         sb.append("\nLängst räckvidd (WLTP):\n");
         cars.stream().filter(c -> c.rangeKm() > 0 && c.priceKr() > 0)
             .sorted((a, b) -> Integer.compare(b.rangeKm(), a.rangeKm())).limit(5)
-            .forEach(c -> sb.append(String.format("  %s: %d km, %d tkr%n",
-                c.name(), c.rangeKm(), c.priceKr() / 1000)));
+            .forEach(c -> sb.append(String.format("  %s: %d km, %d tkr, %s kWh batteri%n",
+                c.name(), c.rangeKm(), c.priceKr() / 1000, kwh(c.batteryKwh()))));
 
         sb.append("\nBäst värde (km per 100 000 kr):\n");
         cars.stream().filter(c -> c.rangeKm() > 0 && c.priceKr() > 0)

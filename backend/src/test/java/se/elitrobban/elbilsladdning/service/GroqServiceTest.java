@@ -66,6 +66,35 @@ class GroqServiceTest {
         assertThat(p).doesNotContain("Okänt pris");
     }
 
+    @Test
+    void chattpromptenForbjuderGissatBatteriUrModellnamnet() {
+        // Skarpt fall 2026-08-29: UTAN kontext svarade assistenten "1,2-1,3 timmar" för en
+        // Volvo EX60 på en 50 kW-laddare — räknat på 60 kWh hämtat ur namnet. Bilen har
+        // 112 kWh och tar 2 tim 14 min, vilket samma fråga MED kontext också svarade.
+        String p = service.buildChatSystemPrompt(List.of(car("Tesla Model 3", 11, 250, 566, 499_000)));
+        assertThat(p)
+                .contains("Härled ALDRIG batteriets storlek ur modellnamnet")
+                .contains("Gissa inte");
+    }
+
+    @Test
+    void chattpromptenRaknarModellerIStalletForAttPastaEttFastTal() {
+        // Stod "73 modeller i databasen" medan tabellen bar 520.
+        String p = service.buildChatSystemPrompt(List.of(
+                car("Tesla Model 3", 11, 250, 566, 499_000),
+                car("Kia EV6", 11, 233, 528, 460_000)));
+        assertThat(p).contains("BILDATA (2 modeller").doesNotContain("73 modeller");
+    }
+
+    @Test
+    void topplistornaBarBatteristorleken() {
+        // Batteriet fanns inte på någon rad i prompten — och det är just det som gissas.
+        String p = service.buildChatSystemPrompt(List.of(car("Tesla Model 3", 11, 250, 566, 499_000)));
+        assertThat(p)
+                .contains("Tesla Model 3: 250 kW DC, 499 tkr, 60 kWh batteri")
+                .contains("Tesla Model 3: 566 km, 499 tkr, 60 kWh batteri");
+    }
+
     // --- buildPrompt ---
 
     @Test
