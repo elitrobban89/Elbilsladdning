@@ -95,6 +95,135 @@ class GroqServiceTest {
                 .contains("Tesla Model 3: 566 km, 499 tkr, 60 kWh batteri");
     }
 
+    // --- uppslagning av bilar användaren nämner vid namn ----------------------
+
+    private static CarSpec bil(String name, double ac, double dc, double batteri, int range, int price) {
+        return new CarSpec(name, ac, dc, List.of("ccs"), batteri, range, price);
+    }
+
+    private static java.util.List<java.util.Map<String, String>> fran(String... rader) {
+        java.util.List<java.util.Map<String, String>> ut = new java.util.ArrayList<>();
+        for (String r : rader) ut.add(java.util.Map.of("role", "user", "content", r));
+        return ut;
+    }
+
+    private static final CarSpec EX60 = bil("Volvo EX60", 22, 370, 112, 810, 620_000);
+
+    @Test
+    void bilenHittasPaHelaNamnet() {
+        assertThat(GroqService.namndaBilar("hur lång tid tar det att ladda en Volvo EX60 med 50 kW?",
+                List.of(EX60))).extracting(CarSpec::name).containsExactly("Volvo EX60");
+    }
+
+    @Test
+    void bilenHittasAvenUtanMarkesordet() {
+        // Man skriver sällan ut märket i en följdfråga.
+        assertThat(GroqService.namndaBilar("vad har EX60 för batteri?", List.of(EX60))).hasSize(1);
+    }
+
+    @Test
+    void frageteckenOchVersalerSpelarIngenRoll() {
+        assertThat(GroqService.namndaBilar("VOLVO EX60?!", List.of(EX60))).hasSize(1);
+    }
+
+    @Test
+    void ensamSiffraDrarInteInEnBil() {
+        // "Polestar 2" har ingen egen beteckning efter märket, så siffran ensam får inte räcka -
+        // annars hade varje mening med en tvåa i sig dragit in bilen.
+        List<CarSpec> bilar = List.of(bil("Polestar 2", 11, 207, 79, 659, 510_000));
+        assertThat(GroqService.namndaBilar("jag vill ladda till 2 procent över natten", bilar)).isEmpty();
+        assertThat(GroqService.namndaBilar("hur är Polestar 2?", bilar)).hasSize(1);
+    }
+
+    @Test
+    void generisktModellordDrarInteInHelaMarket() {
+        // "model" står på var enda Tesla-rad och identifierar därför ingen bil.
+        List<CarSpec> bilar = List.of(
+                bil("Tesla Model 3", 11, 250, 60, 534, 450_000),
+                bil("Tesla Model Y", 11, 250, 60, 534, 500_000));
+        assertThat(GroqService.namndaBilar("vilken model passar mig bäst?", bilar)).isEmpty();
+        assertThat(GroqService.namndaBilar("berätta om Model 3", bilar))
+                .extracting(CarSpec::name).containsExactly("Tesla Model 3");
+    }
+
+    @Test
+    void modellenIForstaOrdetNasOcksa() {
+        // MG4 heter så i första ordet, och orden efter ("Long Range") är generiska. Utan
+        // märkesregeln hade en fråga om MG4 inte träffat en enda av raderna.
+        List<CarSpec> bilar = List.of(
+                bil("MG4 Long Range", 11, 144, 64, 450, 300_000),
+                bil("MG4 Standard Range", 11, 82, 51, 350, 260_000));
+        assertThat(GroqService.namndaBilar("vad kostar en MG4?", bilar)).hasSize(2);
+    }
+
+    @Test
+    void jamforelsefraganGerBadaBilarnaTrotsTaket() {
+        // Uppmätt mot de riktiga namnen: Enyaq + ID.4 ger 12 traffar. En rak lista hade fyllt
+        // taket med Enyaq-varianter och kapat bort ID.4 ur en fråga som gäller båda.
+        List<CarSpec> bilar = List.of(
+                bil("Škoda Enyaq 60", 11, 105, 58, 455, 400_000),
+                bil("Škoda Enyaq 85", 11, 165, 77, 582, 450_000),
+                bil("Škoda Enyaq RS", 11, 165, 77, 568, 500_000),
+                bil("Škoda Enyaq Coupe 60", 11, 105, 58, 462, 420_000),
+                bil("Škoda Enyaq Coupe 85", 11, 165, 77, 591, 470_000),
+                bil("Škoda Enyaq Coupe RS", 11, 165, 77, 575, 520_000),
+                bil("Volkswagen ID.4", 11, 165, 79, 570, 430_000),
+                bil("Volkswagen ID.4 Pro 77 kWh", 11, 135, 77, 481, 410_000));
+        List<CarSpec> traffar = GroqService.namndaBilar(
+                "vad är skillnaden mellan Škoda Enyaq och en ID.4?", bilar);
+        assertThat(traffar).hasSize(GroqService.MAX_NAMNDA_BILAR);
+        assertThat(traffar).extracting(CarSpec::name).anyMatch(n -> n.startsWith("Škoda Enyaq"));
+        assertThat(traffar).extracting(CarSpec::name).anyMatch(n -> n.startsWith("Volkswagen ID.4"));
+    }
+
+    @Test
+    void bilenSomStavadesUtStarForst() {
+        // "Audi Q4 e-tron" drar även in e-tron GT på ordet e-tron; den efterfrågade bilen
+        // ska inte kunna trängas undan av den.
+        List<CarSpec> bilar = List.of(
+                bil("Audi e-tron GT quattro", 11, 270, 93, 488, 900_000),
+                bil("Audi Q4 e-tron", 11, 135, 77, 528, 500_000));
+        assertThat(GroqService.namndaBilar("berätta om Audi Q4 e-tron", bilar))
+                .first().extracting(CarSpec::name).isEqualTo("Audi Q4 e-tron");
+    }
+
+    @Test
+    void blocketBarBatteriRackviddOchSaknadSnabbladdning() {
+        String block = service.namndaBilarBlock(fran("hur är Renault Zoe 22 kWh?"),
+                List.of(bil("Renault Zoe 22 kWh", 22, 0, 22, 130, 0)));
+        assertThat(block)
+                .contains("NÄMNDA BILAR")
+                .contains("22 kWh batteri")
+                .contains("130 km WLTP")
+                .contains("ingen snabbladdning")
+                .doesNotContain("DC max 0");
+    }
+
+    @Test
+    void blocketBarHelaSpecenForEnEfterfragadBil() {
+        String block = service.namndaBilarBlock(fran("hur länge laddar en EX60 med 50 kW?"), List.of(EX60));
+        assertThat(block).contains("Volvo EX60: 112 kWh batteri")
+                .contains("810 km WLTP")
+                .contains("DC max 370 kW")
+                .contains("620 tkr");
+    }
+
+    @Test
+    void baraAnvandarensEgnaRaderGenomsoks() {
+        // Assistentens egna svar räknas inte - annars hade en bil den själv råkat nämna dragit
+        // in sina specar och bekräftat sig själv.
+        var historik = List.of(
+                java.util.Map.of("role", "assistant", "content", "Volvo EX60 är en stor SUV"),
+                java.util.Map.of("role", "user", "content", "tack!"));
+        assertThat(service.namndaBilarBlock(historik, List.of(EX60))).isEmpty();
+    }
+
+    @Test
+    void tomtBlockNarIngenBilNamns() {
+        assertThat(service.namndaBilarBlock(fran("kostar det mycket att ladda hemma?"), List.of(EX60))).isEmpty();
+        assertThat(service.namndaBilarBlock(null, List.of(EX60))).isEmpty();
+    }
+
     // --- buildPrompt ---
 
     @Test

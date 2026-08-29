@@ -53,10 +53,7 @@ public class GroqService {
         if (isQuotaExceeded()) return "AI-assistenten är tillfälligt otillgänglig — dagsgränsen är nådd. Försök igen imorgon!";
 
         List<Map<String, Object>> messages = new java.util.ArrayList<>();
-        String sysPrompt = buildChatSystemPrompt(cars);
-        if (stationContext != null && !stationContext.isBlank())
-            sysPrompt += "\n\nAktuella laddstationer i sökningen:\n" + stationContext;
-        messages.add(Map.of("role", "system", "content", sysPrompt));
+        messages.add(Map.of("role", "system", "content", byggSysPrompt(history, cars, stationContext)));
         List<Map<String, String>> trimmed = history.size() > CHAT_MAX_HISTORY
                 ? history.subList(history.size() - CHAT_MAX_HISTORY, history.size()) : history;
         trimmed.forEach(m -> messages.add(Map.of("role", (Object) m.get("role"), "content", (Object) m.get("content"))));
@@ -86,9 +83,195 @@ public class GroqService {
         }
     }
 
-    /** kWh utan onödig decimal: 60.0 blir "60", 77.4 blir "77.4". */
-    private static String kwh(double v) {
+    /** Tal utan onödig decimal: 60.0 blir "60", 77.4 blir "77.4". */
+    private static String tal(double v) {
         return v == Math.floor(v) ? String.valueOf((long) v) : String.valueOf(v);
+    }
+
+    /** Så många nämnda bilar som får plats i prompten. */
+    static final int MAX_NAMNDA_BILAR = 6;
+
+    /** Så många av de senaste ANVÄNDARraderna som genomsöks efter bilnamn. */
+    private static final int NAMNDA_BAKAT = 3;
+
+    /**
+     * Systemprompt plus all kontext, byggd på ETT ställe.
+     *
+     * <p>Låg förut som två identiska kopior i {@link #chat} och {@link #chatStream}. Streaming är
+     * frontendens normalväg och den icke-strömmande är reservvägen, alltså exakt den kombination
+     * där en glidning mellan kopiorna märks sist — reservvägen körs bara när den första fallerat.
+     */
+    private String byggSysPrompt(List<Map<String, String>> history, List<CarSpec> cars, String stationContext) {
+        String sysPrompt = buildChatSystemPrompt(cars);
+        String namnda = namndaBilarBlock(history, cars);
+        if (!namnda.isEmpty()) sysPrompt += "\n\n" + namnda;
+        if (stationContext != null && !stationContext.isBlank())
+            sysPrompt += "\n\nAktuella laddstationer i sökningen:\n" + stationContext;
+        return sysPrompt;
+    }
+
+    /**
+     * Specarna för de bilar användaren nämnt VID NAMN i sina senaste rader.
+     *
+     * <p><b>Varför blocket behövs.</b> Kontexten bär bara den bil som är VALD i väljaren, och
+     * prompten i övrigt bara tre topp-5-listor. Frågar man om en bil utan att välja den fanns
+     * alltså inga siffror alls, och 2026-08-29 svarade assistenten "1,2-1,3 timmar" på hur länge
+     * en Volvo EX60 laddar från 0 % med 50 kW — räknat på ett batteri den läst ur NAMNET. Att
+     * lägga alla 520 rader i prompten är inget alternativ (Groqs tak är 8 000 tokens/minut), så
+     * uppslagningen sker per fråga och bara det som efterfrågats följer med.
+     *
+     * <p><b>De tre senaste användarraderna, inte bara den sista</b>, eftersom följdfrågan nästan
+     * aldrig upprepar bilnamnet ("och med 50 kW då?"). Assistentens EGNA svar genomsöks inte —
+     * annars hade en bil den själv råkat nämna dragit in sina specar och bekräftat sig själv.
+     */
+    String namndaBilarBlock(List<Map<String, String>> history, List<CarSpec> cars) {
+        List<CarSpec> traffar = namndaBilar(senasteAnvandartext(history), cars);
+        if (traffar.isEmpty()) return "";
+        StringBuilder sb = new StringBuilder("NÄMNDA BILAR (uppslagna i databasen — använd DESSA siffror):\n");
+        for (CarSpec c : traffar) {
+            sb.append("  ").append(c.name()).append(": ").append(tal(c.batteryKwh())).append(" kWh batteri");
+            if (c.rangeKm() > 0) sb.append(", ").append(c.rangeKm()).append(" km WLTP (~")
+                    .append(Math.round(c.rangeKm() * 0.85)).append(" km verklig)");
+            // "DC max 0 kW" läser som en trasig mätning; de tre AC-bara bilarna säger det rakt ut.
+            sb.append(c.maxDcKw() > 0 ? ", DC max " + (int) c.maxDcKw() + " kW" : ", ingen snabbladdning");
+            if (c.maxAcKw() > 0) sb.append(", AC max ").append(tal(c.maxAcKw())).append(" kW");
+            if (c.priceKr() > 0) sb.append(", ").append(c.priceKr() / 1000).append(" tkr");
+            sb.append("\n");
+        }
+        return sb.toString();
+    }
+
+    private static String senasteAnvandartext(List<Map<String, String>> history) {
+        if (history == null) return "";
+        StringBuilder sb = new StringBuilder();
+        int tagna = 0;
+        for (int i = history.size() - 1; i >= 0 && tagna < NAMNDA_BAKAT; i--) {
+            Map<String, String> m = history.get(i);
+            if (m == null || !"user".equals(m.get("role"))) continue;
+            sb.append(' ').append(m.get("content") == null ? "" : m.get("content"));
+            tagna++;
+        }
+        return sb.toString();
+    }
+
+    /**
+     * Bilarna vars namn står i texten — hela namnet, eller modellbeteckningen utan märke.
+     *
+     * <p><b>Träffarna grupperas per modellfamilj och plockas VARVAT</b>, inte som en enda lista.
+     * Uppmätt mot de riktiga 520 namnen: "vad är skillnaden mellan Škoda Enyaq och en ID.4?" ger
+     * <b>12</b> träffar och "Polestar 2 jämfört med Tesla Model 3" ger <b>8</b> — en rak lista hade
+     * fyllt taket med den ena bilens varianter och kapat bort den andra bilen ur en fråga som
+     * uttryckligen gäller båda. Varvningen ger i stället tre av varje.
+     *
+     * <p>Inom en familj går <b>hela namnet före modellbeteckningen</b> och kortaste namnet före
+     * långa. Det första ledet skyddar den bil frågan faktiskt gäller: "berätta om Audi Q4 e-tron"
+     * drar även in {@code Audi e-tron GT quattro} på ordet e-tron, och utan rankningen kunde den
+     * ha trängt undan bilen som stavades ut. Det andra ledet gör basmodellen till den man menar
+     * när man bara säger "MG4" — nio rader matchar, och {@code MG4 Long Range} är rimligare svar
+     * än {@code MG4 Urban Premium Long Range}.
+     */
+    static List<CarSpec> namndaBilar(String text, List<CarSpec> cars) {
+        String hay = normText(text);
+        if (hay.isBlank() || cars == null) return List.of();
+        java.util.Map<String, List<CarSpec>> familjer = new java.util.LinkedHashMap<>();
+        java.util.Set<String> stavadeUt = new java.util.HashSet<>();
+        for (CarSpec c : cars) {
+            String namn = normText(c.name()).trim();
+            if (namn.isEmpty()) continue;
+            String nyckel = modellNyckel(namn);
+            boolean helaNamnet   = hay.contains(" " + namn + " ");
+            boolean baraModellen = !nyckel.isEmpty() && hay.contains(" " + nyckel + " ");
+            if (!helaNamnet && !baraModellen) continue;
+            if (helaNamnet) stavadeUt.add(c.name());
+            familjer.computeIfAbsent(nyckel.isEmpty() ? namn : nyckel, k -> new java.util.ArrayList<>()).add(c);
+        }
+        if (familjer.isEmpty()) return List.of();
+        List<List<CarSpec>> ordnade = new java.util.ArrayList<>(familjer.values());
+        for (List<CarSpec> familj : ordnade)
+            familj.sort(java.util.Comparator.comparing((CarSpec c) -> !stavadeUt.contains(c.name()))
+                    .thenComparingInt(c -> c.name().length()));
+        // Familjen som stavades ut i frågan går först. Sorteringen är stabil, så familjer utan
+        // utstavad träff behåller inbördes ordning i stället för att kastas om godtyckligt.
+        ordnade.sort(java.util.Comparator.comparing(
+                f -> f.stream().noneMatch(c -> stavadeUt.contains(c.name()))));
+
+        List<CarSpec> ut = new java.util.ArrayList<>();
+        for (int varv = 0; ut.size() < MAX_NAMNDA_BILAR; varv++) {
+            boolean nagotKvar = false;
+            for (List<CarSpec> familj : ordnade) {
+                if (varv >= familj.size()) continue;
+                nagotKvar = true;
+                if (ut.size() < MAX_NAMNDA_BILAR) ut.add(familj.get(varv));
+            }
+            if (!nagotKvar) break;
+        }
+        return List.copyOf(ut);
+    }
+
+    /**
+     * Texten nedkokt till gemener, utan diakriter och med allt annat än a-z0-9 som mellanslag.
+     *
+     * <p>Samma behandling på BÅDA sidor, vilket är hela poängen: "Škoda" blir "skoda", "ID.7" blir
+     * "id 7" och "e-tron?" blir "e tron" oavsett om strängen kom ur databasen eller från en
+     * användare som skriver utan skiftläge och med frågetecken.
+     */
+    private static String normText(String s) {
+        String t = java.text.Normalizer.normalize(s == null ? "" : s, java.text.Normalizer.Form.NFD)
+                .replaceAll("\\p{InCombiningDiacriticalMarks}", "")
+                .toLowerCase()
+                .replaceAll("[^a-z0-9]+", " ")
+                .trim();
+        return " " + t + " ";
+    }
+
+    /**
+     * Modellord som inte identifierar en bil på egen hand — de förekommer på tvärs av märken.
+     * Utan listan hade "model" dragit in varenda Tesla och "range" alla Long Range-varianter.
+     */
+    private static final java.util.Set<String> GENERISKA_MODELLORD = java.util.Set.of(
+            "model", "long", "range", "standard", "single", "twin", "motor", "performance",
+            "premium", "comfort", "urban", "extended", "electric", "sportback", "avant",
+            "coupe", "plug", "pro", "plus", "max", "life", "style", "business", "edition");
+
+    /**
+     * Modellbeteckningen ur ett radnamn: märkesordet bort, och sedan så många ord som krävs för
+     * att beteckningen ska stå för sig själv. Tom sträng när ingen sådan finns.
+     *
+     * <p>Kravet är formulerat på vad som gör en beteckning UNIK, inte på ordlängd:
+     * <ul>
+     *   <li>siffra OCH bokstav räcker från två tecken — {@code i3}, {@code q4}, {@code ex30};</li>
+     *   <li>rena bokstäver kräver tre tecken och att ordet inte är generiskt — {@code zoe},
+     *       {@code kona}, {@code taycan};</li>
+     *   <li>en ensam siffra duger aldrig, så {@code Polestar 2} kräver att märket står med —
+     *       annars hade "ladda till 2 procent" dragit in bilen.</li>
+     * </ul>
+     * {@code Tesla Model 3} går igenom först på TVÅ ord, eftersom {@code model} är generiskt.
+     *
+     * <p><b>Märkesordet hoppas normalt över, men inte alltid.</b> {@code MG4 Long Range} börjar med
+     * modellen — märket är MG och "MG4" är bilen — så en fråga om "MG4" hade annars inte träffat en
+     * enda av de nio MG4-raderna, eftersom ingen av dem bär en distinkt beteckning EFTER det ordet
+     * ("long", "range", "standard" och "premium" är alla generiska). Första ordet duger därför som
+     * nyckel när det självt bär både siffra och bokstav. Inventerat över hela tabellen: exakt
+     * {@code mg4} och {@code mg5} uppfyller det, alltså just de två fallen regeln finns för —
+     * {@code volvo} och {@code tesla} saknar siffra och hade annars dragit in hela märkets utbud.
+     */
+    private static String modellNyckel(String normaltNamn) {
+        String[] ord = normaltNamn.split(" ");
+        if (ord.length == 0) return "";
+        if (ord[0].length() >= 2 && harSiffraOchBokstav(ord[0])) return ord[0];
+        StringBuilder sb = new StringBuilder();
+        for (int i = 1; i < ord.length && i <= 3; i++) {
+            if (sb.length() > 0) sb.append(' ');
+            sb.append(ord[i]);
+            String s = sb.toString();
+            if (s.length() >= 2 && harSiffraOchBokstav(s)) return s;
+            if (s.length() >= 3 && !GENERISKA_MODELLORD.contains(ord[1])) return s;
+        }
+        return "";
+    }
+
+    private static boolean harSiffraOchBokstav(String s) {
+        return s.matches(".*\\d.*") && s.matches(".*[a-z].*");
     }
 
     String buildChatSystemPrompt(List<CarSpec> cars) {
@@ -121,13 +304,16 @@ KONTEXTUELLA FÖLJDFRÅGOR (använd alltid den skickade kontexten för att svara
 - Om kontexten visar "AI-rekommendation" — det är rekommendationen användaren redan sett; du kan förklara/fördjupa den.
 
 SIFFROR OM EN VISS BIL — batteri i kWh, räckvidd, DC-effekt, laddtid:
-- Ta dem ENDAST ur kontexten ("Vald bil: ...", "Laddtidskalkylator: ...") eller ur BILDATA nedan.
+- Ta dem ENDAST ur "NÄMNDA BILAR" (bilarna du blivit tillfrågad om, uppslagna i databasen),
+  ur kontexten ("Vald bil: ...", "Laddtidskalkylator: ...") eller ur BILDATA nedan.
 - Härled ALDRIG batteriets storlek ur modellnamnet. EX60, ID.4, iX3 och Q4 är NAMN, inte kWh.
   Uppmätt 2026-08-29: utan kontext svarade du "1,2-1,3 timmar" för en Volvo EX60 på en 50 kW-laddare,
   räknat på ett påhittat 60 kWh-batteri. Bilen har 112 kWh och tar 2 timmar 14 minuter — med kontext
   svarade du rätt. Ett rimligt klingande tal ur namnet är alltså det enda felet som uppstår här.
-- Har du inte bilens siffror: säg det rakt ut och be användaren välja bilmodellen i väljaren högst
-  upp på sidan, så räknar appen på riktiga värden. Gissa inte, och räkna inte på ett antaget batteri.
+- Står bilen under "NÄMNDA BILAR" har du dess riktiga siffror även om ingen bil är vald i väljaren.
+  Svara på dem direkt, och säg inte att du saknar data.
+- Har du inte bilens siffror någonstans: säg det rakt ut och be användaren välja bilmodellen i
+  väljaren högst upp. Gissa inte, och räkna inte på ett antaget batteri.
 
 RUTTPLANERING (om stationskontexten innehåller en "PLANERAD RUTT"-sektion ska du använda den informationen):
 - Om användaren frågar om sin rutt, laddstoppar, om de klarar sträckan eller vilket stopp som är bäst, svara baserat på ruttkontexten.
@@ -154,13 +340,13 @@ BUDGET-REGLER (följ dessa exakt):
         cars.stream().filter(c -> c.maxDcKw() > 0 && c.priceKr() > 0)
             .sorted((a, b) -> Double.compare(b.maxDcKw(), a.maxDcKw())).limit(5)
             .forEach(c -> sb.append(String.format("  %s: %d kW DC, %d tkr, %s kWh batteri%n",
-                c.name(), (int) c.maxDcKw(), c.priceKr() / 1000, kwh(c.batteryKwh()))));
+                c.name(), (int) c.maxDcKw(), c.priceKr() / 1000, tal(c.batteryKwh()))));
 
         sb.append("\nLängst räckvidd (WLTP):\n");
         cars.stream().filter(c -> c.rangeKm() > 0 && c.priceKr() > 0)
             .sorted((a, b) -> Integer.compare(b.rangeKm(), a.rangeKm())).limit(5)
             .forEach(c -> sb.append(String.format("  %s: %d km, %d tkr, %s kWh batteri%n",
-                c.name(), c.rangeKm(), c.priceKr() / 1000, kwh(c.batteryKwh()))));
+                c.name(), c.rangeKm(), c.priceKr() / 1000, tal(c.batteryKwh()))));
 
         sb.append("\nBäst värde (km per 100 000 kr):\n");
         cars.stream().filter(c -> c.rangeKm() > 0 && c.priceKr() > 0)
@@ -205,10 +391,7 @@ Hitta INTE på recensioner som inte finns i listan ovan.
     public InputStream chatStream(List<Map<String, String>> history, List<CarSpec> cars, String stationContext) throws Exception {
         if (isQuotaExceeded()) throw new RuntimeException("AI-assistenten är tillfälligt otillgänglig — dagsgränsen är nådd. Försök igen imorgon!");
         List<Map<String, Object>> messages = new java.util.ArrayList<>();
-        String sysPrompt = buildChatSystemPrompt(cars);
-        if (stationContext != null && !stationContext.isBlank())
-            sysPrompt += "\n\nAktuella laddstationer i sökningen:\n" + stationContext;
-        messages.add(Map.of("role", "system", "content", sysPrompt));
+        messages.add(Map.of("role", "system", "content", byggSysPrompt(history, cars, stationContext)));
         List<Map<String, String>> trimmedStream = history.size() > CHAT_MAX_HISTORY
                 ? history.subList(history.size() - CHAT_MAX_HISTORY, history.size()) : history;
         trimmedStream.forEach(m -> messages.add(Map.of("role", (Object) m.get("role"), "content", (Object) m.get("content"))));
