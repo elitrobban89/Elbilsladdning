@@ -280,6 +280,38 @@ async function kor(svarEfterMs, avvisa) {
      kalla.indexOf("if (aterstallBilText) { aterstallBilText(); aterstallBilText = null; }") <
      kalla.indexOf("sel.appendChild(o)"));
 
+  // ── 6. Väntelaget: rörelsen som säger att det pågår ────────────────────────
+  // Texten ensam bar hela beskedet, och en knapp som bara byter ord ser fortfarande
+  // stillastående ut. Väntelaget är en klass på väljarroten; det som provas här är att
+  // den TÄNDS på ett ställe, SLÄCKS på båda utgångarna, och att stilarna inte kan göra
+  // texten osynlig eller tvätta ur den.
+  console.log("");
+  console.log("Väntelaget på avtryckaren");
+
+  ok("väntetexten tänder väntelaget", kalla.includes('rot.classList.add("ev-picker-vantar")'));
+  ok("BÅDA utgångarna släcker det — fyll och fel", kalla.split("slutaVanta();").length - 1 === 2);
+  ok("klassen sitter på roten, inte på avtryckaren som valj() skriver över",
+     !kalla.includes('trigger.classList.add("ev-picker-vantar")'));
+  ok("snurran, svepet och blixten är definierade",
+     kalla.includes("@keyframes ev-picker-snurr") &&
+     kalla.includes("@keyframes ev-picker-svep") &&
+     kalla.includes("@keyframes ev-picker-blixt"));
+  // Svepet får inte ligga i ett absolut pseudoelement ovanpå knappen — det tvättar ur
+  // texten. background-image målas under innehållet.
+  ok("svepet ligger i background-image, inte i ett ::after över texten",
+     kalla.includes(".ev-picker-vantar .ev-picker-trigger{cursor:progress;") &&
+     kalla.includes("background-image:linear-gradient(100deg,transparent 30%") &&
+     !kalla.includes(".ev-picker-vantar .ev-picker-trigger::after"));
+  // color:transparent utan fungerande background-clip:text = osynlig text. Enda stället
+  // det får stå är inne i @supports-vakten. Räkningen måste ta med semikolonen: utan dem
+  // träffar den kommentaren som förklarar regeln och mäter fel sak.
+  ok("skimret står bakom @supports-vakten",
+     kalla.indexOf("@supports ((-webkit-background-clip:text) or (background-clip:text)){") <
+     kalla.indexOf(".ev-picker-vantar .ev-picker-text{") &&
+     kalla.split(";color:transparent;").length - 1 === 1);
+  ok("den som stängt av animationer får väntelaget stilla, inte borttaget",
+     kalla.includes("@media (prefers-reduced-motion:reduce){.ev-picker-vantar .ev-picker-trigger"));
+
   console.log(fel === 0 ? "\nAlla prov gröna" : "\n" + fel + " prov FÖLL");
   process.exit(fel === 0 ? 0 : 1);
 })();
