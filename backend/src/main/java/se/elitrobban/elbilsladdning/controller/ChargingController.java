@@ -252,6 +252,7 @@ public class ChargingController {
         // Båda grenarna LOGGAR. Den tysta catch-grenen var det som gjorde felet omöjligt att
         // hitta i Render-loggen: tjänsten såg frisk ut hela vägen.
         List<StationDto> allStations;
+        String sourceError = null;
         try {
             allStations = ocmFuture.get(KALLA_TAK_S, TimeUnit.SECONDS);
         } catch (Exception e) {
@@ -259,6 +260,10 @@ public class ChargingController {
             log.warn("OCM gav inga stationer för lat={} lon={} ({}): {}",
                      lat, lon, e.getClass().getSimpleName(), e.getMessage());
             allStations = List.of();
+            // Sägs vidare till gränssnittet. En tom lista utan förklaring läser som
+            // "här finns inga laddare", vilket är ett annat och felaktigt besked.
+            sourceError = "Laddstationsdatan (OpenChargeMap) svarar inte just nu. "
+                        + "Det är källan som ligger nere, inte din sökning — försök igen om en stund.";
         }
 
         List<NobilService.NobilStation> nobilStations;
@@ -311,7 +316,8 @@ public class ChargingController {
         // Step 3: Groq — needs enriched station + price data, runs last
         var groqResult = groq.recommend(car, stations, buildCostComparison(car));
 
-        return ResponseEntity.ok(new StationResponse(car.name(), stations, groqResult.recommendation(), groqResult.funFact(), buildCarFact(car)));
+        return ResponseEntity.ok(new StationResponse(car.name(), stations, groqResult.recommendation(),
+                                                    groqResult.funFact(), buildCarFact(car), sourceError));
     }
 
     /**

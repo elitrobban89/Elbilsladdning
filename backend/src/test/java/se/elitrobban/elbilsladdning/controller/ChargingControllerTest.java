@@ -126,9 +126,13 @@ class ChargingControllerTest {
            .andExpect(jsonPath("$.stations[0].connectorCount").value(0));
     }
 
-    /** Faller OCM finns det ingen lista att visa — då är tomt rätt svar, men det ska loggas. */
+    /**
+     * Faller OCM finns det ingen lista att visa — då är tomt rätt svar, men det ska SÄGAS.
+     * En tom lista utan förklaring läser som "det finns inga laddare här", vilket är ett
+     * annat och felaktigt besked.
+     */
     @Test
-    void ocmSomFallerGerTomListaMenIngetHaveri() throws Exception {
+    void ocmSomFallerSagerAttKallanFallerade() throws Exception {
         when(carSpecService.getCars()).thenReturn(CARS);
         when(ocm.findNearby(anyDouble(), anyDouble(), any()))
                 .thenThrow(new RuntimeException("403 Forbidden"));
@@ -140,7 +144,31 @@ class ChargingControllerTest {
                 .header("X-Forwarded-For", "10.9.9.10")
                 .param("lat", "59.33").param("lon", "18.06").param("carIndex", "0"))
            .andExpect(status().isOk())
-           .andExpect(jsonPath("$.stations.length()").value(0));
+           .andExpect(jsonPath("$.stations.length()").value(0))
+           .andExpect(jsonPath("$.sourceError").isNotEmpty());
+    }
+
+    /**
+     * Andra hållet, och det är det som gör fältet användbart: en källa som SVARAR med noll
+     * stationer är inget haveri, och då får inget felmeddelande skickas med. Slås de två
+     * ihop blir varningen brus och slutar betyda något.
+     */
+    @Test
+    void nollStationerUtanFelGerIngetFelmeddelande() throws Exception {
+        when(carSpecService.getCars()).thenReturn(CARS);
+        when(ocm.findNearby(anyDouble(), anyDouble(), any())).thenReturn(List.of());
+        when(nobil.getStations(anyDouble(), anyDouble())).thenReturn(List.of());
+        when(groq.recommend(any(), any(), any()))
+                .thenReturn(new GroqService.GroqResult("Inga laddare i närheten.", ""));
+
+        mvc.perform(get("/api/stations")
+                .header("X-Forwarded-For", "10.9.9.11")
+                .param("lat", "59.33").param("lon", "18.06").param("carIndex", "0"))
+           .andExpect(status().isOk())
+           .andExpect(jsonPath("$.stations.length()").value(0))
+           // Jackson serialiserar null som "sourceError": null här (ingen NON_NULL-konfig),
+           // så fältet FINNS men ska vara tomt. doesNotExist() hade fällt av fel skäl.
+           .andExpect(jsonPath("$.sourceError").isEmpty());
     }
 
     @Test
