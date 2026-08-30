@@ -3,6 +3,8 @@ package se.elitrobban.elbilsladdning.controller;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.servlet.http.HttpServletRequest;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -40,6 +42,8 @@ import java.util.concurrent.Executors;
 @RestController
 @RequestMapping("/api")
 public class ChargingController {
+
+    private static final Logger log = LoggerFactory.getLogger(ChargingController.class);
 
     private static final int  CHAT_RATE_LIMIT     = 10;
     private static final long WINDOW_MS            = 60_000L;
@@ -233,13 +237,30 @@ public class ChargingController {
         var ocmFuture   = CompletableFuture.supplyAsync(() -> ocm.findNearby(lat, lon, car), IO_POOL);
         var nobilFuture = CompletableFuture.supplyAsync(() -> nobil.getStations(lat, lon), IO_POOL);
 
+        // De två källorna bär OLIKA VIKT och måste därför fångas var för sig. OCM är
+        // stationslistan; NOBIL bidrar bara med antalet kontakter per station. Med ett
+        // gemensamt catch tömde ett NOBIL-fel hela listan — användaren fick noll stationer
+        // och HTTP 200, alltså ett svar som inte gick att skilja från "det finns inga
+        // laddare här". Uppmätt 2026-08-30: identiska anrop gav växelvis 5 och 0 stationer.
+        //
+        // Båda grenarna LOGGAR. Den tysta catch-grenen var det som gjorde felet omöjligt att
+        // hitta i Render-loggen: tjänsten såg frisk ut hela vägen.
         List<StationDto> allStations;
+        try {
+            allStations = ocmFuture.get();
+        } catch (Exception e) {
+            log.warn("OCM gav inga stationer för lat={} lon={} ({}): {}",
+                     lat, lon, e.getClass().getSimpleName(), e.getMessage());
+            allStations = List.of();
+        }
+
         List<NobilService.NobilStation> nobilStations;
         try {
-            allStations   = ocmFuture.get();
             nobilStations = nobilFuture.get();
         } catch (Exception e) {
-            allStations   = List.of();
+            // Kostar bara kontakträkningen — stationerna nedan står kvar.
+            log.warn("NOBIL svarade inte ({}): {} — kontaktantalet faller tillbaka på OCM:s",
+                     e.getClass().getSimpleName(), e.getMessage());
             nobilStations = List.of();
         }
 

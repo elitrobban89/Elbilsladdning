@@ -99,6 +99,50 @@ class ChargingControllerTest {
            .andExpect(jsonPath("$.carFact").isNotEmpty());
     }
 
+    /**
+     * NOBIL bidrar bara med antalet kontakter per station. Före 2026-08-30 låg båda källorna
+     * i ETT try, så ett NOBIL-fel tömde OCM:s stationslista och svaret blev noll stationer
+     * med HTTP 200 — omöjligt att skilja från "inga laddare i närheten". Provet fäller
+     * återgången: stationen ska stå kvar, och kontakträkningen falla tillbaka på OCM:s tal.
+     */
+    @Test
+    void nobilSomFallerTarInteMedSigStationerna() throws Exception {
+        when(carSpecService.getCars()).thenReturn(CARS);
+        when(ocm.findNearby(anyDouble(), anyDouble(), any())).thenReturn(List.of(STATION));
+        when(nobil.getStations(anyDouble(), anyDouble()))
+                .thenThrow(new RuntimeException("Connect timed out"));
+        when(chargeprice.getPricePerKwh(any(), any())).thenReturn(null);
+        when(apiNinjas.isEnabled()).thenReturn(false);
+        when(operatorPrices.getApproxPrice(any(), any())).thenReturn(null);
+        when(groq.recommend(any(), any(), any()))
+                .thenReturn(new GroqService.GroqResult("Ladda på Ionity Arlanda.", "Visste du att..."));
+
+        mvc.perform(get("/api/stations")
+                .header("X-Forwarded-For", "10.9.9.9")
+                .param("lat", "59.33").param("lon", "18.06").param("carIndex", "0"))
+           .andExpect(status().isOk())
+           .andExpect(jsonPath("$.stations.length()").value(1))
+           .andExpect(jsonPath("$.stations[0].name").value("Ionity Arlanda"))
+           .andExpect(jsonPath("$.stations[0].connectorCount").value(0));
+    }
+
+    /** Faller OCM finns det ingen lista att visa — då är tomt rätt svar, men det ska loggas. */
+    @Test
+    void ocmSomFallerGerTomListaMenIngetHaveri() throws Exception {
+        when(carSpecService.getCars()).thenReturn(CARS);
+        when(ocm.findNearby(anyDouble(), anyDouble(), any()))
+                .thenThrow(new RuntimeException("403 Forbidden"));
+        when(nobil.getStations(anyDouble(), anyDouble())).thenReturn(List.of());
+        when(groq.recommend(any(), any(), any()))
+                .thenReturn(new GroqService.GroqResult("Inga laddare hittades.", ""));
+
+        mvc.perform(get("/api/stations")
+                .header("X-Forwarded-For", "10.9.9.10")
+                .param("lat", "59.33").param("lon", "18.06").param("carIndex", "0"))
+           .andExpect(status().isOk())
+           .andExpect(jsonPath("$.stations.length()").value(0));
+    }
+
     @Test
     void healthVisarKvotstatus() throws Exception {
         when(groq.isQuotaExceeded()).thenReturn(true);
