@@ -1,6 +1,8 @@
 package se.elitrobban.elbilsladdning.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+
+import java.time.Duration;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
@@ -34,7 +36,10 @@ public class GroqService {
     @Value("${groq.api.url:https://api.groq.com/openai/v1/chat/completions}")
     private String groqUrl;
 
-    private final RestClient http = RestClient.create();
+    // Groq får ett EGET, längre tak: den skriver text och behöver mer tid än en
+    // uppslagstjänst, men inte oändligt. Utan tak kan ett tyst AI-anrop hålla hela
+    // stationssökningen öppen i all evighet (uppmätt 2026-08-30: nio minuter).
+    private final RestClient http = HttpTimeouts.restClient(Duration.ofSeconds(5), Duration.ofSeconds(30));
     private final HttpClient httpClient = HttpClient.newHttpClient();
     private final ObjectMapper mapper = new ObjectMapper();
 

@@ -17,7 +17,7 @@ public class ApiNinjasService {
     @Value("${apininjas.api.key:}")
     private String apiKey;
 
-    private final RestClient http = RestClient.create();
+    private final RestClient http = HttpTimeouts.restClient();
 
     // Cache per city to avoid repeated requests
     private final Map<String, List<NinjaStation>> cache = new ConcurrentHashMap<>();

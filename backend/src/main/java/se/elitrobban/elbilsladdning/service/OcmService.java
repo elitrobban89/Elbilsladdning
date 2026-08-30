@@ -21,7 +21,7 @@ public class OcmService {
     @Value("${ocm.api.key}")
     private String apiKey;
 
-    private final RestClient http = RestClient.create();
+    private final RestClient http = HttpTimeouts.restClient();
 
     public List<StationDto> findNearby(double lat, double lon, CarSpec car) {
         String url = OCM_URL +

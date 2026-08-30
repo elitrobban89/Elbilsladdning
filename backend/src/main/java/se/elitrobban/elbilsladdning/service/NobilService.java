@@ -14,7 +14,7 @@ public class NobilService {
     @Value("${nobil.api.key:}")
     private String apiKey;
 
-    private final RestClient http = RestClient.create();
+    private final RestClient http = HttpTimeouts.restClient();
 
     public record NobilStation(double lat, double lon, int connectorCount, boolean offline) {}
 

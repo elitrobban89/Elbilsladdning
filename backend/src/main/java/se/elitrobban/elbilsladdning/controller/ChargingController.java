@@ -38,6 +38,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 
 @RestController
 @RequestMapping("/api")
@@ -50,6 +51,11 @@ public class ChargingController {
     private static final int  STATIONS_RATE_LIMIT  = 10;
     private static final long STATIONS_WINDOW_MS   = 3_600_000L;
     private static final int  PRICE_RATE_LIMIT     = 30;
+
+    // Andra bältet. HTTP-klienterna har egna tidsgränser (HttpTimeouts), men taket här
+    // gäller ÄVEN om en källa hänger någon annanstans än i läsningen — och det är
+    // svarstiden mot användaren som räknas, inte var i anropet det tog stopp.
+    private static final long KALLA_TAK_S = 12;
 
     // Generic DC probe car for /charging-price — accepts every connector type so
     // no station is filtered out on car capabilities
@@ -247,8 +253,9 @@ public class ChargingController {
         // hitta i Render-loggen: tjänsten såg frisk ut hela vägen.
         List<StationDto> allStations;
         try {
-            allStations = ocmFuture.get();
+            allStations = ocmFuture.get(KALLA_TAK_S, TimeUnit.SECONDS);
         } catch (Exception e) {
+            ocmFuture.cancel(true);
             log.warn("OCM gav inga stationer för lat={} lon={} ({}): {}",
                      lat, lon, e.getClass().getSimpleName(), e.getMessage());
             allStations = List.of();
@@ -256,9 +263,10 @@ public class ChargingController {
 
         List<NobilService.NobilStation> nobilStations;
         try {
-            nobilStations = nobilFuture.get();
+            nobilStations = nobilFuture.get(KALLA_TAK_S, TimeUnit.SECONDS);
         } catch (Exception e) {
             // Kostar bara kontakträkningen — stationerna nedan står kvar.
+            nobilFuture.cancel(true);
             log.warn("NOBIL svarade inte ({}): {} — kontaktantalet faller tillbaka på OCM:s",
                      e.getClass().getSimpleName(), e.getMessage());
             nobilStations = List.of();

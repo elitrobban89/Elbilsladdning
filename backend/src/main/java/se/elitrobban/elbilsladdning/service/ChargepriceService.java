@@ -25,7 +25,7 @@ public class ChargepriceService {
     @Value("${chargeprice.api.key:}")
     private String apiKey;
 
-    private final RestClient http = RestClient.create();
+    private final RestClient http = HttpTimeouts.restClient();
 
     // Cache by (operator + power + plug) to avoid repeated calls for same setup
     private final Map<String, Optional<String>> cache = new ConcurrentHashMap<>();
