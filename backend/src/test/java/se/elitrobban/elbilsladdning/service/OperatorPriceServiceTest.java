@@ -81,6 +81,37 @@ class OperatorPriceServiceTest {
         assertThat(avg).isBetween(2.99, 6.96);
     }
 
+    // --- billigast / dyrast ---
+
+    @Test
+    void ytterligheternaHittarBilligastOchDyrast() {
+        var billig = service.billigast();
+        var dyr    = service.dyrast();
+
+        assertThat(billig).isNotNull();
+        assertThat(dyr).isNotNull();
+        assertThat(billig.kr()).isLessThan(dyr.kr());
+        // Ingen rad i tabellen får ligga utanför de två ytterligheterna
+        assertThat(service.nationalAverageKr()).isBetween(billig.kr(), dyr.kr());
+    }
+
+    @Test
+    void gratisraderRaknasInteSomBilligast() {
+        // "Gratis (för kunder)" är ingen prisuppgift utan en annan sorts uppgift — räknas den
+        // som 0 kr blir den alltid billigast, och faktaraden hade sagt att billigaste
+        // laddningen kostar noll i stället för att peka ut det billigaste NÄTVERKET.
+        assertThat(service.billigast().kr()).isGreaterThan(0);
+    }
+
+    @Test
+    void visningsnamnetSkrivsSomNatverketStavarSig() {
+        assertThat(OperatorPriceService.visningsnamn("lidl")).isEqualTo("Lidl");
+        assertThat(OperatorPriceService.visningsnamn("circle k")).isEqualTo("Circle K");
+        // Nycklar med egen stavning får inte bli "E.on" respektive "Incharge"
+        assertThat(OperatorPriceService.visningsnamn("e.on")).isEqualTo("E.ON");
+        assertThat(OperatorPriceService.visningsnamn("incharge")).isEqualTo("InCharge");
+    }
+
     @Test
     void riksgenomsnittAvrundasTillTvaDecimaler() {
         double avg = service.nationalAverageKr();

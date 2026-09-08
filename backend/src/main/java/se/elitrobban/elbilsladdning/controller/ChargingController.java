@@ -376,6 +376,7 @@ public class ChargingController {
                 out.put("distanceKm", Math.round(s.distanceKm() * 10) / 10.0);
                 out.put("maxKw", Math.round(s.maxEffKw()));
                 out.put("avgNationalKr", avgNational);
+                laggTillYtterligheter(out);
                 return ResponseEntity.ok(out);
             }
         }
@@ -384,7 +385,23 @@ public class ChargingController {
         out.put("source", "national-average");
         out.put("priceKr", avgNational);
         out.put("avgNationalKr", avgNational);
+        laggTillYtterligheter(out);
         return ResponseEntity.ok(out);
+    }
+
+    /**
+     * Billigaste och dyraste nätverket i prisTABELLEN — inte bland stationerna i närheten.
+     *
+     * <p>Ligger på båda svarsvägarna för att anroparen ska få samma fält oavsett om position
+     * skickats med: webbappens faktakarusell frågar utan position, och ett fält som ibland
+     * finns och ibland inte är samma sak som ett fält som inte finns.
+     */
+    private void laggTillYtterligheter(Map<String, Object> out) {
+        var billig = operatorPrices.billigast();
+        var dyr    = operatorPrices.dyrast();
+        if (billig == null || dyr == null) return;
+        out.put("cheapest", Map.of("operator", billig.natverk(), "priceKr", billig.kr()));
+        out.put("priciest", Map.of("operator", dyr.natverk(),    "priceKr", dyr.kr()));
     }
 
     private String buildCostComparison(CarSpec selected) {

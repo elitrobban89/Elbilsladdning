@@ -86,6 +86,50 @@ public class OperatorPriceService {
      * same network ("circle k"/"circlek", "e.on"/"eon") count once; free/non-numeric
      * entries are excluded.
      */
+    /** Ett nätverk och dess riktpris — ytterligheterna i tabellen. */
+    public record Ytterlighet(String natverk, double kr) {}
+
+    /**
+     * Billigaste respektive dyraste raden i tabellen.
+     *
+     * <p>Finns för faktakarusellen i webbappen: spridningen mellan nätverken är större än
+     * spridningen mellan bilar, och det är den enda siffran vi själva äger och kan hålla
+     * aktuell. Gratisrader och andra icke-numeriska värden räknas inte — "gratis" är inte
+     * ett lägsta pris, det är en annan sorts uppgift.
+     */
+    public Ytterlighet billigast() { return ytterlighet(true); }
+
+    public Ytterlighet dyrast() { return ytterlighet(false); }
+
+    private Ytterlighet ytterlighet(boolean lagst) {
+        Ytterlighet bast = null;
+        for (Map.Entry<String, String> e : PRICES.entrySet()) {
+            Double kr = parseKr(e.getValue());
+            if (kr == null) continue;
+            if (bast == null || (lagst ? kr < bast.kr() : kr > bast.kr())) {
+                bast = new Ytterlighet(visningsnamn(e.getKey()), kr);
+            }
+        }
+        return bast;
+    }
+
+    // Nycklarna är gemener för matchningen; de här skrivs inte som en versal plus resten.
+    private static final Map<String, String> VISNINGSNAMN = Map.of(
+            "e.on", "E.ON", "eon", "E.ON", "st1", "St1", "ikea", "IKEA",
+            "incharge", "InCharge", "chargenode", "ChargeNode", "circlek", "Circle K");
+
+    static String visningsnamn(String nyckel) {
+        String fast = VISNINGSNAMN.get(nyckel);
+        if (fast != null) return fast;
+        StringBuilder sb = new StringBuilder();
+        for (String ord : nyckel.split(" ")) {
+            if (ord.isBlank()) continue;
+            if (!sb.isEmpty()) sb.append(' ');
+            sb.append(Character.toUpperCase(ord.charAt(0))).append(ord.substring(1));
+        }
+        return sb.toString();
+    }
+
     public double nationalAverageKr() {
         var seen = new java.util.HashSet<String>();
         double sum = 0;

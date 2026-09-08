@@ -86,5 +86,66 @@ prov("saknad billigast-uppgift fäller inte raden", () => {
   if (h.includes("billigaste exemplaret på null")) throw new Error("null läckte ut i texten");
 });
 
+// ── De tre dynamiska raderna som kom till 2026-09-08 ────────────────────────
+// Proven räknar EFTER, de kollar inte bara att en rad finns: hela poängen med att räkna
+// siffrorna i stället för att skriva dem för hand är att de blir rätt, och en rad som visar
+// fel tal är sämre än ingen rad alls.
+
+prov("laddprisraden räknar skillnaden och kvoten ur operatörstabellen", () => {
+  const h = bygg({ ...tomtState, laddpriser: {
+    cheapest: { operator: "Lidl", priceKr: 2.99 },
+    priciest: { operator: "Ionity", priceKr: 6.96 },
+    avgNationalKr: 4.71 } }, null);
+  if (!h.includes("Lidl") || !h.includes("Ionity")) throw new Error("nätverken saknas");
+  if (!h.includes("2,99 kr/kWh")) throw new Error("priset ska skrivas med decimalkomma");
+  // (6,96 - 2,99) × 50 kWh = 198,50 → 199 kr
+  if (!h.includes("199 kr")) throw new Error("skillnaden per 50 kWh räknades fel");
+  // 6,96 / 2,99 = 2,33 → 2,3 gånger
+  if (!h.includes("2,3 gånger")) throw new Error("kvoten räknades fel");
+  if (!h.includes("4,71 kr/kWh")) throw new Error("snittet saknas");
+});
+
+prov("laddprisraden UTEBLIR utan tabelluppgifter", () => {
+  const h = bygg(tomtState, null);
+  if (h.includes("Var du laddar avgör priset")) throw new Error("raden byggdes utan data");
+});
+
+prov("elområdesraden tar lägsta mot högsta zonen och bär brasklappen", () => {
+  const h = bygg({ ...tomtState, elzoner: [
+    { zone: "SE1", spot: 0.21 }, { zone: "SE3", spot: 0.58 },
+    { zone: "SE4", spot: 0.94 }, { zone: "SE2", spot: 0.24 }] }, null);
+  if (!h.includes("21 öre/kWh") || !h.includes("SE1")) throw new Error("lägsta zonen fel");
+  if (!h.includes("94 öre") || !h.includes("SE4")) throw new Error("högsta zonen fel");
+  if (!h.includes("73 öre</strong> i skillnad")) throw new Error("skillnaden räknades fel");
+  // Utan brasklappen jämför läsaren spotpris med sin elräkning och tror att vi räknat fel
+  if (!h.includes("energiskatt")) throw new Error("brasklappen om skatt/nät/moms saknas");
+});
+
+prov("elområdesraden UTEBLIR när zonerna kostar lika mycket", () => {
+  const h = bygg({ ...tomtState, elzoner: [
+    { zone: "SE1", spot: 0.502 }, { zone: "SE4", spot: 0.504 }] }, null);
+  if (h.includes("i skillnad på spotpriset")) throw new Error("raden byggdes utan en skillnad att visa");
+});
+
+prov("effektraden räknar bilarna i databasen och pekar ut den snabbaste", () => {
+  const bilar = [];
+  for (let i = 0; i < 6; i++) bilar.push({ name: "Snabb " + i, maxDcKw: 180 });
+  for (let i = 0; i < 4; i++) bilar.push({ name: "Långsam " + i, maxDcKw: 50 });
+  bilar.push({ name: "Toppbilen", maxDcKw: 350 });
+  // Utan DC alls ska inte räknas med bland de snabbladdande
+  bilar.push({ name: "Zoe", maxDcKw: 0 });
+  const h = bygg({ ...tomtState, cars: bilar }, null);
+  if (!h.includes("<strong>11</strong> snabbladdande")) throw new Error("Zoe utan DC räknades med");
+  if (!h.includes("<strong>7</strong> minst 150 kW")) throw new Error("antalet över 150 kW fel");
+  if (!h.includes("<strong>4</strong> ligger under 100 kW")) throw new Error("antalet under 100 kW fel");
+  if (!h.includes("Toppbilen")) throw new Error("den snabbaste bilen pekas inte ut");
+  if (!h.includes("350 kW")) throw new Error("toppeffekten saknas");
+});
+
+prov("effektraden UTEBLIR när bildatabasen inte hunnit hem", () => {
+  const h = bygg({ ...tomtState, cars: [{ name: "Enda bilen", maxDcKw: 150 }] }, null);
+  if (h.includes("Stolpens effekt är sällan taket")) throw new Error("raden byggdes på ett för tunt underlag");
+});
+
 console.log(fel === 0 ? "\nAlla prov gröna\n" : "\n" + fel + " prov föll\n");
 process.exit(fel === 0 ? 0 : 1);
