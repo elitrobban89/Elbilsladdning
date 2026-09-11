@@ -53,6 +53,17 @@ public class GroqService {
         return System.currentTimeMillis() < quotaExceededUntil;
     }
 
+    /**
+     * Modellnamnet som faktiskt kör — för uppstartssplashens Groq-rad.
+     *
+     * <p>Splashen skrev tidigare av namnet i sin egen kod. Ett namn på två ställen glider isär
+     * den dag modellen byts, och Groq-modeller avvecklas med kort varsel. Nu läser raden
+     * serverns svar i stället.
+     */
+    public String modelName() {
+        return MODEL;
+    }
+
     @SuppressWarnings("unchecked")
     public String chat(List<Map<String, String>> history, List<CarSpec> cars, String stationContext) {
         if (isQuotaExceeded()) return "AI-assistenten är tillfälligt otillgänglig — dagsgränsen är nådd. Försök igen imorgon!";

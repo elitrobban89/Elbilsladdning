@@ -94,6 +94,9 @@ public class ChargingController {
     public Map<String, String> health() {
         Map<String, String> result = new LinkedHashMap<>();
         result.put("status", "ok");
+        // Modellnamnet går till uppstartssplashens Groq-rad: den ska visa vad som FAKTISKT
+        // kör, inte en avskriven sträng som glider isär den dag modellen byts.
+        result.put("model", groq.modelName());
         if (groq.isQuotaExceeded()) {
             result.put("groq", "quota_exceeded");
         }
