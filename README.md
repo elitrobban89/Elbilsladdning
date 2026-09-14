@@ -67,7 +67,7 @@ Live: [elitrobban.se/elbilsladdning](https://elitrobban.se/elbilsladdning/)
 
 | Del | Teknologi |
 |-----|-----------|
-| Backend | Spring Boot 3.2.5 / Java 21 |
+| Backend | Spring Boot 3.5.16 / Java 25 |
 | Hosting backend | Render (free tier, Docker) |
 | Stationsdata | [Open Charge Map API](https://openchargemap.io) |
 | Laddpunkter | [NOBIL API](https://info.nobil.no/api) — nordisk databas, ger antal kontakter per station |
