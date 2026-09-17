@@ -59,7 +59,7 @@ public class VroomNewsService {
 
     private static final Duration CACHE_TTL = Duration.ofHours(6);
 
-    static final String KALL_LANK = "https://www.mynewsdesk.com/se/vroom";
+    public static final String KALL_LANK = "https://www.mynewsdesk.com/se/vroom";
 
     private static final String USER_AGENT =
             "Mozilla/5.0 (compatible; ElbilsladdningBot/1.0; +https://elbilsladdning.onrender.com)";
