@@ -32,13 +32,27 @@ import java.util.regex.Pattern;
  * källa</b>, och YouTubes kanalflöde bär hela videobeskrivningen i {@code media:description}.
  * Det är alltså Vrooms siffror, hämtade där de faktiskt går att läsa maskinellt.
  *
- * <p><b>Listan är elbilar, trots att källan skriver "personbilar".</b> Augusti 2026 toppas av
- * EX40 med 731 bilar, och samtliga 25 rader är batterielbilar (EX40, ID.7, EV3, EX30, iX3 …).
- * Sveriges hela nybilsmarknad ligger på ~20 000 bilar i månaden, så en etta på 731 kan inte
- * vara totalmarknaden — och Vrooms egen augustirapport säger att elbilar stod för 46 % av
- * nyregistreringarna. Rubriken i appen säger därför <i>elbilar</i>. Skulle källan en månad
- * börja blanda in förbränningsbilar blir rubriken fel, och det är den enda vägen den kan bli
- * fel: talen kommer aldrig härifrån utan alltid ur beskrivningen.
+ * <p><b>Listan är elbilar, trots att källan skriver "personbilar".</b> Rubriken i appen säger
+ * därför <i>elbilar</i>, och det är avgjort på bevis, inte på en gissning:
+ *
+ * <ul>
+ *   <li><b>Det avgörande:</b> Sveriges faktiska storsäljare SAKNAS HELT. Volvo XC60, Toyota
+ *       Yaris Cross och VW Golf finns inte på någon av de 25 platserna. En lista över alla
+ *       personbilar utan XC60 är inte en lista över alla personbilar.</li>
+ *   <li>Samtliga 25 rader är modeller som säljs som batterielbil, och flera av dem
+ *       (EV2/EV3/EV5/EV9, ID.4/ID.7, EX30/EX40/EC40, iX1/iX3, Enyaq, MG4, bZ4X, Q4 e-tron,
+ *       Renault 5, Polestar, Cupra Raval) finns inte ens i någon annan drivlina. Att
+ *       Toyota skrivs som <i>C-HR+</i> och inte C-HR pekar åt samma håll: plusset ÄR
+ *       elversionen.</li>
+ *   <li>Storleken stämmer: en etta på 731 bilar kan inte vara en marknad på ~20 000 i
+ *       månaden, och Vrooms egen augustirapport säger att elbilar stod för 46 % av
+ *       nyregistreringarna.</li>
+ * </ul>
+ *
+ * Skulle källan en månad börja blanda in förbränningsbilar blir rubriken fel, och det är den
+ * enda vägen den kan bli fel: talen kommer aldrig härifrån utan alltid ur beskrivningen.
+ * Kontrollen är billig — dyker XC60, Golf eller Yaris Cross upp i listan har innebörden
+ * ändrats och rubriken måste följa med.
  *
  * <p>Hittas ingen post med en läsbar lista returneras en tom lista och frontenden ritar ingen
  * flik. <b>Ett misslyckande cachas aldrig</b> — samma linje som {@link VroomNewsService}.
@@ -157,6 +171,7 @@ public class VroomTopCarsService {
             if (!rubrik.find()) continue;
             List<Bil> bilar = rader(text);
             if (bilar.size() < TOPP_ANTAL) continue;   // halv lista är ingen lista
+            varnaOmListanByttInnebord(bilar);
             Element lank = entry.selectFirst("link");
             return new Topplista(
                     manadsEtikett(rubrik.group(1), rubrik.group(2)),
@@ -165,6 +180,33 @@ public class VroomTopCarsService {
                     List.copyOf(bilar.subList(0, TOPP_ANTAL)));
         }
         return TOM;
+    }
+
+    /**
+     * Modeller som INTE finns som batterielbil. Dyker någon av dem upp i listan har källan
+     * slutat mena elbilar, och då är appens rubrik ("Mest registrerade elbilarna") fel.
+     *
+     * <p>Urvalet är Sveriges faktiska storsäljare utan BEV-version — det är just deras
+     * FRÅNVARO som bevisar att dagens lista är elbilar. XC60 finns som laddhybrid men inte
+     * som elbil, Golf som allt utom elbil (e-Golf heter e-Golf), Yaris Cross som hybrid.
+     */
+    private static final List<String> EJ_ELBILSMODELLER = List.of("xc60", "golf", "yaris cross");
+
+    /**
+     * Loggar när listans innebörd verkar ha ändrats. <b>Bara en varning</b> — raderna är
+     * fortfarande riktiga siffror, och att tiga om dem vore värre än en felaktig rubrik.
+     * Vakten finns för att frågan ska nå en människa, inte för att fälla ett svar.
+     */
+    static void varnaOmListanByttInnebord(List<Bil> bilar) {
+        List<String> fynd = bilar.stream()
+                .filter(b -> EJ_ELBILSMODELLER.stream()
+                        .anyMatch(m -> b.modell().toLowerCase(Locale.ROOT).equals(m)))
+                .map(Bil::modell)
+                .toList();
+        if (!fynd.isEmpty())
+            log.warn("Topplistan innehåller {} — modeller som inte finns som elbil. Källan kan ha "
+                    + "bytt fran elbilar till alla personbilar; rubriken i appen sager 'elbilar'.",
+                    String.join(", ", fynd));
     }
 
     /** Raderna i beskrivningen, i den ordning de står. Platsnumret läses ur texten, inte ur index. */

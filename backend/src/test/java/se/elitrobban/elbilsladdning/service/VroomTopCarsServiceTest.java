@@ -5,6 +5,7 @@ import org.junit.jupiter.api.Test;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatCode;
 
 /**
  * Fixturen är kopierad ur det riktiga kanalflödet (hämtat 2026-09-17), inklusive em-dashen och
@@ -129,6 +130,21 @@ class VroomTopCarsServiceTest {
     void tomtFlodeGerTomListaUtanAttKasta() {
         assertThat(VroomTopCarsService.parse("<feed></feed>").bilar()).isEmpty();
         assertThat(VroomTopCarsService.rader("ingen lista alls")).isEmpty();
+    }
+
+    @Test
+    void vaktenMarkerNarListanBytterInnebord() {
+        // Rubriken i appen sager ELBILAR, och beviset for att det stammer ar att Sveriges
+        // faktiska storsaljare SAKNAS: XC60, Golf och Yaris Cross finns inte pa nagon plats.
+        // Borjar de dyka upp har kallan bytt fran elbilar till alla personbilar, och da ar
+        // rubriken fel. Vakten faller ingenting - den ser till att fragan nar en manniska.
+        assertThatCode(() -> VroomTopCarsService.varnaOmListanByttInnebord(
+                VroomTopCarsService.rader(LISTA))).doesNotThrowAnyException();
+
+        var medXc60 = VroomTopCarsService.rader(LISTA.replace("EX40 (Volvo)", "XC60 (Volvo)"));
+        assertThat(medXc60).anySatisfy(b -> assertThat(b.modell()).isEqualTo("XC60"));
+        assertThatCode(() -> VroomTopCarsService.varnaOmListanByttInnebord(medXc60))
+                .doesNotThrowAnyException();   // varnar, faller inte
     }
 
     @Test
