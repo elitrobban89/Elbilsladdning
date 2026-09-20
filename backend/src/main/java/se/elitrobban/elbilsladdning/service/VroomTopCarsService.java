@@ -56,6 +56,8 @@ import java.util.regex.Pattern;
  *
  * <p>Hittas ingen post med en läsbar lista returneras en tom lista och frontenden ritar ingen
  * flik. <b>Ett misslyckande cachas aldrig</b> — samma linje som {@link VroomNewsService}.
+ *
+ * @author Robert Andersson Kopler
  */
 @Service
 public class VroomTopCarsService {

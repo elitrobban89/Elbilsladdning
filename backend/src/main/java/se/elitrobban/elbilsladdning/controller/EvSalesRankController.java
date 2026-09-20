@@ -10,6 +10,7 @@ import se.elitrobban.elbilsladdning.scraper.EvSalesRankSyncService;
 import java.util.List;
 import java.util.Map;
 
+/** @author Robert Andersson Kopler */
 @RestController
 @RequestMapping("/api")
 public class EvSalesRankController {

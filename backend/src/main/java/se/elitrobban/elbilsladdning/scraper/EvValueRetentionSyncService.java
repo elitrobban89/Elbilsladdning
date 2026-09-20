@@ -29,6 +29,8 @@ import java.util.Map;
  * annonser och årsfiltret plus milgränsen tar bort en stor del av dem, så antalet varierar
  * kraftigt mellan modeller. Under {@link #MIN_ANNONSER} är medianen inte värd att visa, och
  * raden lämnas då orörd med sitt förra värde i stället för att skrivas över med brus.
+ *
+ * @author Robert Andersson Kopler
  */
 @Service
 public class EvValueRetentionSyncService {

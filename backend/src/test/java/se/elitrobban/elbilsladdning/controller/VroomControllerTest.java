@@ -22,6 +22,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  *
  * <p>Läxan är densamma som drift-provet för ev-app.js bär: ett prov som mäter delen bevisar
  * inte att delen är ANSLUTEN. Båda vägarna prövas därför här, inte bara den som saknades.
+ *
+ * @author Robert Andersson Kopler
  */
 @WebMvcTest({VroomTopCarsController.class, VroomNewsController.class})
 class VroomControllerTest {

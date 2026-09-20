@@ -22,6 +22,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 /**
  * HTTP-lagertester för FavoriteController: dubblettskydd (409), ägarkontroll
  * vid borttagning (404) och svarens form. Repositoryt mockas — ingen databas.
+ *
+ * @author Robert Andersson Kopler
  */
 @WebMvcTest(FavoriteController.class)
 class FavoriteControllerTest {

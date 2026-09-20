@@ -10,6 +10,7 @@ import se.elitrobban.elbilsladdning.scraper.EvValueRetentionSyncService;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
+/** @author Robert Andersson Kopler */
 @RestController
 @RequestMapping("/api")
 public class EvValueRetentionController {

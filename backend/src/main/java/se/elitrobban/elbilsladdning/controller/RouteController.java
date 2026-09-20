@@ -9,6 +9,7 @@ import se.elitrobban.elbilsladdning.service.RouteService;
 import java.util.List;
 import java.util.Map;
 
+/** @author Robert Andersson Kopler */
 @RestController
 @RequestMapping("/api")
 public class RouteController {

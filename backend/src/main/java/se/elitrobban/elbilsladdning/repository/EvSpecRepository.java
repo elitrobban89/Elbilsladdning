@@ -6,6 +6,7 @@ import se.elitrobban.elbilsladdning.model.EvSpecEntity;
 
 import java.util.List;
 
+/** @author Robert Andersson Kopler */
 public interface EvSpecRepository extends JpaRepository<EvSpecEntity, Long> {
     List<EvSpecEntity> findByCarTypeOrderByCarNameAsc(String carType);
 

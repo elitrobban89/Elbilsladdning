@@ -6,6 +6,7 @@ import org.springframework.web.client.RestClient;
 
 import java.util.*;
 
+/** @author Robert Andersson Kopler */
 @Service
 public class NobilService {
 

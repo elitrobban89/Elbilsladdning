@@ -22,6 +22,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 /**
  * HTTP-lagertester för RouteController: bilindexvalidering och ruttplanens
  * JSON-form. Tjänsterna mockas.
+ *
+ * @author Robert Andersson Kopler
  */
 @WebMvcTest(RouteController.class)
 class RouteControllerTest {

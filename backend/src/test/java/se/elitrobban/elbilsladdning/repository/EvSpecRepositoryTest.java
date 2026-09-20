@@ -18,6 +18,8 @@ import static org.assertj.core.api.Assertions.assertThat;
  * CarAdvice läste dem som elbilar, den här tjänsten frågade efter {@code = 'EV'} och tappade
  * 58 bilar — Ioniq 5, Kia EV9, Mustang Mach-E, Volvo EX60. Det syntes ingenstans i loggarna;
  * bilarna fanns bara inte i väljaren.
+ *
+ * @author Robert Andersson Kopler
  */
 @DataJpaTest
 class EvSpecRepositoryTest {

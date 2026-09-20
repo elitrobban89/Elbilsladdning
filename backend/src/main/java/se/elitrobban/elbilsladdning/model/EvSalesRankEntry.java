@@ -2,6 +2,7 @@ package se.elitrobban.elbilsladdning.model;
 
 import jakarta.persistence.*;
 
+/** @author Robert Andersson Kopler */
 @Entity
 @Table(name = "ev_sales_rank")
 public class EvSalesRankEntry {

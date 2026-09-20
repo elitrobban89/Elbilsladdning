@@ -12,6 +12,8 @@ import static org.assertj.core.api.Assertions.assertThat;
  * inläggs-HTML (fångad live 2026-07-20). Kritiskt: "Polestar 4" har en siffra i modellnamnet —
  * en naiv regex på plattad text ("stoppa vid första siffran") skulle blanda ihop modellnamnet
  * med antalskolumnen. parse() går via riktiga table/td-celler och ska hantera det korrekt.
+ *
+ * @author Robert Andersson Kopler
  */
 class EvSalesRankSyncServiceParseTest {
 

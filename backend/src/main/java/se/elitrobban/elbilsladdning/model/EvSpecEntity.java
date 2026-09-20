@@ -3,6 +3,7 @@ package se.elitrobban.elbilsladdning.model;
 import jakarta.persistence.*;
 import org.hibernate.annotations.Immutable;
 
+/** @author Robert Andersson Kopler */
 @Entity
 @Immutable
 @Table(name = "ev_spec")

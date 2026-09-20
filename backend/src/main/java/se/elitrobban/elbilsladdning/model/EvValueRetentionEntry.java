@@ -19,6 +19,8 @@ import jakarta.persistence.*;
  * <p><b>{@code adCount} är inte pynt.</b> Medianen är bara värd något med underlag bakom sig,
  * och antalet annonser varierar kraftigt mellan modeller (11 för Renault Zoe, 43 för Volvo
  * XC40 vid första mätningen). Frontend visar inte rader under {@code MIN_ANNONSER}.
+ *
+ * @author Robert Andersson Kopler
  */
 @Entity
 @Table(name = "ev_value_retention")

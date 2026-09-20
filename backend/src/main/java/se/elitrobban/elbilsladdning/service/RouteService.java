@@ -10,6 +10,7 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 
+/** @author Robert Andersson Kopler */
 @Service
 public class RouteService {
 

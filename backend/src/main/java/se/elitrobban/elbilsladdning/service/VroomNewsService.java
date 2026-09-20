@@ -41,6 +41,8 @@ import java.util.List;
  * en tabell hade bara gett en andra sanning att hålla i synk. <b>Ett misslyckat anrop cachas
  * aldrig</b> — då serveras förra lyckade hämtningen vidare och nästa anrop får försöka igen.
  * Att spara ett tomt svar hade parkerat karusellen i sex timmar på ett nätverksfel.
+ *
+ * @author Robert Andersson Kopler
  */
 @Service
 public class VroomNewsService {

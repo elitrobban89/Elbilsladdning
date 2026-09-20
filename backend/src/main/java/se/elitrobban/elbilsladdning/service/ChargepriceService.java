@@ -10,6 +10,7 @@ import se.elitrobban.elbilsladdning.model.StationDto;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 
+/** @author Robert Andersson Kopler */
 @Service
 public class ChargepriceService {
 

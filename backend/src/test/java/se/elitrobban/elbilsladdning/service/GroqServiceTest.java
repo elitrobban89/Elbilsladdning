@@ -12,6 +12,8 @@ import static org.assertj.core.api.Assertions.assertThat;
  * Tester för GroqServices rena logik: chatt-systemprompten, rekommendations-
  * prompten, regelbaserad fallback, 429-retrytidsparsning och sektionsextraktion.
  * Inga HTTP-anrop och ingen Mockito.
+ *
+ * @author Robert Andersson Kopler
  */
 class GroqServiceTest {
 

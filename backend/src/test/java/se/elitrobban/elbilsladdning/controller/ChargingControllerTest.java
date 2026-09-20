@@ -29,6 +29,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * HTTP-lagertester för ChargingController: billistans form, bilindexvalidering,
  * prisberikning i stationsflödet, chattens tomma meddelanden och rate limit.
  * Alla tjänster mockas — inga externa anrop.
+ *
+ * @author Robert Andersson Kopler
  */
 @WebMvcTest(ChargingController.class)
 class ChargingControllerTest {

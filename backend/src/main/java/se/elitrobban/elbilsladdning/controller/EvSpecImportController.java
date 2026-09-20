@@ -27,6 +27,8 @@ import java.util.Map;
  * <p><b>Idempotent:</b> en rad vars {@code car_name} redan finns hoppas över i stället för att
  * uppdateras. Importen ska kunna köras om utan att skriva över en rad någon rättat för hand,
  * och svaret räknar upp både det som lades in och det som hoppades över.
+ *
+ * @author Robert Andersson Kopler
  */
 @RestController
 @RequestMapping("/api")

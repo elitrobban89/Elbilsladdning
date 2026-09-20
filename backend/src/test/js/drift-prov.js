@@ -1,3 +1,4 @@
+/* Elbilsladdning — (c) 2026 Robert Andersson Kopler. Alla rattigheter forbehallna. */
 /*
  * Drift-vakt: våra kopior mot dem CarAdvice faktiskt serverar.
  *

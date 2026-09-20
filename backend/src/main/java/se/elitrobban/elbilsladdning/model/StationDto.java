@@ -1,5 +1,6 @@
 package se.elitrobban.elbilsladdning.model;
 
+/** @author Robert Andersson Kopler */
 public record StationDto(
         String name,
         String address,

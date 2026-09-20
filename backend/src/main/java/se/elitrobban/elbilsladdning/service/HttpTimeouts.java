@@ -17,6 +17,8 @@ import java.time.Duration;
  * Talen är satta efter vad en användare orkar vänta på ett sökresultat, inte efter vad
  * källorna klarar i bästa fall: anslutningen ska ta bråkdelar av en sekund, och en källa
  * som behöver mer än åtta sekunder på sig hinner ändå inte med i svaret.
+ *
+ * @author Robert Andersson Kopler
  */
 public final class HttpTimeouts {
 

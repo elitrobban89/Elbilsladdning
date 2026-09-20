@@ -7,6 +7,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 /**
  * Tester för operatörsprislistan. Ren logik utan beroenden —
  * matchning på operatörsnamn med stationsnamn som reserv.
+ *
+ * @author Robert Andersson Kopler
  */
 class OperatorPriceServiceTest {
 

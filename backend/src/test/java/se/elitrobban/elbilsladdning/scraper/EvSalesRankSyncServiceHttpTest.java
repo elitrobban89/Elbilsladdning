@@ -24,6 +24,8 @@ import static org.mockito.Mockito.*;
  * Full-flödestest av syncNow(): tjänsten pekas mot en lokal stubbserver via elbilsvaruhuset.api.url
  * (samma mönster som GroqServiceHttpTest) — inga externa anrop. Repositoryt mockas eftersom testet
  * gäller HTTP-hämtning + parsning + spara-anrop, inte JPA/databasen.
+ *
+ * @author Robert Andersson Kopler
  */
 class EvSalesRankSyncServiceHttpTest {
 

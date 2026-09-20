@@ -17,6 +17,8 @@ import static org.assertj.core.api.Assertions.assertThat;
  *   <li>flödet blandar månadsrapporter med analysartiklar, så "senaste månaden" kan
  *       innehålla allt från en rad till fem</li>
  * </ul>
+ *
+ * @author Robert Andersson Kopler
  */
 class VroomNewsServiceTest {
 

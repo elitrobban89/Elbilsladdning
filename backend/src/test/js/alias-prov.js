@@ -1,3 +1,4 @@
+/* Elbilsladdning — (c) 2026 Robert Andersson Kopler. Alla rattigheter forbehallna. */
 /*
  * Volvos namnbyten: C40 Recharge -> EC40, XC40 Recharge -> EX40.
  *

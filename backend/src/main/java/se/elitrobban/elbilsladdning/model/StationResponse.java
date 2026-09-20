@@ -9,6 +9,8 @@ import java.util.List;
  *                    15 km" är ett svar, "OpenChargeMap svarar inte" är ett haveri — och den
  *                    som får det första när det andra hände drar slutsatsen att appen är
  *                    trasig, eller värre, att det inte finns några laddare där.
+ *
+ * @author Robert Andersson Kopler
  */
 public record StationResponse(
         String carName,

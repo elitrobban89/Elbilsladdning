@@ -4,6 +4,7 @@ import se.elitrobban.elbilsladdning.model.CarSpec;
 
 import java.util.List;
 
+/** @author Robert Andersson Kopler */
 public class CarDatabase {
 
     public static final List<CarSpec> CARS = List.of(

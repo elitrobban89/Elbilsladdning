@@ -20,6 +20,8 @@ import static org.mockito.Mockito.when;
 /**
  * Tester för billistan: mappning från databas-entitet, deduplicering,
  * cache och fallback till den hårdkodade listan när databasen är nere.
+ *
+ * @author Robert Andersson Kopler
  */
 @ExtendWith(MockitoExtension.class)
 class CarSpecServiceTest {

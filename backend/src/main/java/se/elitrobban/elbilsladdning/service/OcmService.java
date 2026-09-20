@@ -8,6 +8,7 @@ import se.elitrobban.elbilsladdning.model.StationDto;
 
 import java.util.*;
 
+/** @author Robert Andersson Kopler */
 @Service
 public class OcmService {
 

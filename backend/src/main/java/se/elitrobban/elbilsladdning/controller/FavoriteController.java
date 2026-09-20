@@ -7,6 +7,7 @@ import se.elitrobban.elbilsladdning.repository.FavoriteStationRepository;
 
 import java.util.List;
 
+/** @author Robert Andersson Kopler */
 @RestController
 @RequestMapping("/api/favorites")
 public class FavoriteController {

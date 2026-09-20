@@ -20,6 +20,8 @@ import static org.mockito.Mockito.when;
 /**
  * Tester för ruttplaneringen: haversine-avstånd, antal laddstopp
  * utifrån bilens räckvidd och val av bästa station per stopp.
+ *
+ * @author Robert Andersson Kopler
  */
 @ExtendWith(MockitoExtension.class)
 class RouteServiceTest {

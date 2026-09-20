@@ -12,6 +12,8 @@ import static org.assertj.core.api.Assertions.assertThat;
  * <p>Det här är den farliga delen: varje annons som slinker igenom fel förgiftar medianen, och
  * en median som ser rimlig ut men bygger på fel bilar går inte att upptäcka i efterhand. Alla
  * gränser nedan är mätta mot Blockets riktiga svar 2026-08-18.
+ *
+ * @author Robert Andersson Kopler
  */
 class BlocketUsedPriceClientTest {
 

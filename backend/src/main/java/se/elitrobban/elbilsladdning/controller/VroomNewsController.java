@@ -16,6 +16,8 @@ import se.elitrobban.elbilsladdning.service.VroomNewsService;
  *
  * <p>Tomt {@code nyheter} betyder att flödet inte svarat ännu — frontenden ritar då ingen
  * flik alls i stället för en tom karusell.
+ *
+ * @author Robert Andersson Kopler
  */
 @RestController
 @RequestMapping("/api")

@@ -14,6 +14,8 @@ import se.elitrobban.elbilsladdning.service.VroomTopCarsService;
  *
  * <p>Tom {@code bilar} betyder att ingen läsbar lista hittats ännu; frontenden ritar då ingen
  * Vroom-flik alls i stället för ett tomt kort.
+ *
+ * @author Robert Andersson Kopler
  */
 @RestController
 @RequestMapping("/api")

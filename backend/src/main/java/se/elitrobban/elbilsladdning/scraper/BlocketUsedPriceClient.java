@@ -39,6 +39,8 @@ import java.util.List;
  * </ul>
  *
  * <p>API:t kräver ingen nyckel och kostar ingen kvot.
+ *
+ * @author Robert Andersson Kopler
  */
 @Service
 public class BlocketUsedPriceClient {

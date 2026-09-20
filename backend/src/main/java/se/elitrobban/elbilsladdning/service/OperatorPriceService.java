@@ -9,6 +9,8 @@ import java.util.Map;
  * Approximate DC prices per major Swedish charging network,
  * sourced from each operator's public pricing page (utan abonnemang/roaming).
  * Updated 2026-06-13. Always shown with a disclaimer to check the operator's app.
+ *
+ * @author Robert Andersson Kopler
  */
 @Service
 public class OperatorPriceService {

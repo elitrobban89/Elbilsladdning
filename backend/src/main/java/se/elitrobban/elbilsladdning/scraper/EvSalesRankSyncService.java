@@ -34,6 +34,8 @@ import java.util.regex.Pattern;
  *
  * Tabellen ersätts i sin helhet varje körning (delete + save) — ingen historik sparas,
  * bara senaste kända ranking.
+ *
+ * @author Robert Andersson Kopler
  */
 @Service
 public class EvSalesRankSyncService {

@@ -11,6 +11,8 @@ import static org.assertj.core.api.Assertions.assertThatCode;
  * Fixturen är kopierad ur det riktiga kanalflödet (hämtat 2026-09-17), inklusive em-dashen och
  * den blandade posttypen: kanalen publicerar bilnyheter och tester mellan månadslistorna, så
  * parsern måste hoppa förbi poster utan rubrikrad i stället för att ta den första bästa.
+ *
+ * @author Robert Andersson Kopler
  */
 class VroomTopCarsServiceTest {
 

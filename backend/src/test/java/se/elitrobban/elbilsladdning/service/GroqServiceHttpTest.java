@@ -21,6 +21,8 @@ import static org.assertj.core.api.Assertions.assertThat;
  * HTTP-felvägstester för GroqService: 429 med kvotspärr, trasigt JSON och
  * sektionsparsning av lyckade svar. Tjänsten pekas mot en lokal stubbserver
  * via groq.api.url — inga externa anrop. Ny tjänstinstans per test.
+ *
+ * @author Robert Andersson Kopler
  */
 class GroqServiceHttpTest {
 

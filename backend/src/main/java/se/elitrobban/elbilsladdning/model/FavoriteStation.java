@@ -3,6 +3,7 @@ package se.elitrobban.elbilsladdning.model;
 import jakarta.persistence.*;
 import java.time.LocalDateTime;
 
+/** @author Robert Andersson Kopler */
 @Entity
 @Table(name = "ev_favorites")
 public class FavoriteStation {
