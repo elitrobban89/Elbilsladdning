@@ -29,6 +29,18 @@ const STATIC = path.join(__dirname, "..", "..", "main", "resources", "static");
 
 const norm = (s) => s.split(String.fromCharCode(13, 10)).join(String.fromCharCode(10));
 
+// Upphovsraden NAMNGER repot: kopian här inleds med "Elbilsladdning", den CarAdvice
+// serverar med "CarAdvice". Den skillnaden är avsiktlig sedan upphovsmärkningen
+// 2026-09-20, och jämfördes den med föll provet varje gång på två filer som i övrigt
+// var tecken för tecken lika — en vakt som alltid larmar slutar man läsa, och då
+// döljer den den drift den byggdes för. Raden lyfts därför bort före jämförelsen.
+//
+// Men bara bort, aldrig ignorerad: saknas märkningen i endera filen är det ett eget
+// fel och provet ska falla på det i stället för att tyst släppa igenom en omärkt fil.
+const RUBRIK = /^\/\* [^\n]*\(c\) \d{4} [^\n]*\*\/\n/;
+const harRubrik = (s) => RUBRIK.test(norm(s));
+const utanRubrik = (s) => norm(s).replace(RUBRIK, "");
+
 let fel = 0;
 let hoppade = 0;
 
@@ -45,8 +57,12 @@ let hoppade = 0;
       continue;
     }
     const lokal = fs.readFileSync(path.join(STATIC, f), "utf8");
-    if (norm(lokal) === norm(serverad)) {
-      console.log("  ok      " + f + " är identisk med den serverade");
+    if (!harRubrik(lokal) || !harRubrik(serverad)) {
+      const vilken = !harRubrik(lokal) ? "vår kopia" : "den CarAdvice serverar";
+      console.log("  FEL     " + f + " saknar upphovsraden — " + vilken);
+      fel++;
+    } else if (utanRubrik(lokal) === utanRubrik(serverad)) {
+      console.log("  ok      " + f + " är identisk med den serverade (bortsett från upphovsraden)");
     } else {
       console.log("  FEL     " + f + " skiljer sig från den CarAdvice serverar");
       console.log("          kopiera till CarAdvice src/main/resources/static/" + f + " och deploya");
