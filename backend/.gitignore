@@ -5,6 +5,7 @@ target/
 !**/src/test/**
 .idea/
 *.iml
-.mvn/
-mvnw
-mvnw.cmd
+
+# .mvn/, mvnw och mvnw.cmd ignorerades fram till 2026-09-22. De MASTE folja med nu:
+# Dockerfilen bygger med wrappern (ingen maven-avbildning har JDK 27 an), och en
+# ignorerad wrapper hade fallt bygget pa "COPY mvnw ." forst i Render-loggen.

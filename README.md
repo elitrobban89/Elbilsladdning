@@ -68,7 +68,7 @@ Live: [elitrobban.se/elbilsladdning](https://elitrobban.se/elbilsladdning/)
 
 | Del | Teknologi |
 |-----|-----------|
-| Backend | Spring Boot 3.5.16 / Java 25 |
+| Backend | Spring Boot 3.5.16 / Java 27 |
 | Hosting backend | Render (free tier, Docker) |
 | Stationsdata | [Open Charge Map API](https://openchargemap.io) |
 | Laddpunkter | [NOBIL API](https://info.nobil.no/api) — nordisk databas, ger antal kontakter per station |
@@ -78,6 +78,9 @@ Live: [elitrobban.se/elbilsladdning](https://elitrobban.se/elbilsladdning/)
 | Frontend | Vanilla JS + CSS, inbäddat i WordPress |
 | JS-hosting | Render static file (`/ev-app.js`) — serveras separat från WordPress |
 
+> **Java 27 sedan 2026-09-22** (GA 15 september). Provat på riktigt innan det byttes: ren ombyggnad på JDK 27+35, klassfilsversion **71** och gröna tester — varken Mockito eller Byte Buddy behövde röras.
+>
+> Bygget kör på **BellSoft Liberica 27**, inte Temurin. Liberica är samma OpenJDK 27, byggd av en annan leverantör; skälet till bytet är att Temurin ännu inte publicerat en enda 27-avbildning (`eclipse-temurin:27-jdk`, `:27-jre` och `maven:3.9-eclipse-temurin-27` svarar alla 404 på Docker Hub, och Adoptium listar `jdk-27+35` utan binärer). Att stanna på Temurin hade alltså betytt att stanna på Java 25. Byggsteget är `liberica-openjdk-debian:27` med **Maven-wrappern i repot** (3.9.16) — det finns ingen `maven`-avbildning med JDK 27 än, och wrappern hämtar Maven själv med wget, curl **eller bara java**, så den ställer inga krav på basavbildningen. Byt tillbaka till Temurin när deras 27 dyker upp: det är ett namnbyte på två rader.
 ---
 
 ## Tester & CI
