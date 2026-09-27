@@ -1,7 +1,18 @@
 package se.elitrobban.elbilsladdning.service;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
+import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
+import java.time.Duration;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
@@ -10,10 +21,30 @@ import java.util.Map;
  * sourced from each operator's public pricing page (utan abonnemang/roaming).
  * Updated 2026-06-13. Always shown with a disclaimer to check the operator's app.
  *
+ * <p><b>Uppdateras automatiskt sedan 2026-09-27.</b> Tabellen nedan är numera en RESERV. CarAdvice
+ * nattrutin kontrollerar nätverkens egna prissidor och publicerar det den kunnat belägga på
+ * {@code GET /api/laddpriser}; den här tjänsten hämtar det var sjätte timme och lägger det över
+ * reserven. Förut stod priserna från juni kvar tills någon råkade ändra dem för hand.
+ * Tre vakter: bara ett pris i kronor per kWh (eller "Gratis ..."), bara 1-15 kr/kWh, och aldrig
+ * ett hopp på mer än {@value #MAX_ANDRING_PROCENT} % mot reserven - en felläsning ska inte kunna
+ * göra IONITY gratis eller Lidl dyrast i landet. Svarar CarAdvice inte står förra listan kvar.
+ *
  * @author Robert Andersson Kopler
  */
 @Service
 public class OperatorPriceService {
+
+    private static final Logger log = LoggerFactory.getLogger(OperatorPriceService.class);
+    static final int MAX_ANDRING_PROCENT = 60;
+
+    @Value("${caradvice.api.url:https://caradvice.onrender.com}")
+    private String caradviceUrl = "https://caradvice.onrender.com";
+
+    private final HttpClient http = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(10)).build();
+    private final ObjectMapper json = new ObjectMapper();
+
+    /** Priserna som gäller just nu: reserven, med CarAdvice uppdateringar ovanpå. */
+    private volatile LinkedHashMap<String, String> aktuella = new LinkedHashMap<>(PRICES);
 
     // Order matters — first matching entry wins (more specific names first)
     private static final LinkedHashMap<String, String> PRICES = new LinkedHashMap<>();
@@ -51,6 +82,59 @@ public class OperatorPriceService {
         PRICES.put("st1",                 "~3,49 kr/kWh");
     }
 
+    /** Hämtar nattrutinens belagda priser från CarAdvice. Första gången en minut efter uppstart. */
+    @Scheduled(initialDelay = 60_000L, fixedRate = 6 * 3_600_000L)
+    public void hamtaFranCarAdvice() {
+        try {
+            HttpRequest req = HttpRequest.newBuilder(URI.create(caradviceUrl + "/api/laddpriser"))
+                    .timeout(Duration.ofSeconds(20)).GET().build();
+            HttpResponse<String> svar = http.send(req, HttpResponse.BodyHandlers.ofString());
+            if (svar.statusCode() != 200) throw new IllegalStateException("HTTP " + svar.statusCode());
+            int n = tillampa(json.readTree(svar.body()).path("priser"));
+            if (n > 0) log.info("Laddpriser: {} nätverk uppdaterade från CarAdvice", n);
+        } catch (Exception e) {
+            log.warn("Kunde inte hämta laddpriser från CarAdvice ({}), förra listan står kvar", e.getMessage());
+        }
+    }
+
+    /**
+     * Lägger CarAdvice priser över reserven. Ett pris som inte klarar vakterna hoppas över och
+     * loggas; resten gäller. Nycklar som inte finns i reserven läggs SIST, så de mer specifika
+     * reservnycklarna fortsätter att matcha först.
+     *
+     * @return antal priser som tillämpades
+     */
+    int tillampa(JsonNode priser) {
+        LinkedHashMap<String, String> ny = new LinkedHashMap<>(PRICES);
+        int n = 0;
+        for (JsonNode p : priser) {
+            String nyckel = p.path("natverk").asText("").trim().toLowerCase();
+            String pris = p.path("pris").asText("").trim();
+            String fel = fel(nyckel, pris);
+            if (fel != null) {
+                log.warn("Laddpris för {} avvisat ({}): {}", nyckel, fel, pris);
+                continue;
+            }
+            ny.put(nyckel, pris);
+            n++;
+        }
+        aktuella = ny;
+        return n;
+    }
+
+    /** @return skälet att avvisa priset, eller null */
+    String fel(String nyckel, String pris) {
+        if (nyckel.length() < 3) return "för kort nätverksnamn";
+        if (pris.toLowerCase().startsWith("gratis")) return null;
+        if (!pris.matches("~?\\d{1,2}([,.]\\d{1,2})? kr/kWh")) return "inte ett pris i kr/kWh";
+        Double kr = parseKr(pris);
+        if (kr == null || kr < 1.0 || kr > 15.0) return "utanför 1-15 kr/kWh";
+        Double reserv = parseKr(PRICES.get(nyckel));
+        if (reserv != null && Math.abs(kr - reserv) / reserv * 100 > MAX_ANDRING_PROCENT)
+            return "hopp på mer än " + MAX_ANDRING_PROCENT + " % mot " + reserv;
+        return null;
+    }
+
     /**
      * Returns an approximate price by matching operator name, then station name as fallback.
      * Returns null if neither matches a known network.
@@ -66,7 +150,7 @@ public class OperatorPriceService {
         String lower = text.toLowerCase();
         // Skip generic OCM placeholder
         if (lower.contains("unknown operator")) return null;
-        for (Map.Entry<String, String> e : PRICES.entrySet()) {
+        for (Map.Entry<String, String> e : aktuella.entrySet()) {
             if (lower.contains(e.getKey())) return e.getValue();
         }
         return null;
@@ -105,7 +189,7 @@ public class OperatorPriceService {
 
     private Ytterlighet ytterlighet(boolean lagst) {
         Ytterlighet bast = null;
-        for (Map.Entry<String, String> e : PRICES.entrySet()) {
+        for (Map.Entry<String, String> e : aktuella.entrySet()) {
             Double kr = parseKr(e.getValue());
             if (kr == null) continue;
             if (bast == null || (lagst ? kr < bast.kr() : kr > bast.kr())) {
@@ -136,7 +220,7 @@ public class OperatorPriceService {
         var seen = new java.util.HashSet<String>();
         double sum = 0;
         int n = 0;
-        for (Map.Entry<String, String> e : PRICES.entrySet()) {
+        for (Map.Entry<String, String> e : aktuella.entrySet()) {
             if (!seen.add(e.getKey().replaceAll("[^a-z0-9]", ""))) continue;
             Double kr = parseKr(e.getValue());
             if (kr == null) continue;

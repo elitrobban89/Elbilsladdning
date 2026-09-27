@@ -119,4 +119,46 @@ class OperatorPriceServiceTest {
         double avg = service.nationalAverageKr();
         assertThat(Math.round(avg * 100) / 100.0).isEqualTo(avg);
     }
+
+    // --- Priserna från CarAdvice nattrutin (2026-09-27) ---
+
+    private static com.fasterxml.jackson.databind.JsonNode priser(String json) throws Exception {
+        return new com.fasterxml.jackson.databind.ObjectMapper().readTree(json);
+    }
+
+    @Test
+    void ettBelagtPrisLaggsOverReserven() throws Exception {
+        int n = service.tillampa(priser("[{\"natverk\":\"IONITY\",\"pris\":\"~6,49 kr/kWh\"}]"));
+        assertThat(n).isEqualTo(1);
+        assertThat(service.getApproxPrice("IONITY GmbH", null)).isEqualTo("~6,49 kr/kWh");
+        // resten står kvar på reserven
+        assertThat(service.getApproxPrice("Tesla", null)).isEqualTo("~4,50 kr/kWh");
+    }
+
+    @Test
+    void enFellasningSlarAldrigIgenom() throws Exception {
+        service.tillampa(priser("""
+            [{"natverk":"ionity","pris":"~0,69 kr/kWh"},
+             {"natverk":"lidl","pris":"~29,90 kr/kWh"},
+             {"natverk":"tesla","pris":"se appen"},
+             {"natverk":"mer","pris":"~12,00 kr/kWh"}]"""));
+        // 0,69 är under golvet, 29,90 över taket, "se appen" inget pris, 12,00 ett hopp på 92 %
+        assertThat(service.getApproxPrice("IONITY", null)).isEqualTo("~6,96 kr/kWh");
+        assertThat(service.getApproxPrice("Lidl", null)).isEqualTo("~2,99 kr/kWh");
+        assertThat(service.getApproxPrice("Tesla", null)).isEqualTo("~4,50 kr/kWh");
+        assertThat(service.getApproxPrice("Mer", null)).isEqualTo("~6,24 kr/kWh");
+    }
+
+    @Test
+    void ettNyttNatverkLaggsSistSaSpecifikaNycklarVinnerFortfarande() throws Exception {
+        service.tillampa(priser("[{\"natverk\":\"okq8\",\"pris\":\"~5,49 kr/kWh\"}]"));
+        assertThat(service.getApproxPrice("OKQ8 Laddning", null)).isEqualTo("~5,49 kr/kWh");
+        assertThat(service.getApproxPrice("Kungsbacka Volvo", null)).isEqualTo("~6,35 kr/kWh");
+    }
+
+    @Test
+    void ytterligheternaFoljerDeAktuellaPriserna() throws Exception {
+        service.tillampa(priser("[{\"natverk\":\"lidl\",\"pris\":\"~2,49 kr/kWh\"}]"));
+        assertThat(service.billigast().kr()).isEqualTo(2.49);
+    }
 }
