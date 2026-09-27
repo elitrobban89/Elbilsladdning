@@ -170,5 +170,28 @@ prov("ett laddtips med HTML körs ALDRIG - det escapas", () => {
   if (!h.includes("&lt;img")) throw new Error("taggen escapades inte");
 });
 
+prov("Carla-raden bär antal, medianpris och Carlas rubrik - escapad", () => {
+  const h = byggMedEsc({ ...tomtState, carla: { manad: "augusti 2026", antal: 7246, medianprisKr: 351990,
+    rubrik: "Tesla och Volvo <b>står</b> för var tredje" } });
+  if (!h.includes("7 246") && !h.includes("7 246")) throw new Error("antalet saknas");
+  if (!h.includes("Carlas Elbilsindex")) throw new Error("källan saknas");
+  if (h.includes("<b>står</b>")) throw new Error("rubriken escapades inte");
+});
+
+prov("Carla-raden UTEBLIR när flödet inte svarat", () => {
+  const h = byggMedEsc({ ...tomtState });
+  if (h.includes("Carlas Elbilsindex")) throw new Error("raden byggdes utan data");
+});
+
+prov("värdetappet roterar mellan modellerna och räknar åldern ur årsmodellen", () => {
+  const lista = ["A-bil", "B-bil", "C-bil"].map(m => ({ model: m, modelYear: 2021, retentionPct: 50,
+    newPriceKr: 400000, medianPriceKr: 200000, cheapestPriceKr: null, adCount: 7 }));
+  const vecka = Math.floor(Date.now() / (7 * 24 * 3600 * 1000));
+  const h = byggMedEsc({ ...tomtState, valueRetention: lista, valueRetentionKalla: "k" });
+  if (!h.includes(lista[vecka % 3].model)) throw new Error("fel modell för veckan");
+  const ar = new Date().getFullYear() - 2021;
+  if (!h.includes("på " + ar + " år")) throw new Error("åldern räknades inte ur årsmodellen");
+});
+
 console.log(fel === 0 ? "\nAlla prov gröna\n" : "\n" + fel + " prov föll\n");
 process.exit(fel === 0 ? 0 : 1);
