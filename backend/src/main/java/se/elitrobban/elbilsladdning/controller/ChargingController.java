@@ -320,8 +320,19 @@ public class ChargingController {
         // Step 3: Groq — needs enriched station + price data, runs last
         var groqResult = groq.recommend(car, stations, buildCostComparison(car));
 
+        // Närmaste DC-station ur HELA listan - de fem ovan kan alla vara AC-laddare, och då
+        // hade laddtidskalkylatorn inget att räkna mot (se StationResponse.nearestDc).
+        StationDto nearestDc = narmasteDc(allStations);
+
         return ResponseEntity.ok(new StationResponse(car.name(), stations, groqResult.recommendation(),
-                                                    groqResult.funFact(), buildCarFact(car), sourceError));
+                                                    groqResult.funFact(), buildCarFact(car), sourceError, nearestDc));
+    }
+
+    static StationDto narmasteDc(List<StationDto> alla) {
+        return alla.stream()
+                .filter(s -> s.connectorType() != null && s.connectorType().contains("DC") && s.maxEffKw() > 0)
+                .min(java.util.Comparator.comparingDouble(StationDto::distanceKm))
+                .orElse(null);
     }
 
     /**

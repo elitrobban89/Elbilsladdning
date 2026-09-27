@@ -10,6 +10,11 @@ import java.util.List;
  *                    som får det första när det andra hände drar slutsatsen att appen är
  *                    trasig, eller värre, att det inte finns några laddare där.
  *
+ * @param nearestDc närmaste DC-station med känd effekt i HELA sökområdet, inte bara bland de
+ *                  fem som visas. Laddtidskalkylatorn behöver den: i centrala Jönköping var
+ *                  alla fem närmaste AC-laddare, och kalkylatorn skrev "Ingen DC-station
+ *                  hittad" fast snabbladdare fanns 1,6 km bort (2026-09-27). null om ingen finns.
+ *
  * @author Robert Andersson Kopler
  */
 public record StationResponse(
@@ -18,5 +23,6 @@ public record StationResponse(
         String recommendation,
         String funFact,
         String carFact,
-        String sourceError
+        String sourceError,
+        StationDto nearestDc
 ) {}
