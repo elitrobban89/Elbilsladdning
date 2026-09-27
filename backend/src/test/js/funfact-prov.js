@@ -148,5 +148,27 @@ prov("effektraden UTEBLIR när bildatabasen inte hunnit hem", () => {
   if (h.includes("Stolpens effekt är sällan taket")) throw new Error("raden byggdes på ett för tunt underlag");
 });
 
+// Laddtipsen (2026-09-27) går genom esc(), som bor UTANFÖR buildFunfactHtml. Klipps den inte
+// med blir det precis 08-18-felet igen: en ReferenceError som bara syns när det finns tips.
+const ESC = kalla.match(/  function esc\(s\) \{[\s\S]*?\n  \}/);
+if (!ESC) { console.error("Hittade inte esc() i ev-app.js"); process.exit(1); }
+function byggMedEsc(state) {
+  return new Function("state", ESC[0] + "\n" + block + "\n  return buildFunfactHtml(null);")(state);
+}
+
+prov("nattrutinens laddtips kommer med, med källa och fetstil", () => {
+  const h = byggMedEsc({ ...tomtState, laddtips: [
+    { ikon: "⚡", text: "Toppeffekten säger mindre än **laddkurvan**.", kalla: "Teknikens Värld" }] });
+  if (!h.includes("<strong>laddkurvan</strong>")) throw new Error("fetstilen blev inte <strong>");
+  if (!h.includes("(Teknikens Värld)")) throw new Error("källan saknas");
+});
+
+prov("ett laddtips med HTML körs ALDRIG - det escapas", () => {
+  const h = byggMedEsc({ ...tomtState, laddtips: [
+    { ikon: "⚡", text: "Tips <img src=x onerror=alert(1)> **fet**", kalla: "<script>x</script>" }] });
+  if (h.includes("<img") || h.includes("<script>")) throw new Error("taggen släpptes igenom");
+  if (!h.includes("&lt;img")) throw new Error("taggen escapades inte");
+});
+
 console.log(fel === 0 ? "\nAlla prov gröna\n" : "\n" + fel + " prov föll\n");
 process.exit(fel === 0 ? 0 : 1);
