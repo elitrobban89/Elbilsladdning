@@ -322,7 +322,7 @@ public class ChargingController {
 
         // Närmaste DC-station ur HELA listan - de fem ovan kan alla vara AC-laddare, och då
         // hade laddtidskalkylatorn inget att räkna mot (se StationResponse.nearestDc).
-        StationDto nearestDc = narmasteDc(allStations);
+        StationDto nearestDc = medPris(narmasteDc(allStations), stations, operatorPrices::getApproxPrice);
 
         return ResponseEntity.ok(new StationResponse(car.name(), stations, groqResult.recommendation(),
                                                     groqResult.funFact(), buildCarFact(car), sourceError, nearestDc));
@@ -333,6 +333,27 @@ public class ChargingController {
                 .filter(s -> s.connectorType() != null && s.connectorType().contains("DC") && s.maxEffKw() > 0)
                 .min(java.util.Comparator.comparingDouble(StationDto::distanceKm))
                 .orElse(null);
+    }
+
+    /**
+     * Ger närmaste snabbladdare ett pris, så laddtidskalkylatorn har något att räkna med.
+     *
+     * <p>Står den bland de fem visade används den berikade versionen därifrån (Chargeprice,
+     * API Ninjas, operatörstabellen). Står den utanför fick den aldrig något pris — och då
+     * skrev kalkylatorn "Pris saknas" fast operatörens pris fanns i vår egen tabell. Nu slås
+     * operatören upp där; OCM:s fritext står kvar som reserv.
+     */
+    static StationDto medPris(StationDto dc, List<StationDto> visade,
+                              java.util.function.BiFunction<String, String, String> operatorPris) {
+        if (dc == null) return null;
+        for (StationDto s : visade)
+            if (s.name().equals(dc.name()) && s.distanceKm() == dc.distanceKm()) return s;
+        if (dc.chargepricePerKwh() != null && !dc.chargepricePerKwh().isBlank()) return dc;
+        String pris = operatorPris.apply(dc.operator(), dc.name());
+        if (pris == null) return dc;
+        return new StationDto(dc.name(), dc.address(), dc.distanceKm(), dc.lat(), dc.lon(),
+                dc.maxEffKw(), dc.stationKw(), dc.connectorType(), dc.operator(), dc.usageCost(),
+                pris, dc.connectorCount(), dc.ocmId());
     }
 
     /**
