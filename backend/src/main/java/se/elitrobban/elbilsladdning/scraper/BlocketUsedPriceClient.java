@@ -133,6 +133,55 @@ public class BlocketUsedPriceClient {
         }
     }
 
+    /** {@code sales_form} för ny bil till salu hos handlare — Blockets egen kategori. */
+    public static final int SALES_FORM_NY = 2;
+    /** {@code sales_form} för begagnad bil till salu. */
+    public static final int SALES_FORM_BEGAGNAD = 1;
+
+    /**
+     * Rå annonslista för en fritextsökning bland rena elbilar ({@code fuel=4} är "El").
+     *
+     * <p><b>Ingen sortering skickas</b>, och det är med flit. Svaret kapas vid 50 annonser, och
+     * med {@code PRICE_ASC} blir medianen de 50 BILLIGASTES median — mätt 2026-10-01 hade
+     * "Volvo EX30" 181 träffar, och de 50 billigaste är ingen bild av marknaden. Blockets förval
+     * ({@code PUBLISHED_DESC}) ger i stället de senast inlagda, ett stickprov över hela skalan.
+     *
+     * <p>{@code price_from} sållar bort de flesta leasingannonser redan hos Blocket — de ligger
+     * kvar även med {@code sales_form} satt, med månadsavgiften i prisfältet ("3 495 kr").
+     *
+     * @return annonserna, en tom lista när inget hittades, eller {@code null} när anropet
+     *         misslyckades — så att anroparen kan låta bli att cacha ett fel som "inga annonser"
+     */
+    public List<JsonNode> elbilsannonser(String sokord, int salesForm) {
+        try {
+            String url = SEARCH_URL
+                    + "?q=" + URLEncoder.encode(sokord, StandardCharsets.UTF_8)
+                    + "&page=0&lim=60&fuel=4&price_from=" + LAGSTA_RIMLIGA_PRIS_KR
+                    + "&sales_form=" + salesForm;
+
+            HttpRequest req = HttpRequest.newBuilder()
+                    .uri(URI.create(url))
+                    .header("User-Agent", USER_AGENT)
+                    .header("Accept", "application/json")
+                    .timeout(Duration.ofSeconds(25))
+                    .GET().build();
+
+            HttpResponse<String> svar = http.send(req, HttpResponse.BodyHandlers.ofString());
+            if (svar.statusCode() != 200) {
+                log.warn("Blocket svarade {} för {} (sales_form {})", svar.statusCode(), sokord, salesForm);
+                return null;
+            }
+            JsonNode docs = mapper.readTree(svar.body()).path("docs");
+            if (!docs.isArray()) return null;
+            List<JsonNode> ut = new ArrayList<>();
+            docs.forEach(ut::add);
+            return ut;
+        } catch (Exception e) {
+            log.warn("Blocket {} (sales_form {}) misslyckades — {}", sokord, salesForm, e.getMessage());
+            return null;
+        }
+    }
+
     /** Priset om annonsen duger, annars null. Paketsynlig så filtret går att pröva utan HTTP. */
     Integer duglittPris(JsonNode annons, int arsmodell, String trimOrd) {
         JsonNode pris = annons.path("price").path("amount");

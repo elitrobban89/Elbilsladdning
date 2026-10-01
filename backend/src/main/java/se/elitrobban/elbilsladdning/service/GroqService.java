@@ -3,6 +3,7 @@ package se.elitrobban.elbilsladdning.service;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import java.time.Duration;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
@@ -47,6 +48,13 @@ public class GroqService {
     private record CacheEntry(GroqResult result, long timestamp) {}
     private final Map<String, CacheEntry> recommendCache = new ConcurrentHashMap<>();
     private volatile long quotaExceededUntil = 0;
+
+    /**
+     * Blocketpriser för de nämnda bilarna. Valfri: testerna skapar tjänsten med {@code new} och
+     * klarar sig utan, och då följer bara databasens ca-pris med.
+     */
+    @Autowired(required = false)
+    private ElbilsmarknadService marknad;
 
     public record GroqResult(String recommendation, String funFact) {}
 
@@ -144,7 +152,9 @@ public class GroqService {
     String namndaBilarBlock(List<Map<String, String>> history, List<CarSpec> cars) {
         List<CarSpec> traffar = namndaBilar(senasteAnvandartext(history), cars);
         if (traffar.isEmpty()) return "";
-        StringBuilder sb = new StringBuilder("NÄMNDA BILAR (uppslagna i databasen — använd DESSA siffror):\n");
+        StringBuilder sb = new StringBuilder("NÄMNDA BILAR (uppslagna i databasen — använd DESSA siffror;"
+                + " för pris gäller Blocket-raderna före ca-nypriset):\n");
+        int[] hamtningarKvar = { MAX_BLOCKET_HAMTNINGAR };
         for (CarSpec c : traffar) {
             sb.append("  ").append(c.name()).append(": ").append(tal(c.batteryKwh())).append(" kWh batteri");
             if (c.rangeKm() > 0) sb.append(", ").append(c.rangeKm()).append(" km WLTP (~")
@@ -152,8 +162,47 @@ public class GroqService {
             // "DC max 0 kW" läser som en trasig mätning; de tre AC-bara bilarna säger det rakt ut.
             sb.append(c.maxDcKw() > 0 ? ", DC max " + (int) c.maxDcKw() + " kW" : ", ingen snabbladdning");
             if (c.maxAcKw() > 0) sb.append(", AC max ").append(tal(c.maxAcKw())).append(" kW");
-            if (c.priceKr() > 0) sb.append(", ").append(c.priceKr() / 1000).append(" tkr");
+            if (c.priceKr() > 0) sb.append(", ca-nypris ").append(c.priceKr() / 1000).append(" tkr (EU-listpris omräknat)");
+            sb.append(marknadText(c.name(), hamtningarKvar));
             sb.append("\n");
+        }
+        return sb.toString();
+    }
+
+    /** Så många modeller som får hämtas från Blocket under en och samma fråga. */
+    static final int MAX_BLOCKET_HAMTNINGAR = 2;
+
+    /**
+     * Svenska priser från Blocket för bilen, eller tom sträng när de saknas.
+     *
+     * <p><b>Högst {@link #MAX_BLOCKET_HAMTNINGAR} nya hämtningar per fråga</b>, resten bara ur
+     * cachen. Varje modell är två Blocket-anrop som chatten väntar på, och en jämförelsefråga kan
+     * nämna sex bilar. Varianter av samma modell delar sökord och kostar bara första gången.
+     */
+    private String marknadText(String bilnamn, int[] hamtningarKvar) {
+        if (marknad == null) return "";
+        java.util.Optional<ElbilsmarknadService.Marknadsbild> bild = marknad.cachad(bilnamn);
+        if (bild.isEmpty() && hamtningarKvar[0] > 0) {
+            hamtningarKvar[0]--;
+            bild = marknad.forBil(bilnamn);
+        }
+        if (bild.isEmpty()) return "";
+        ElbilsmarknadService.Prisdel ny = bild.get().ny();
+        ElbilsmarknadService.Prisdel beg = bild.get().begagnad();
+        StringBuilder sb = new StringBuilder();
+        if (ny.antal() > 0) {
+            sb.append(" | NY på Blocket idag: från ").append(ny.billigastKr() / 1000)
+              .append(" tkr, median ").append(ny.medianKr() / 1000)
+              .append(" tkr (").append(ny.antal()).append(" annonser)");
+        }
+        if (beg.antal() > 0) {
+            sb.append(" | BEGAGNAD på Blocket idag: från ").append(beg.billigastKr() / 1000)
+              .append(" tkr, median ").append(beg.medianKr() / 1000)
+              .append(" tkr (").append(beg.antal()).append(" annonser");
+            if (beg.arsmodellFran() != null) {
+                sb.append(", årsmodell ").append(beg.arsmodellFran()).append("–").append(beg.arsmodellTill());
+            }
+            sb.append(")");
         }
         return sb.toString();
     }
@@ -351,7 +400,12 @@ BUDGET-REGLER (följ dessa exakt):
 """)
           // Talet var hårdkodat till 73 medan tabellen bar 520 rader. En prompt som säger fel
           // antal är en prompt modellen inte kan lita på — och den listar ändå bara topp 5.
-          .append("BILDATA (" + cars.size() + " modeller i databasen, topplistor nedan):\n\n");
+          .append("BILDATA (" + cars.size() + " modeller i databasen, topplistor nedan):\n")
+          // tkr-beloppen nedan är europeiska listpriser i euro, omräknade — inte svenska priser.
+          // De svenska står på Blocket-raderna under NÄMNDA BILAR när bilen nämnts.
+          .append("OBS: tkr i topplistorna är ungefärliga nypriser (europeiskt listpris omräknat), inte svenska"
+                + " priser. Säg \"ca\" om dem. Svenska ny- och begagnatpriser från Blocket står under"
+                + " NÄMNDA BILAR när de finns.\n\n");
 
         sb.append("Snabbaste DC-laddning:\n");
         cars.stream().filter(c -> c.maxDcKw() > 0 && c.priceKr() > 0)
