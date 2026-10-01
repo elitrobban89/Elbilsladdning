@@ -138,7 +138,7 @@ class ElbilsmarknadServiceTest {
                 annons("Volvo", "EX30", "El", 150_000, 2024, 20_000),    // över milgränsen
                 annons("Volvo", "EX30", "El", 350_000, 2024, null));     // mätarställning saknas
 
-        var bild = ElbilsmarknadService.berakna("Volvo EX30 Single Motor", nya, begagnade, 0L);
+        var bild = ElbilsmarknadService.berakna("Volvo EX30 Single Motor", true, nya, begagnade, 0L);
 
         assertThat(bild.modell()).isEqualTo("Volvo EX30");
         assertThat(bild.ny().antal()).isEqualTo(3);
@@ -162,9 +162,9 @@ class ElbilsmarknadServiceTest {
         };
         ElbilsmarknadService tjanst = new ElbilsmarknadService(trasig);
 
-        assertThat(tjanst.forBil("Volvo EX30 Twin Motor")).isEmpty();
-        assertThat(tjanst.cachad("Volvo EX30 Twin Motor")).isEmpty();
-        tjanst.forBil("Volvo EX30 Twin Motor");
+        assertThat(tjanst.forBil("Volvo EX30 Twin Motor", true)).isEmpty();
+        assertThat(tjanst.cachad("Volvo EX30 Twin Motor", true)).isEmpty();
+        tjanst.forBil("Volvo EX30 Twin Motor", true);
         assertThat(anrop[0]).isEqualTo(4); // försöker igen nästa gång i stället för att minnas felet
     }
 
@@ -180,9 +180,60 @@ class ElbilsmarknadServiceTest {
         };
         ElbilsmarknadService tjanst = new ElbilsmarknadService(blocket);
 
-        tjanst.forBil("Volvo EX30 Single Motor");
-        tjanst.forBil("Volvo EX30 Twin Motor");
+        tjanst.forBil("Volvo EX30 Single Motor", true);
+        tjanst.forBil("Volvo EX30 Twin Motor", true);
         assertThat(anrop[0]).isEqualTo(2);
-        assertThat(tjanst.cachad("Volvo EX30 Cross Country")).isPresent();
+        assertThat(tjanst.cachad("Volvo EX30 Cross Country", true)).isPresent();
+    }
+
+    private List<JsonNode> i3Nya() throws Exception {
+        return List.of(annons("BMW", "i3", "El", 750_000, 2027, 0),
+                       annons("BMW", "i3", "El", 775_000, 2027, 0),
+                       annons("BMW", "i3", "El", 800_000, 2026, 0));
+    }
+
+    private List<JsonNode> i3Begagnade() throws Exception {
+        return List.of(annons("BMW", "i3", "El", 99_000, 2015, 9_000),
+                       annons("BMW", "i3", "El", 180_000, 2019, 6_000),
+                       annons("BMW", "i3", "El", 230_000, 2022, 3_000),
+                       annons("BMW", "i3", "El", 720_000, 2027, 100));   // nya generationen, demobil
+    }
+
+    @Test
+    void gamlaI3FarIngetNyprisOchBaraGamlaGenerationensBegagnade() throws Exception {
+        // Mätt 2026-10-01: "BMW i3 120 Ah" (nedlagd 2022) visade nya generationens 775 tkr.
+        var bild = ElbilsmarknadService.berakna("BMW i3 120 Ah 37.9 kWh", false, i3Nya(), i3Begagnade(), 0L);
+        assertThat(bild.ny().antal()).isZero();
+        assertThat(bild.begagnad().antal()).isEqualTo(3);
+        assertThat(bild.begagnad().arsmodellTill()).isEqualTo(2022);
+    }
+
+    @Test
+    void nyaI3FarBaraNyaGenerationen() throws Exception {
+        var bild = ElbilsmarknadService.berakna("BMW i3 40 xDrive", true, i3Nya(), i3Begagnade(), 0L);
+        assertThat(bild.ny().antal()).isEqualTo(3);
+        assertThat(bild.begagnad().antal()).isEqualTo(1);
+        assertThat(bild.begagnad().arsmodellFran()).isEqualTo(2027);
+    }
+
+    @Test
+    void glesaBegagnatannonserUtanNyaBilarDelasInte() throws Exception {
+        // 2014 och sedan 2019 är inget generationsskifte när inga nya bilar säljs.
+        List<JsonNode> beg = List.of(annons("Renault", "Zoe", "El", 60_000, 2014, 9_000),
+                                     annons("Renault", "Zoe", "El", 140_000, 2019, 6_000),
+                                     annons("Renault", "Zoe", "El", 160_000, 2021, 4_000));
+        var bild = ElbilsmarknadService.berakna("Renault Zoe", false, List.of(), beg, 0L);
+        assertThat(bild.begagnad().antal()).isEqualTo(3);
+    }
+
+    @Test
+    void sammanhangandeArsmodellerDelasInte() throws Exception {
+        // Volvo EX30: begagnade 2024–2027 och nya 2026–2027 är en och samma generation.
+        List<JsonNode> nya = List.of(annons("Volvo", "EX30", "El", 450_000, 2027, 0));
+        List<JsonNode> beg = List.of(annons("Volvo", "EX30", "El", 330_000, 2024, 5_000),
+                                     annons("Volvo", "EX30", "El", 380_000, 2025, 2_000));
+        var bild = ElbilsmarknadService.berakna("Volvo EX30 Single Motor", true, nya, beg, 0L);
+        assertThat(bild.ny().antal()).isEqualTo(1);
+        assertThat(bild.begagnad().antal()).isEqualTo(2);
     }
 }

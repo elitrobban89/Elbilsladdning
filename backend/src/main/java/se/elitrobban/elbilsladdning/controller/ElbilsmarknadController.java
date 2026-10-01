@@ -32,10 +32,11 @@ public class ElbilsmarknadController {
      */
     @GetMapping("/car-market")
     public ResponseEntity<?> carMarket(@RequestParam String car) {
-        boolean kand = carSpecService.getCars().stream().anyMatch(c -> c.name().equals(car));
-        if (!kand) return ResponseEntity.badRequest().body(Map.of("error", "okänd bil"));
+        var spec = carSpecService.getCars().stream().filter(c -> c.name().equals(car)).findFirst();
+        if (spec.isEmpty()) return ResponseEntity.badRequest().body(Map.of("error", "okänd bil"));
 
-        return marknad.forBil(car)
+        // Utan pris i databasen säljs bilen inte längre ny — se ElbilsmarknadService.berakna.
+        return marknad.forBil(car, spec.get().priceKr() > 0)
                 .<ResponseEntity<?>>map(b -> {
                     Map<String, Object> svar = new LinkedHashMap<>();
                     svar.put("bil", b.bil());

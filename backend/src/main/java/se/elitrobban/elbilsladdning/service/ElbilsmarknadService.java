@@ -76,10 +76,11 @@ public class ElbilsmarknadService {
     /**
      * Marknadsbilden för en bil ur databasen. Hämtar från Blocket om den inte finns i cachen.
      *
+     * @param saljsNy om bilen säljs ny idag — se {@link #berakna} för varför det behövs
      * @return tom när Blocket inte svarade — ett fel får aldrig bli ett pris, och det cachas inte
      */
-    public Optional<Marknadsbild> forBil(String bilnamn) {
-        Optional<Marknadsbild> cachad = cachad(bilnamn);
+    public Optional<Marknadsbild> forBil(String bilnamn, boolean saljsNy) {
+        Optional<Marknadsbild> cachad = cachad(bilnamn, saljsNy);
         if (cachad.isPresent()) return cachad;
 
         String sokord = sokord(bilnamn);
@@ -90,7 +91,7 @@ public class ElbilsmarknadService {
         Annonser a = new Annonser(nya, beg, System.currentTimeMillis());
         if (cache.size() >= CACHE_MAX) cache.clear();
         cache.put(sokord, a);
-        Marknadsbild bild = berakna(bilnamn, a.nya(), a.begagnade(), a.tid());
+        Marknadsbild bild = berakna(bilnamn, saljsNy, a.nya(), a.begagnade(), a.tid());
         log.info("marknad: {} (sök \"{}\") — ny {} st, median {} kr; begagnad {} st, median {} kr",
                 bilnamn, sokord, bild.ny().antal(), bild.ny().medianKr(),
                 bild.begagnad().antal(), bild.begagnad().medianKr());
@@ -98,45 +99,102 @@ public class ElbilsmarknadService {
     }
 
     /** Bara det som redan finns i cachen — för AI-prompten, som inte ska vänta på Blocket i onödan. */
-    public Optional<Marknadsbild> cachad(String bilnamn) {
+    public Optional<Marknadsbild> cachad(String bilnamn, boolean saljsNy) {
         if (bilnamn == null) return Optional.empty();
         Annonser a = cache.get(sokord(bilnamn));
         if (a == null || System.currentTimeMillis() - a.tid() > CACHE_TTL_MS) return Optional.empty();
-        return Optional.of(berakna(bilnamn, a.nya(), a.begagnade(), a.tid()));
+        return Optional.of(berakna(bilnamn, saljsNy, a.nya(), a.begagnade(), a.tid()));
     }
 
-    /** Räknar fram marknadsbilden ur två annonslistor. Paketsynlig så den går att pröva utan HTTP. */
-    static Marknadsbild berakna(String bilnamn, List<JsonNode> nya, List<JsonNode> begagnade, long hamtadMs) {
+    /**
+     * Så många år utan en enda annons som räknas som ett generationsskifte under samma namn.
+     * BMW i3: den gamla tillverkades till 2022, den nya kom 2026 — mätt 2026-10-01.
+     */
+    static final int GENERATIONSGLAPP_AR = 3;
+
+    private record Fynd(int pris, Integer ar) {}
+
+    /**
+     * Räknar fram marknadsbilden ur två annonslistor. Paketsynlig så den går att pröva utan HTTP.
+     *
+     * <p><b>Samma namn kan vara två olika bilar.</b> Mätt 2026-10-01 visade "BMW i3 120 Ah" —
+     * den gamla, nedlagd 2022 — nypriset 775 tkr, för handlarna säljer nästa generations i3
+     * (årsmodell 2026–2027) under samma modellnamn. Databasen skiljer dem åt: en bil som inte
+     * längre säljs har inget pris ({@code saljsNy} falsk), det har bara den nya. Därför:
+     * <ul>
+     *   <li>Säljs bilen inte ny visas inget nypris alls — det hade gällt en annan bil.</li>
+     *   <li>Finns ett glapp på minst {@link #GENERATIONSGLAPP_AR} år mellan de gamla annonserna
+     *       och de nya bilarna till salu delas annonserna där. En bil som inte säljs ny får den
+     *       äldre sidan, en som säljs ny den nyare.</li>
+     * </ul>
+     * Utan nya bilar till salu görs ingen delning: glesa begagnatannonser (2014, sedan 2019)
+     * är inget generationsskifte, och då finns inget att skilja den gamla bilen från.
+     */
+    static Marknadsbild berakna(String bilnamn, boolean saljsNy, List<JsonNode> nya,
+                                List<JsonNode> begagnade, long hamtadMs) {
         String modell = null;
-        List<Integer> nyPriser = new ArrayList<>(), nyAr = new ArrayList<>();
+        List<Fynd> nyFynd = new ArrayList<>();
         for (JsonNode a : nya) {
             if (!sammaModell(bilnamn, a)) continue;
             Integer pris = pris(a, NY_LAGSTA_PRIS_KR);
             if (pris == null || mil(a) > NY_MAX_MIL) continue;
-            nyPriser.add(pris);
-            if (a.path("year").isNumber()) nyAr.add(a.path("year").asInt());
+            nyFynd.add(new Fynd(pris, ar(a)));
             if (modell == null) modell = visningsnamn(a);
         }
-        List<Integer> begPriser = new ArrayList<>(), begAr = new ArrayList<>();
+        List<Fynd> begFynd = new ArrayList<>();
         for (JsonNode a : begagnade) {
             if (!sammaModell(bilnamn, a)) continue;
             Integer pris = pris(a, BEGAGNAD_LAGSTA_PRIS_KR);
             // Saknad mätarställning på en begagnad bil går inte att pröva mot milgränsen.
             if (pris == null || !a.path("mileage").isNumber() || mil(a) > BEGAGNAD_MAX_MIL) continue;
-            begPriser.add(pris);
-            if (a.path("year").isNumber()) begAr.add(a.path("year").asInt());
+            begFynd.add(new Fynd(pris, ar(a)));
             if (modell == null) modell = visningsnamn(a);
         }
-        return new Marknadsbild(bilnamn, modell, prisdel(nyPriser, nyAr), prisdel(begPriser, begAr), hamtadMs);
+
+        Integer grans = generationsgrans(nyFynd, begFynd);
+        if (grans != null) {
+            nyFynd.removeIf(f -> f.ar() != null && (f.ar() >= grans) != saljsNy);
+            begFynd.removeIf(f -> f.ar() != null && (f.ar() >= grans) != saljsNy);
+        }
+        if (!saljsNy) nyFynd.clear();
+        return new Marknadsbild(bilnamn, modell, prisdel(nyFynd), prisdel(begFynd), hamtadMs);
     }
 
-    static Prisdel prisdel(List<Integer> priser, List<Integer> ar) {
-        if (priser.isEmpty()) return Prisdel.tom();
-        List<Integer> p = new ArrayList<>(priser);
+    /**
+     * Första årsmodellen i den nyare generationen, eller null när inget skifte syns: det SENASTE
+     * glappet på minst {@link #GENERATIONSGLAPP_AR} år före den äldsta nya bilen till salu. Det
+     * senaste och inte det största: begagnade i3:or har både 2015→2019 och 2022→2026, och det är
+     * glappet närmast de nya bilarna som är generationsskiftet.
+     */
+    static Integer generationsgrans(List<Fynd> nya, List<Fynd> begagnade) {
+        java.util.TreeSet<Integer> nyAr = new java.util.TreeSet<>();
+        nya.forEach(f -> { if (f.ar() != null) nyAr.add(f.ar()); });
+        if (nyAr.isEmpty()) return null;
+        java.util.TreeSet<Integer> allaAr = new java.util.TreeSet<>(nyAr);
+        begagnade.forEach(f -> { if (f.ar() != null) allaAr.add(f.ar()); });
+
+        Integer grans = null;
+        Integer forra = null;
+        for (int ar : allaAr) {
+            if (ar > nyAr.first()) break;
+            if (forra != null && ar - forra >= GENERATIONSGLAPP_AR) grans = ar;
+            forra = ar;
+        }
+        return grans;
+    }
+
+    private static Prisdel prisdel(List<Fynd> fynd) {
+        if (fynd.isEmpty()) return Prisdel.tom();
+        List<Integer> p = new ArrayList<>(fynd.stream().map(Fynd::pris).toList());
         Collections.sort(p);
+        List<Integer> ar = fynd.stream().map(Fynd::ar).filter(java.util.Objects::nonNull).toList();
         Integer fran = ar.isEmpty() ? null : Collections.min(ar);
         Integer till = ar.isEmpty() ? null : Collections.max(ar);
         return new Prisdel(p.size(), p.get(p.size() / 2), p.get(0), fran, till);
+    }
+
+    private static Integer ar(JsonNode annons) {
+        return annons.path("year").isNumber() ? annons.path("year").asInt() : null;
     }
 
     /**

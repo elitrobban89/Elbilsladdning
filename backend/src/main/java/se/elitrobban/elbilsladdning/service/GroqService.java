@@ -163,7 +163,7 @@ public class GroqService {
             sb.append(c.maxDcKw() > 0 ? ", DC max " + (int) c.maxDcKw() + " kW" : ", ingen snabbladdning");
             if (c.maxAcKw() > 0) sb.append(", AC max ").append(tal(c.maxAcKw())).append(" kW");
             if (c.priceKr() > 0) sb.append(", ca-nypris ").append(c.priceKr() / 1000).append(" tkr (EU-listpris omräknat)");
-            sb.append(marknadText(c.name(), hamtningarKvar));
+            sb.append(marknadText(c, hamtningarKvar));
             sb.append("\n");
         }
         return sb.toString();
@@ -179,12 +179,13 @@ public class GroqService {
      * cachen. Varje modell är två Blocket-anrop som chatten väntar på, och en jämförelsefråga kan
      * nämna sex bilar. Varianter av samma modell delar sökord och kostar bara första gången.
      */
-    private String marknadText(String bilnamn, int[] hamtningarKvar) {
+    private String marknadText(CarSpec bil, int[] hamtningarKvar) {
         if (marknad == null) return "";
-        java.util.Optional<ElbilsmarknadService.Marknadsbild> bild = marknad.cachad(bilnamn);
+        boolean saljsNy = bil.priceKr() > 0;
+        java.util.Optional<ElbilsmarknadService.Marknadsbild> bild = marknad.cachad(bil.name(), saljsNy);
         if (bild.isEmpty() && hamtningarKvar[0] > 0) {
             hamtningarKvar[0]--;
-            bild = marknad.forBil(bilnamn);
+            bild = marknad.forBil(bil.name(), saljsNy);
         }
         if (bild.isEmpty()) return "";
         ElbilsmarknadService.Prisdel ny = bild.get().ny();
