@@ -87,6 +87,16 @@ class ElbilsmarknadServiceTest {
     }
 
     @Test
+    void markeSomDatabasenSkriverTvaGangerEllerUtanMellanslag() throws Exception {
+        // Mätt i produktion 2026-10-01: båda gav noll träffar.
+        assertThat(ElbilsmarknadService.sammaModell("MG MG4 XPOWER",
+                annons("MG", "MG4", "El", 300_000, 2023, 3_000))).isTrue();
+        assertThat(ElbilsmarknadService.sokord("Lynk&Co 02")).isEqualTo("Lynk & Co 02");
+        assertThat(ElbilsmarknadService.sammaModell("Lynk&Co 02",
+                annons("Lynk & Co", "02", "El", 350_000, 2025, 1_000))).isTrue();
+    }
+
+    @Test
     void annonsMedMerDetaljerAnDatabasenRaknas() throws Exception {
         // Blocket skriver "Taycan 4S", "Taycan GTS" — databasen bara "Porsche Taycan".
         assertThat(ElbilsmarknadService.sammaModell("Porsche Taycan",

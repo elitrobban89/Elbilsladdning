@@ -164,6 +164,10 @@ public class ElbilsmarknadService {
         String annonsNamn = model.equals(make) || model.startsWith(make + " ") ? model : make + " " + model;
 
         String bil = norm(bilnamn);
+        // "MG MG4 XPOWER": databasen skriver märket både fristående och i modellen.
+        if (annonsNamn.equals(model) && !make.isEmpty() && bil.startsWith(make + " " + make)) {
+            bil = bil.substring(make.length() + 1);
+        }
         // Annonsen mer detaljerad än databasen: "Porsche Taycan" mot Blockets "Taycan 4S".
         if ((annonsNamn + " ").startsWith(bil + " ")) return true;
         if (!(bil + " ").startsWith(annonsNamn + " ")) return false;
@@ -187,6 +191,10 @@ public class ElbilsmarknadService {
      * <p>Diakriterna tas bort: Blocket skriver märket "Skoda".
      */
     static String sokord(String bilnamn) {
+        return blocketsMarke(modellOrd(bilnamn));
+    }
+
+    private static String modellOrd(String bilnamn) {
         String ascii = bilnamn == null ? "" : Normalizer.normalize(bilnamn, Normalizer.Form.NFD).replaceAll("\\p{M}", "");
         String[] ord = ascii.isBlank() ? new String[0] : ascii.trim().split("\\s+");
         if (ord.length == 0) return "";
@@ -198,6 +206,14 @@ public class ElbilsmarknadService {
         if (harSiffra(ord[1]) || ord.length < 3) return sb.toString();
         if (ord[2].matches("[\\p{L}\\d]")) sb.append(' ').append(ord[2]);
         return sb.toString();
+    }
+
+    /**
+     * Märken som Blocket stavar annorlunda i fritexten. Mätt 2026-10-01: "Lynk&Co 02" gav 2
+     * annonser, "Lynk & Co 02" gav 9.
+     */
+    private static String blocketsMarke(String sokord) {
+        return sokord.replaceFirst("(?i)^lynk\\s*&\\s*co\\b", "Lynk & Co");
     }
 
     private static boolean harSiffra(String s) {
