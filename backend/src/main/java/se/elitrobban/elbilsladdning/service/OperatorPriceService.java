@@ -76,7 +76,7 @@ public class OperatorPriceService {
         PRICES.put("kungsmässan",           "~5,00 kr/kWh");
         PRICES.put("bissmarksgatan",        "~4,75 kr/kWh");
         PRICES.put("borgmästaregatan",      "~4,75 kr/kWh");
-        PRICES.put("lidl",                "~2,99 kr/kWh");
+        PRICES.put("lidl",                "~5,80 kr/kWh"); // lidl.se 2026-10-05, DC utan app (var 2,99 sedan juni - för långt bort för 60 %-vakten)
         PRICES.put("ikea",                "Gratis (för kunder)");
         PRICES.put("preem",               "~3,49 kr/kWh");
         PRICES.put("st1",                 "~3,49 kr/kWh");

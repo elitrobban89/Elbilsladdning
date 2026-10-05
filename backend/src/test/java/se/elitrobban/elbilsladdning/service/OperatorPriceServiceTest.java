@@ -40,7 +40,7 @@ class OperatorPriceServiceTest {
         // "(Unknown Operator)" är OCM:s platshållare och får inte prismatchas,
         // men stationsnamnet ska fortfarande provas
         assertThat(service.getApproxPrice("(Unknown Operator)", "Lidl Kungsbacka"))
-                .isEqualTo("~2,99 kr/kWh");
+                .isEqualTo("~5,80 kr/kWh");
     }
 
     @Test
@@ -79,7 +79,7 @@ class OperatorPriceServiceTest {
     @Test
     void riksgenomsnittLiggerIRimligtSpann() {
         double avg = service.nationalAverageKr();
-        // Tabellvärdena spänner ~2,99–6,96 kr/kWh — snittet måste ligga däremellan
+        // Tabellvärdena spänner ~3,29–6,96 kr/kWh — snittet måste ligga däremellan
         assertThat(avg).isBetween(2.99, 6.96);
     }
 
@@ -144,7 +144,7 @@ class OperatorPriceServiceTest {
              {"natverk":"mer","pris":"~12,00 kr/kWh"}]"""));
         // 0,69 är under golvet, 29,90 över taket, "se appen" inget pris, 12,00 ett hopp på 92 %
         assertThat(service.getApproxPrice("IONITY", null)).isEqualTo("~6,96 kr/kWh");
-        assertThat(service.getApproxPrice("Lidl", null)).isEqualTo("~2,99 kr/kWh");
+        assertThat(service.getApproxPrice("Lidl", null)).isEqualTo("~5,80 kr/kWh");
         assertThat(service.getApproxPrice("Tesla", null)).isEqualTo("~4,50 kr/kWh");
         assertThat(service.getApproxPrice("Mer", null)).isEqualTo("~6,24 kr/kWh");
     }
