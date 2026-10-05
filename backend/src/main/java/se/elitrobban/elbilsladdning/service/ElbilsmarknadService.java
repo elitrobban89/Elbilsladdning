@@ -194,7 +194,7 @@ public class ElbilsmarknadService {
     }
 
     private static Integer ar(JsonNode annons) {
-        return annons.path("year").isNumber() ? annons.path("year").asInt() : null;
+        return annons.path("year").isNumber() ? annons.path("year").asInt(0) : null;
     }
 
     /**
@@ -280,7 +280,7 @@ public class ElbilsmarknadService {
 
     private static Integer pris(JsonNode annons, int lagsta) {
         JsonNode p = annons.path("price").path("amount");
-        return p.isNumber() && p.asInt() >= lagsta ? p.asInt() : null;
+        return p.isNumber() && p.asInt(0) >= lagsta ? p.asInt(0) : null;
     }
 
     private static int mil(JsonNode annons) {

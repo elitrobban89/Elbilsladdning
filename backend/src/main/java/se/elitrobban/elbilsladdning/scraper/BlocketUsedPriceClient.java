@@ -185,18 +185,18 @@ public class BlocketUsedPriceClient {
     /** Priset om annonsen duger, annars null. Paketsynlig så filtret går att pröva utan HTTP. */
     Integer duglittPris(JsonNode annons, int arsmodell, String trimOrd) {
         JsonNode pris = annons.path("price").path("amount");
-        if (!pris.isNumber() || pris.asInt() < LAGSTA_RIMLIGA_PRIS_KR) return null;
+        if (!pris.isNumber() || pris.asInt(0) < LAGSTA_RIMLIGA_PRIS_KR) return null;
 
         // Årsmodellen filtreras OM trots year_from/year_to. Blocket har visat sig ignorera
         // filterparametrar tyst förr (mileage_to gör det), och ett fel år förgiftar medianen.
         if (annons.path("year").asInt(-1) != arsmodell) return null;
 
         JsonNode mil = annons.path("mileage");
-        if (!mil.isNumber() || mil.asInt() > MAX_MIL) return null;
+        if (!mil.isNumber() || mil.asInt(0) > MAX_MIL) return null;
 
         if (!arElbil(annons)) return null;
         if (trimOrd != null && !varianttextMatchar(annons, trimOrd)) return null;
-        return pris.asInt();
+        return pris.asInt(0);
     }
 
     /**
