@@ -122,8 +122,8 @@ class OperatorPriceServiceTest {
 
     // --- Priserna från CarAdvice nattrutin (2026-09-27) ---
 
-    private static com.fasterxml.jackson.databind.JsonNode priser(String json) throws Exception {
-        return new com.fasterxml.jackson.databind.ObjectMapper().readTree(json);
+    private static tools.jackson.databind.JsonNode priser(String json) throws Exception {
+        return new tools.jackson.databind.ObjectMapper().readTree(json);
     }
 
     @Test

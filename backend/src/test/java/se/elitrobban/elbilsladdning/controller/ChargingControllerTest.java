@@ -2,8 +2,8 @@ package se.elitrobban.elbilsladdning.controller;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
-import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import se.elitrobban.elbilsladdning.model.CarSpec;
@@ -38,13 +38,13 @@ class ChargingControllerTest {
     @Autowired
     private MockMvc mvc;
 
-    @MockBean private OcmService ocm;
-    @MockBean private GroqService groq;
-    @MockBean private ChargepriceService chargeprice;
-    @MockBean private ApiNinjasService apiNinjas;
-    @MockBean private OperatorPriceService operatorPrices;
-    @MockBean private NobilService nobil;
-    @MockBean private CarSpecService carSpecService;
+    @MockitoBean private OcmService ocm;
+    @MockitoBean private GroqService groq;
+    @MockitoBean private ChargepriceService chargeprice;
+    @MockitoBean private ApiNinjasService apiNinjas;
+    @MockitoBean private OperatorPriceService operatorPrices;
+    @MockitoBean private NobilService nobil;
+    @MockitoBean private CarSpecService carSpecService;
 
     // Minst två bilar med räckvidd — kostnadsjämförelsen kräver att det finns "andra" bilar.
     private static final List<CarSpec> CARS = List.of(

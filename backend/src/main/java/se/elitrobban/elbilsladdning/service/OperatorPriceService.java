@@ -1,7 +1,7 @@
 package se.elitrobban.elbilsladdning.service;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.ObjectMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -108,8 +108,8 @@ public class OperatorPriceService {
         LinkedHashMap<String, String> ny = new LinkedHashMap<>(PRICES);
         int n = 0;
         for (JsonNode p : priser) {
-            String nyckel = p.path("natverk").asText("").trim().toLowerCase();
-            String pris = p.path("pris").asText("").trim();
+            String nyckel = p.path("natverk").asString("").trim().toLowerCase();
+            String pris = p.path("pris").asString("").trim();
             String fel = fel(nyckel, pris);
             if (fel != null) {
                 log.warn("Laddpris för {} avvisat ({}): {}", nyckel, fel, pris);

@@ -1,7 +1,7 @@
 package se.elitrobban.elbilsladdning.scraper;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.ObjectMapper;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
@@ -68,7 +68,7 @@ public class EvSalesRankSyncService {
             if (!arr.isArray() || arr.isEmpty())
                 return Map.of("status", "ERROR", "error", "Hittade inget inlägg med slug popularaste-elbilarna");
 
-            String html = arr.get(0).path("content").path("rendered").asText("");
+            String html = arr.get(0).path("content").path("rendered").asString("");
             List<EvSalesRankEntry> rows = parse(html);
             if (rows.isEmpty())
                 return Map.of("status", "ERROR", "error", "Kunde inte tolka rankingtabellen ur sidan");

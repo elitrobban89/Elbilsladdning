@@ -1,6 +1,6 @@
 package se.elitrobban.elbilsladdning.service;
 
-import com.fasterxml.jackson.databind.JsonNode;
+import tools.jackson.databind.JsonNode;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -215,9 +215,9 @@ public class ElbilsmarknadService {
      * tal släpps igenom: i "Nissan Leaf (50 kWh)" och "Škoda Elroq 85" är de versionen.
      */
     static boolean sammaModell(String bilnamn, JsonNode annons) {
-        if (!"el".equalsIgnoreCase(annons.path("fuel").asText("").trim())) return false;
-        String make = norm(annons.path("make").asText(""));
-        String model = norm(annons.path("model").asText(""));
+        if (!"el".equalsIgnoreCase(annons.path("fuel").asString("").trim())) return false;
+        String make = norm(annons.path("make").asString(""));
+        String model = norm(annons.path("model").asString(""));
         if (model.isEmpty()) return false;
         String annonsNamn = model.equals(make) || model.startsWith(make + " ") ? model : make + " " + model;
 
@@ -288,7 +288,7 @@ public class ElbilsmarknadService {
     }
 
     private static String visningsnamn(JsonNode annons) {
-        return (annons.path("make").asText("") + " " + annons.path("model").asText("")).trim();
+        return (annons.path("make").asString("") + " " + annons.path("model").asString("")).trim();
     }
 
     /**

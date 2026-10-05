@@ -1,7 +1,7 @@
 package se.elitrobban.elbilsladdning.controller;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.ObjectMapper;
 import jakarta.servlet.http.HttpServletRequest;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -179,7 +179,7 @@ public class ChargingController {
                     if ("[DONE]".equals(data)) break;
                     try {
                         JsonNode node = mapper.readTree(data);
-                        String token = node.at("/choices/0/delta/content").asText("");
+                        String token = node.at("/choices/0/delta/content").asString("");
                         if (!token.isEmpty()) {
                             outputStream.write(("data: " + mapper.writeValueAsString(token) + "\n\n").getBytes(StandardCharsets.UTF_8));
                             outputStream.flush();

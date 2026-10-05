@@ -2,8 +2,8 @@ package se.elitrobban.elbilsladdning.controller;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
-import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import se.elitrobban.elbilsladdning.service.VroomNewsService;
 import se.elitrobban.elbilsladdning.service.VroomTopCarsService;
@@ -31,8 +31,8 @@ class VroomControllerTest {
     @Autowired
     private MockMvc mvc;
 
-    @MockBean private VroomTopCarsService topCars;
-    @MockBean private VroomNewsService news;
+    @MockitoBean private VroomTopCarsService topCars;
+    @MockitoBean private VroomNewsService news;
 
     @Test
     void topplistanSvararPaSinAdress() throws Exception {

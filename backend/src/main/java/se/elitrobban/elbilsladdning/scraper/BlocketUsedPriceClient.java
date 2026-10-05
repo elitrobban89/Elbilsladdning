@@ -1,7 +1,7 @@
 package se.elitrobban.elbilsladdning.scraper;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.ObjectMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -213,7 +213,7 @@ public class BlocketUsedPriceClient {
      * betydligt stadigare sätt att skilja dem åt än att gissa på beteckningar i texten.
      */
     static boolean arElbil(JsonNode annons) {
-        return "el".equalsIgnoreCase(annons.path("fuel").asText("").trim());
+        return "el".equalsIgnoreCase(annons.path("fuel").asString("").trim());
     }
 
     /**
@@ -231,9 +231,9 @@ public class BlocketUsedPriceClient {
      * Utan filtret blandas trimnivåer och procenten blir fel på ett sätt som inte syns.
      */
     static boolean varianttextMatchar(JsonNode annons, String trimOrd) {
-        String text = (annons.path("model_specification").asText("") + " "
-                + annons.path("heading").asText("") + " "
-                + annons.path("facade_title").asText("")).toLowerCase();
+        String text = (annons.path("model_specification").asString("") + " "
+                + annons.path("heading").asString("") + " "
+                + annons.path("facade_title").asString("")).toLowerCase();
         return text.contains(trimOrd.toLowerCase());
     }
 }
