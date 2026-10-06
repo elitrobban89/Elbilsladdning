@@ -313,6 +313,18 @@ async function kor(svarEfterMs, avvisa) {
   ok("den som stängt av animationer får väntelaget stilla, inte borttaget",
      kalla.includes("@media (prefers-reduced-motion:reduce){.ev-picker-vantar .ev-picker-trigger"));
 
+  // WP-blocket i repot är det som klistras in vid nästa omklistring. Fixen från 08-20 gjordes
+  // bara i WP, så när blocket klistrades om efter namnbytet 10-01 kom leaflet från den sovande
+  // tjänsten tillbaka — och sidan visade bara rubriken vid kallstart igen (10-06).
+  const web = fs.readFileSync(path.join(__dirname, "..", "..", "..", "..", "elbilsladdning-web.html"), "utf8");
+  const franSovande = web.match(/<(script|link)\b[^>]*(src|href)="https:\/\/elbilsladdning\.onrender\.com[^"]*"[^>]*>/g) || [];
+  ok("WP-blocket hämtar inga filer från den sovande tjänsten", franSovande.length === 0);
+  ok("leaflet kommer från unpkg i WP-blocket",
+     web.includes('href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"') &&
+     web.includes('src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"'));
+  ok("ev-app.js kommer från CarAdvice i WP-blocket",
+     web.includes('src="https://caradvice.onrender.com/ev-app.js" defer'));
+
   console.log(fel === 0 ? "\nAlla prov gröna" : "\n" + fel + " prov FÖLL");
   process.exit(fel === 0 ? 0 : 1);
 })();
