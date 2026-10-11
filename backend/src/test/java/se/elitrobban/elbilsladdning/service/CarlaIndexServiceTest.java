@@ -64,4 +64,27 @@ class CarlaIndexServiceTest {
                 + "<pubDate>Mon, 25 May 2026 06:09:11 GMT</pubDate></item></channel></rss>";
         assertThat(CarlaIndexService.parse(xml)).isNull();
     }
+
+    @Test
+    void rubrikUtanArtalLasesUrDetRiktigaOktoberflodet() throws Exception {
+        // "Carlas Elbilsindex september: ..." (2026-10-05) saknar år och hoppades förut över i
+        // sex dygn medan appen visade augusti.
+        String xml;
+        try (InputStream in = CarlaIndexServiceTest.class.getResourceAsStream("/carla-rss-2026-10-11.xml")) {
+            xml = new String(in.readAllBytes(), StandardCharsets.UTF_8);
+        }
+        CarlaIndexService.Index i = CarlaIndexService.parse(xml);
+        assertThat(i.manad()).isEqualTo("september 2026");
+        assertThat(i.rubrik()).startsWith("Elbilar trotsar svagare bilmarknad");
+        assertThat(i.antal()).isEqualTo(8407);
+        assertThat(i.datum()).isEqualTo("2026-10-05");
+    }
+
+    @Test
+    void decemberindexetIJanuariHorTillForegaendeAr() {
+        var jan = VroomNewsService.tolkaDatum("Tue, 05 Jan 2027 08:00:00 GMT");
+        assertThat(CarlaIndexService.manadsEtikett("december", null, jan)).isEqualTo("december 2026");
+        assertThat(CarlaIndexService.manadsEtikett("December", "2026", jan)).isEqualTo("december 2026");
+        assertThat(CarlaIndexService.manadsEtikett("Q4", null, jan)).isNull();
+    }
 }

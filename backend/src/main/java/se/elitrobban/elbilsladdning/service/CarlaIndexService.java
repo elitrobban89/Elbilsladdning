@@ -43,8 +43,17 @@ public class CarlaIndexService {
     private static final String USER_AGENT =
             "Mozilla/5.0 (compatible; ElbilsladdningBot/1.0; +https://elbilsladdning.onrender.com)";
 
-    /** "Carlas Elbilsindex augusti 2026: Tesla och Volvo står för ..." */
-    private static final Pattern RUBRIK = Pattern.compile("Elbilsindex\\s+(\\p{L}+\\s+\\d{4})\\s*[:–-]\\s*(.+)");
+    /**
+     * "Carlas Elbilsindex augusti 2026: Tesla och Volvo står för ..." — årtalet är VALFRITT.
+     * Septemberindexet (2026-10-05) skrev bara "Elbilsindex september:", och med årtalet som krav
+     * hoppades det över i sex dygn medan appen visade augusti. Saknas året härleds det ur
+     * publiceringsdatumet, se {@link #manadsEtikett}.
+     */
+    private static final Pattern RUBRIK = Pattern.compile("Elbilsindex\\s+(\\p{L}+)(?:\\s+(\\d{4}))?\\s*[:–-]\\s*(.+)");
+
+    private static final java.util.List<String> MANADER = java.util.List.of(
+            "januari", "februari", "mars", "april", "maj", "juni",
+            "juli", "augusti", "september", "oktober", "november", "december");
     /** "såldes 7 246 begagnade elbilar" / "registrerades 9 673 försäljningar av begagnade elbilar" */
     private static final Pattern ANTAL = Pattern.compile(
             "(\\d{1,3}(?:[ \\u00a0\\u202f]\\d{3})*)\\s+(?:försäljningar av\\s+)?begagnade elbilar");
@@ -116,14 +125,30 @@ public class CarlaIndexService {
             if (!r.find()) continue;
             ZonedDateTime nar = VroomNewsService.tolkaDatum(datum.text().trim());
             if (nar == null || (nyastNar != null && !nar.isAfter(nyastNar))) continue;
+            String manad = manadsEtikett(r.group(1), r.group(2), nar);
+            if (manad == null) continue;
             Element beskr = item.selectFirst("description");
             String text = beskr == null ? "" : Jsoup.parse(beskr.text()).text();
             Element lank = item.selectFirst("link");
-            nyast = new Index(r.group(1).toLowerCase(), r.group(2).trim(), tal(ANTAL, text), tal(MEDIANPRIS, text),
+            nyast = new Index(manad, r.group(3).trim(), tal(ANTAL, text), tal(MEDIANPRIS, text),
                     lank == null ? "" : lank.text().trim(), nar.toLocalDate().toString(), "Carlas Elbilsindex");
             nyastNar = nar;
         }
         return nyast;
+    }
+
+    /**
+     * "september" + (inget år) + publicerad 2026-10-05 blir "september 2026". Indexet för en
+     * månad publiceras efter den, så ett månadsnamn SENARE i året än publiceringen hör till
+     * föregående år (decemberindexet i januari). Ett ord som inte är en månad ger null — då är
+     * det ingen indexrubrik vi förstår.
+     */
+    static String manadsEtikett(String manad, String ar, ZonedDateTime publicerad) {
+        int index = MANADER.indexOf(manad.toLowerCase(java.util.Locale.ROOT));
+        if (index < 0) return null;
+        if (ar != null) return MANADER.get(index) + " " + ar;
+        int year = publicerad.getYear() - (index + 1 > publicerad.getMonthValue() ? 1 : 0);
+        return MANADER.get(index) + " " + year;
     }
 
     private static Integer tal(Pattern p, String text) {
