@@ -2,6 +2,8 @@ package se.elitrobban.elbilsladdning.service;
 
 import org.junit.jupiter.api.Test;
 
+import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -156,5 +158,54 @@ class VroomTopCarsServiceTest {
 
         assertThat(bilar.get(0).plats()).isEqualTo(3);
         assertThat(bilar.get(1).plats()).isEqualTo(1);
+    }
+
+    // --- Kvartalsvideon utan "Topp 25"-lista (2026-10-10) ---------------------------------
+
+    private static String riktigtFlode() throws Exception {
+        try (InputStream in = VroomTopCarsServiceTest.class.getResourceAsStream("/studio-esse-rss-2026-10-11.xml")) {
+            return new String(in.readAllBytes(), StandardCharsets.UTF_8);
+        }
+    }
+
+    @Test
+    void kvartalsvideonVinnerOverForraManadensFullaLista() throws Exception {
+        // Det riktiga flödet 2026-10-11: Q3-videon överst saknar antal, augustivideon längre ned
+        // har dem. Förut visades augusti — en månad efter att september redovisats.
+        VroomTopCarsService.Topplista t = VroomTopCarsService.parse(riktigtFlode());
+
+        assertThat(t.manad()).isEqualTo("Q3 2026");
+        assertThat(t.lank()).isEqualTo("https://www.youtube.com/watch?v=lCeDshCo5XY");
+        assertThat(t.bilar()).extracting(VroomTopCarsService.Bil::modell).containsExactly(
+                "EX40", "Model Y", "EX30", "EV3", "EV2", "ID.7", "EV5", "iX3", "GLC");
+        assertThat(t.bilar().get(1)).isEqualTo(new VroomTopCarsService.Bil(2, "Model Y", "Tesla", null));
+        assertThat(t.bilar().get(5).marke()).isEqualTo("Volkswagen");      // "VW ID.7"
+        assertThat(t.bilar().get(8).marke()).isEqualTo("Mercedes-Benz");   // "Mercedes GLC"
+        assertThat(t.ingress()).startsWith("I september slog elbilsandelen nytt rekord")
+                .contains("Tesla Model Y blev septembers mest sålda bil");
+    }
+
+    @Test
+    void namnlistaUtanPeriodRaknasInte() {
+        // "Topp 5: billigaste elbilarna" i en testvideo är ingen försäljningslista.
+        assertThat(VroomTopCarsService.namnlista("Billigaste elbilarna",
+                "Topp 5: Kia EV2, Volvo EX30, MG MG4, Renault 5, Dacia Spring", null)).isNull();
+    }
+
+    @Test
+    void namnlistaMedOkandEnordsnamnAvstar() {
+        // "Polestar" ensamt är märke eller modell — vi vet inte vilket, och då hellre ingen lista.
+        assertThat(VroomTopCarsService.namnlista("Q2 2026",
+                "Topp 6: Volvo EX40, Polestar, Kia EV3, VW ID.7, Tesla Model Y, BMW iX3", null)).isNull();
+    }
+
+    @Test
+    void fullListaVinnerFortfarandeNarDenArNyast() {
+        // Reservvägen får aldrig tränga undan en riktig tabell med antal.
+        VroomTopCarsService.Topplista t = VroomTopCarsService.parse(flode(
+                LISTA + "\nTopp 10: Volvo EX40, Tesla Model Y, Volvo EX30, Kia EV3, Kia EV2 – Q3 2026"));
+
+        assertThat(t.manad()).isEqualTo("augusti 2026");
+        assertThat(t.bilar().get(0).antal()).isEqualTo(731);
     }
 }

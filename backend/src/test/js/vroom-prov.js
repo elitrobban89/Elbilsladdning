@@ -128,5 +128,31 @@ prov("nyhet utan länk får ingen tom länkrad", () => {
   if (h.includes("Läs hela pressmeddelandet")) throw new Error("länkraden ritades utan länk");
 });
 
+// Kvartalsvideon Q3 2026 gav bara namnen i ordning — backenden skickar antal: null.
+const Q3 = {
+  manad: "Q3 2026", kalla: "Vroom", sammanstalltAv: "Studio Esse",
+  lank: "https://www.youtube.com/watch?v=lCeDshCo5XY",
+  ingress: "Tesla Model Y blev septembers mest sålda bil & Volvo EX40 vann kvartalet.",
+  bilar: [
+    { plats: 1, modell: "EX40", marke: "Volvo", antal: null },
+    { plats: 2, modell: "Model Y", marke: "Tesla", antal: null }
+  ]
+};
+
+prov("lista utan antal: ingen antalskolumn och inget 'null' i kortet", () => {
+  const h = bygg({ ...tomt, vroomTopp: Q3 });
+  if (h.includes("null")) throw new Error("null skrevs ut");
+  if (h.includes("Nyreg.")) throw new Error("antalskolumnen står kvar utan antal");
+  if (!h.includes("Mest sålda elbilarna · Q3 2026")) throw new Error("fel rubrik för kvartalslistan");
+  if (!h.includes("Model Y")) throw new Error("modellen saknas");
+});
+
+prov("ingressen visas och escapas", () => {
+  const h = bygg({ ...tomt, vroomTopp: Q3 });
+  if (!h.includes("septembers mest sålda bil &amp; Volvo")) throw new Error("ingressen saknas eller escapades inte");
+  const utan = bygg({ ...tomt, vroomTopp: TOPP });
+  if (utan.includes("undefined")) throw new Error("topplista utan ingress skrev undefined");
+});
+
 console.log(fel ? "\n" + fel + " prov FÖLL\n" : "\nAlla prov gröna\n");
 process.exit(fel ? 1 : 0);

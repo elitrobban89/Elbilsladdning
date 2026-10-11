@@ -113,17 +113,26 @@ public class VroomTopCarsService {
     private volatile Topplista cache;
     private volatile long cachadVid;
 
-    /** En rad i topplistan. {@code antal} är nyregistreringar under månaden. */
-    public record Bil(int plats, String modell, String marke, int antal) {}
+    /**
+     * En rad i topplistan. {@code antal} är nyregistreringar under perioden, eller {@code null}
+     * när källan bara gav ordningen (se {@link #namnlista}) — ett påhittat tal är värre än inget.
+     */
+    public record Bil(int plats, String modell, String marke, Integer antal) {}
 
     /**
-     * @param manad    "augusti 2026" — månaden siffrorna gäller, inte månaden de publicerades
+     * @param manad    "augusti 2026" eller "Q3 2026" — perioden siffrorna gäller, inte när de publicerades
      * @param kalla    "Vroom", som är där siffrorna kommer ifrån
      * @param sammanstalltAv den som publicerar listan, för hederlig attribution
      * @param lank     videon listan är hämtad ur
-     * @param bilar    tio rader, plats 1 först
+     * @param bilar    tio rader, plats 1 först (färre när källan bara räknade upp namn)
+     * @param ingress  beskrivningens stycke om vem som sålde mest, eller {@code null}
      */
-    public record Topplista(String manad, String kalla, String sammanstalltAv, String lank, List<Bil> bilar) {}
+    public record Topplista(String manad, String kalla, String sammanstalltAv, String lank,
+                            List<Bil> bilar, String ingress) {
+        public Topplista(String manad, String kalla, String sammanstalltAv, String lank, List<Bil> bilar) {
+            this(manad, kalla, sammanstalltAv, lank, bilar, null);
+        }
+    }
 
     private static final Topplista TOM = new Topplista(null, "Vroom", "Studio Esse", null, List.of());
 
@@ -162,6 +171,11 @@ public class VroomTopCarsService {
      * Kanalflödet till topplista. Posterna gås igenom i flödets ordning (nyast först) och den
      * FÖRSTA som bär en läsbar lista vinner — kanalen publicerar också bilnyheter och tester,
      * och de saknar rubrikraden.
+     *
+     * <p>Den nyaste videon vinner även när den bara har {@link #namnlista en uppräkning utan
+     * antal}. Kvartalsvideon för Q3 2026 (2026-10-10) skrev ingen "Topp 25"-lista i beskrivningen,
+     * och då visade appen augustis siffror en hel månad efter att september redovisats. Rätt
+     * ordning utan antal är nyare kunskap än förra månadens fulla tabell.
      */
     static Topplista parse(String xml) {
         Document doc = Jsoup.parse(xml, "", Parser.xmlParser());
@@ -169,19 +183,104 @@ public class VroomTopCarsService {
             Element beskrivning = entry.selectFirst("media|description");
             if (beskrivning == null) continue;
             String text = beskrivning.wholeText();
-            Matcher rubrik = RUBRIK.matcher(text);
-            if (!rubrik.find()) continue;
-            List<Bil> bilar = rader(text);
-            if (bilar.size() < TOPP_ANTAL) continue;   // halv lista är ingen lista
-            varnaOmListanByttInnebord(bilar);
             Element lank = entry.selectFirst("link");
-            return new Topplista(
-                    manadsEtikett(rubrik.group(1), rubrik.group(2)),
-                    "Vroom", "Studio Esse",
-                    lank == null ? null : lank.attr("href"),
-                    List.copyOf(bilar.subList(0, TOPP_ANTAL)));
+            String href = lank == null ? null : lank.attr("href");
+            Matcher rubrik = RUBRIK.matcher(text);
+            if (rubrik.find()) {
+                List<Bil> bilar = rader(text);
+                if (bilar.size() >= TOPP_ANTAL) {   // halv lista är ingen lista
+                    varnaOmListanByttInnebord(bilar);
+                    return new Topplista(
+                            manadsEtikett(rubrik.group(1), rubrik.group(2)),
+                            "Vroom", "Studio Esse", href,
+                            List.copyOf(bilar.subList(0, TOPP_ANTAL)), ingress(text));
+                }
+            }
+            Element titel = entry.selectFirst("title");
+            Topplista namn = namnlista(titel == null ? "" : titel.text(), text, href);
+            if (namn != null) return namn;
         }
         return TOM;
+    }
+
+    /** "Topp 10: Volvo EX40, Tesla Model Y, …" — en uppräkning med kolon, inte "Topp 25 personbilar,". */
+    private static final Pattern NAMNRAD = Pattern.compile("(?iu)Topp\\s+\\d+\\s*:\\s*([^\\r\\n]+)");
+
+    /** "Q3 2026" i titeln eller beskrivningen. Utan period vet vi inte vad listan gäller, och då avstår vi. */
+    private static final Pattern KVARTAL = Pattern.compile("\\bQ([1-4])\\s*(20\\d{2})\\b");
+
+    /** Så få namn måste uppräkningen ha för att räknas som en topplista och inte en bisats. */
+    static final int MINSTA_NAMN = 5;
+
+    /**
+     * Märken i två ord, och förkortningar källan skriver i stället för hela märket. Allt annat
+     * läses som "första ordet är märket" — det håller för alla 25 rader i augustilistan.
+     */
+    private static final List<String> MARKEN_I_TVA_ORD = List.of("Mercedes-Benz", "Lynk & Co", "Alfa Romeo", "Land Rover");
+    private static final java.util.Map<String, String> MARKESFORKORTNINGAR = java.util.Map.of(
+            "VW", "Volkswagen", "Mercedes", "Mercedes-Benz");
+
+    /**
+     * Reservvägen: en uppräkning av namn i ordning, utan antal. Kräver både raden "Topp N:" och
+     * en kvartalsperiod — utan perioden kunde en ren nyhetsvideo med en lista över något annat
+     * ("Topp 5: billigaste elbilarna") slinka in som månadens försäljning.
+     */
+    static Topplista namnlista(String titel, String text, String lank) {
+        Matcher rad = NAMNRAD.matcher(text);
+        if (!rad.find()) return null;
+        Matcher period = KVARTAL.matcher(titel);
+        if (!period.find()) {
+            period = KVARTAL.matcher(text);
+            if (!period.find()) return null;
+        }
+        String upprakning = rad.group(1).trim()
+                .replaceAll("(?iu)[\\s,]*(och|m\\.?fl\\.?)\\s+(fler|andra)\\.?$", "")
+                .replaceAll("(?iu)\\s+m\\.?\\s?fl\\.?$", "")
+                .replaceAll("[.\\s]+$", "");
+        List<Bil> bilar = new ArrayList<>();
+        for (String del : upprakning.split("\\s*,\\s*|\\s+och\\s+")) {
+            Bil bil = bilUrNamn(bilar.size() + 1, del.trim());
+            if (bil == null) return null;   // ett namn vi inte förstår — hellre ingen lista än en skev
+            bilar.add(bil);
+        }
+        if (bilar.size() < MINSTA_NAMN) return null;
+        if (bilar.size() > TOPP_ANTAL) bilar = bilar.subList(0, TOPP_ANTAL);
+        varnaOmListanByttInnebord(bilar);
+        return new Topplista("Q" + period.group(1) + " " + period.group(2),
+                "Vroom", "Studio Esse", lank, List.copyOf(bilar), ingress(text));
+    }
+
+    /** "Tesla Model Y" blir Model Y (Tesla), "VW ID.7" blir ID.7 (Volkswagen). */
+    static Bil bilUrNamn(int plats, String namn) {
+        if (namn.isBlank()) return null;
+        for (String marke : MARKEN_I_TVA_ORD) {
+            if (namn.regionMatches(true, 0, marke + " ", 0, marke.length() + 1)) {
+                return new Bil(plats, namn.substring(marke.length()).trim(), marke, null);
+            }
+        }
+        int mellanslag = namn.indexOf(' ');
+        if (mellanslag < 0) return null;   // bara ett ord: märke eller modell, vi vet inte vilket
+        String marke = namn.substring(0, mellanslag);
+        return new Bil(plats, namn.substring(mellanslag + 1).trim(),
+                MARKESFORKORTNINGAR.getOrDefault(marke, marke), null);
+    }
+
+    /** Taket på ingressen: ett stycke, inte hela beskrivningen. */
+    static final int INGRESS_TAK = 420;
+
+    /**
+     * Stycket i beskrivningen som säger vem som sålde mest ("Tesla Model Y blev septembers mest
+     * sålda bil…"). Det är just det en namnlista utan antal inte kan säga själv. Stycken som
+     * innehåller själva listan eller en länk hoppas över.
+     */
+    static String ingress(String text) {
+        for (String stycke : text.split("\\R\\s*\\R")) {
+            String s = stycke.strip().replaceAll("\\s+", " ");
+            if (!s.matches("(?iu).*mest\\s+sål.*")) continue;
+            if (s.matches("(?iu).*(topp\\s+\\d|https?://).*")) continue;
+            return s.length() <= INGRESS_TAK ? s : s.substring(0, s.lastIndexOf(' ', INGRESS_TAK)) + " …";
+        }
+        return null;
     }
 
     /**

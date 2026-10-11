@@ -137,6 +137,7 @@ public class VroomNewsService {
             if (rubrik.isBlank() || datumText.isBlank()) continue;
             ZonedDateTime nar = tolkaDatum(datumText);
             if (nar == null) continue;
+            rubrik = rattaManadsrapportensAr(rubrik, nar);
             // description är fritext hos Mynewsdesk och har burit både taggar och rena entiteter.
             // Jsoup.parse().text() ger ren text oavsett vilket, och frontenden escapar dessutom.
             Element textEl = item.selectFirst("description");
@@ -203,6 +204,31 @@ public class VroomNewsService {
 
     private static final DateTimeFormatter UTAN_VECKODAG =
             DateTimeFormatter.ofPattern("d MMM yyyy HH:mm:ss Z", java.util.Locale.ENGLISH);
+
+    private static final java.util.regex.Pattern MANADSRAPPORT = java.util.regex.Pattern.compile(
+            "(?iu)^(Bilmarknaden\\s+)(\\p{L}+)(\\s+)(\\d{4})$");
+
+    /**
+     * Rättar årtalet i "Bilmarknaden &lt;månad&gt; &lt;år&gt;" när det bevisligen är ett skrivfel.
+     *
+     * <p>Releasen från 2026-09-01 bytte rubrik i efterhand till "Bilmarknaden augusti
+     * <b>2025</b>", fast texten gäller augusti 2026 (46 % elbilar, 22 177 nyregistreringar, och
+     * jämförelsen görs MED augusti 2025). Karusellen visade då en ettårig nyhet som månadens.
+     * Månadsrapporten publiceras alltid månaden efter den gäller, så när månadsnamnet stämmer
+     * med föregående månad men året inte gör det är året fel — inte innehållet. Allt annat
+     * lämnas orört: en rubrik vi inte känner igen skrivs aldrig om.
+     */
+    static String rattaManadsrapportensAr(String rubrik, ZonedDateTime publicerad) {
+        java.util.regex.Matcher m = MANADSRAPPORT.matcher(rubrik);
+        if (!m.matches()) return rubrik;
+        ZonedDateTime avser = publicerad.minusMonths(1);
+        String vantadManad = MANADER[avser.getMonthValue() - 1];
+        if (!m.group(2).equalsIgnoreCase(vantadManad)) return rubrik;
+        String vantatAr = String.valueOf(avser.getYear());
+        if (m.group(4).equals(vantatAr)) return rubrik;
+        log.info("Vroom-rubriken '{}' rättad till år {} (publicerad {})", rubrik, vantatAr, publicerad.toLocalDate());
+        return m.group(1) + m.group(2) + m.group(3) + vantatAr;
+    }
 
     static String manadsEtikett(ZonedDateTime nar) {
         return MANADER[nar.getMonthValue() - 1] + " " + nar.getYear();

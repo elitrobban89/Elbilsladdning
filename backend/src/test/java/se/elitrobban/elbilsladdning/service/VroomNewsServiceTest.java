@@ -157,4 +157,28 @@ class VroomNewsServiceTest {
 
         assertThat(n.manad()).isEqualTo("december 2026–januari 2027");
     }
+
+    @Test
+    void felArtalIManadsrapportensRubrikRattas() {
+        // Vroom bytte i efterhand rubriken på releasen från 2026-09-01 till "augusti 2025", fast
+        // texten gäller augusti 2026. Rapporten publiceras månaden efter den gäller.
+        String skrivfel = FIXTUR.replace("Bilmarknaden augusti 2026", "Bilmarknaden augusti 2025");
+        List<VroomNewsService.Nyhet> rader = VroomNewsService.parse(skrivfel);
+
+        assertThat(rader).extracting(VroomNewsService.Nyhet::rubrik).contains("Bilmarknaden augusti 2026")
+                .doesNotContain("Bilmarknaden augusti 2025");
+    }
+
+    @Test
+    void artalsrattningenRorBaraEnIgenkandManadsrapport() {
+        var sept = VroomNewsService.tolkaDatum("Tue, 01 Sep 2026 18:01:46 +0200");
+        var jan = VroomNewsService.tolkaDatum("Mon, 04 Jan 2027 09:00:00 +0100");
+
+        // Rätt år står kvar, annan månad står kvar, annan sorts rubrik står kvar.
+        assertThat(VroomNewsService.rattaManadsrapportensAr("Bilmarknaden augusti 2026", sept)).isEqualTo("Bilmarknaden augusti 2026");
+        assertThat(VroomNewsService.rattaManadsrapportensAr("Bilmarknaden juli 2025", sept)).isEqualTo("Bilmarknaden juli 2025");
+        assertThat(VroomNewsService.rattaManadsrapportensAr("Tillbakablick augusti 2025", sept)).isEqualTo("Tillbakablick augusti 2025");
+        // Över årsskiftet: januarirapporten gäller december FÖREGÅENDE år.
+        assertThat(VroomNewsService.rattaManadsrapportensAr("Bilmarknaden december 2027", jan)).isEqualTo("Bilmarknaden december 2026");
+    }
 }
