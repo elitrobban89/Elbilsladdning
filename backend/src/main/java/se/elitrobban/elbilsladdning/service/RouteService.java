@@ -14,6 +14,9 @@ import java.util.List;
 @Service
 public class RouteService {
 
+    /** Radierna som provas i tur och ordning när ett stopp saknar laddare inom de vanliga 15 km. */
+    static final int[] VIDGAD_RADIE_KM = {40, 80};
+
     private final OcmService ocmService;
     private final OperatorPriceService operatorPrices;
 
@@ -36,6 +39,14 @@ public class RouteService {
             double distFromStart = Math.round(totalKm * frac * 10.0) / 10.0;
 
             List<StationDto> nearby = ocmService.findNearby(lat, lon, car);
+            // Stoppen ligger på fågelvägen, och med bara 15 km radie föll stopp 1 på
+            // Stockholm–Göteborg (ute på landet mellan Flen och Katrineholm) bort tyst:
+            // "2 stopp" med ett enda kort och en första sträcka på 265 km för en bil som
+            // klarar 190. Ett stopp utan station är sämre än ett stopp en bit från linjen.
+            for (int radie : VIDGAD_RADIE_KM) {
+                if (!nearby.isEmpty()) break;
+                nearby = ocmService.findNearby(lat, lon, car, radie);
+            }
             int order = i;
             nearby.stream()
                   .max(Comparator.comparingDouble(StationDto::maxEffKw))

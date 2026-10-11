@@ -60,6 +60,15 @@ class OperatorPriceServiceTest {
         assertThat(service.getApproxPrice("IKEA Kållered", null)).isEqualTo("Gratis (för kunder)");
     }
 
+    @Test
+    void virtaFarEnUppgiftMenAldrigEttTal() {
+        // Atteviks Jönköping - Virta (2026-10-11) visade inget pris alls. Ägaren sätter priset,
+        // så kortet säger det — och raden får inte smyga in i snittet eller ytterligheterna.
+        String virta = service.getApproxPrice("VIRTA", "Atteviks Jönköping - Virta");
+        assertThat(virta).contains("Virta-appen");
+        assertThat(service.parseKr(virta)).isNull();
+    }
+
     // --- parseKr ---
 
     @Test

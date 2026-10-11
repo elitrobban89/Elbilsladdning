@@ -25,9 +25,14 @@ public class OcmService {
     private final RestClient http = HttpTimeouts.restClient();
 
     public List<StationDto> findNearby(double lat, double lon, CarSpec car) {
+        return findNearby(lat, lon, car, 15);
+    }
+
+    /** Samma sökning med egen radie — ruttplaneringen vidgar den när ett stopp hamnar i glesbygd. */
+    public List<StationDto> findNearby(double lat, double lon, CarSpec car, int radiusKm) {
         String url = OCM_URL +
                 "?output=json&latitude=" + lat + "&longitude=" + lon +
-                "&distance=15&distanceunit=KM&maxresults=15" +
+                "&distance=" + radiusKm + "&distanceunit=KM&maxresults=15" +
                 "&compact=false&verbose=false&key=" + apiKey;
 
         @SuppressWarnings("unchecked")

@@ -14,6 +14,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.within;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyDouble;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
@@ -122,5 +123,25 @@ class RouteServiceTest {
         when(ocmService.findNearby(anyDouble(), anyDouble(), any())).thenReturn(List.of(okand));
         RouteResponse r = service().plan(STHLM_LAT, STHLM_LON, GBG_LAT, GBG_LON, bil(300));
         assertThat(r.stops().get(0).station().chargepricePerKwh()).isNull();
+    }
+
+    @Test
+    void tomtStoppVidgarRadienTillEnStationHittas() {
+        // Stockholm–Göteborg 2026-10-11: stopp 1 hamnade mellan Flen och Katrineholm utan
+        // laddare inom 15 km och föll bort tyst — "2 stopp" med ett enda kort.
+        when(ocmService.findNearby(anyDouble(), anyDouble(), any())).thenReturn(List.of());
+        when(ocmService.findNearby(anyDouble(), anyDouble(), any(), eq(40))).thenReturn(List.of());
+        when(ocmService.findNearby(anyDouble(), anyDouble(), any(), eq(80))).thenReturn(List.of(station("Glesbygd", 50)));
+        RouteResponse r = service().plan(STHLM_LAT, STHLM_LON, GBG_LAT, GBG_LON, bil(300));
+        assertThat(r.stops()).hasSize(r.stopsNeeded());
+        assertThat(r.stops().get(0).station().name()).isEqualTo("Glesbygd");
+    }
+
+    @Test
+    void stationInomFemtonKmVidgarInteRadien() {
+        when(ocmService.findNearby(anyDouble(), anyDouble(), any())).thenReturn(List.of(station("Nära", 150)));
+        service().plan(STHLM_LAT, STHLM_LON, GBG_LAT, GBG_LON, bil(300));
+        org.mockito.Mockito.verify(ocmService, org.mockito.Mockito.never())
+                .findNearby(anyDouble(), anyDouble(), any(), org.mockito.ArgumentMatchers.anyInt());
     }
 }

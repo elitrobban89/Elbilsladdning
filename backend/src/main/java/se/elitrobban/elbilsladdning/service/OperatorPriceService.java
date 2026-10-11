@@ -78,6 +78,9 @@ public class OperatorPriceService {
         PRICES.put("borgmästaregatan",      "~4,75 kr/kWh");
         PRICES.put("lidl",                "~5,80 kr/kWh"); // lidl.se 2026-10-05, DC utan app (var 2,99 sedan juni - för långt bort för 60 %-vakten)
         PRICES.put("ikea",                "Gratis (för kunder)");
+        // Virta är en plattform: varje ägare (Atteviks, BRF:er, hotell) sätter sitt eget pris,
+        // så ett tal här vore en gissning. Utan siffror räknas raden aldrig in i snittet.
+        PRICES.put("virta",               "Ägaren sätter priset – se Virta-appen");
         PRICES.put("preem",               "~3,49 kr/kWh");
         PRICES.put("st1",                 "~3,49 kr/kWh");
     }
