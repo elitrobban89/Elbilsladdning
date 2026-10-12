@@ -8,12 +8,16 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
+import se.elitrobban.elbilsladdning.model.VroomTopplistaSnapshot;
+import se.elitrobban.elbilsladdning.repository.VroomTopplistaRepository;
+import tools.jackson.databind.ObjectMapper;
 
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.time.Duration;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
@@ -56,6 +60,8 @@ import java.util.regex.Pattern;
  *
  * <p>Hittas ingen post med en läsbar lista returneras en tom lista och frontenden ritar ingen
  * flik. <b>Ett misslyckande cachas aldrig</b> — samma linje som {@link VroomNewsService}.
+ * Den senaste lyckade listan sparas däremot i databasen ({@link VroomTopplistaSnapshot}) och
+ * visas när flödet inte svarar efter en omstart, i stället för ingen lista alls.
  *
  * @author Robert Andersson Kopler
  */
@@ -110,8 +116,21 @@ public class VroomTopCarsService {
             .connectTimeout(Duration.ofSeconds(10))
             .build();
 
+    /**
+     * Hur länge en lista ur databasen räcker innan flödet provas igen. Kortare än
+     * {@link #CACHE_TTL}: den är en reserv, och flödet ska få chansen så fort det är uppe.
+     */
+    static final Duration RESERV_TTL = Duration.ofMinutes(30);
+
+    private final VroomTopplistaRepository reserv;
+    private final ObjectMapper json = new ObjectMapper();
+
     private volatile Topplista cache;
     private volatile long cachadVid;
+
+    public VroomTopCarsService(VroomTopplistaRepository reserv) {
+        this.reserv = reserv;
+    }
 
     /**
      * En rad i topplistan. {@code antal} är nyregistreringar under perioden, eller {@code null}
@@ -145,13 +164,44 @@ public class VroomTopCarsService {
             if (!fardig.bilar().isEmpty()) {
                 cache = fardig;
                 cachadVid = System.currentTimeMillis();
+                if (!fardig.equals(cachad)) spara(fardig);
                 return fardig;
             }
             log.warn("Hittade ingen läsbar topplista i kanalflödet");
         } catch (Exception e) {
             log.warn("Kunde inte hämta topplistan: {}", e.toString());
         }
-        return cachad != null ? cachad : TOM;
+        if (cachad != null) return cachad;
+        Topplista sparad = lasSparad();
+        if (sparad == null) return TOM;
+        // Reserven cachas, men kort: annars provas flödet på varje anrop medan det är nere.
+        cache = sparad;
+        cachadVid = System.currentTimeMillis() - CACHE_TTL.toMillis() + RESERV_TTL.toMillis();
+        return sparad;
+    }
+
+    /** Skriver listan till reservraden. Ett databasfel loggas men fäller aldrig svaret. */
+    private void spara(Topplista lista) {
+        try {
+            reserv.save(new VroomTopplistaSnapshot(json.writeValueAsString(lista), Instant.now()));
+        } catch (Exception e) {
+            log.warn("Kunde inte spara topplistan som reserv: {}", e.toString());
+        }
+    }
+
+    /** Senast sparade listan, eller {@code null} om ingen finns eller den inte går att läsa. */
+    private Topplista lasSparad() {
+        try {
+            return reserv.findById(VroomTopplistaSnapshot.ENDA_ID)
+                    .map(rad -> {
+                        log.info("Visar topplistan sparad {} — kanalflödet svarar inte", rad.getSparadVid());
+                        return json.readValue(rad.getJson(), Topplista.class);
+                    })
+                    .orElse(null);
+        } catch (Exception e) {
+            log.warn("Kunde inte läsa den sparade topplistan: {}", e.toString());
+            return null;
+        }
     }
 
     String hamta() throws Exception {

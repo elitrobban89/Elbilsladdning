@@ -1,13 +1,23 @@
 package se.elitrobban.elbilsladdning.service;
 
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
+import se.elitrobban.elbilsladdning.model.VroomTopplistaSnapshot;
+import se.elitrobban.elbilsladdning.repository.VroomTopplistaRepository;
 
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
+import java.time.Instant;
 import java.util.List;
+import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 /**
  * Fixturen är kopierad ur det riktiga kanalflödet (hämtat 2026-09-17), inklusive em-dashen och
@@ -207,5 +217,77 @@ class VroomTopCarsServiceTest {
 
         assertThat(t.manad()).isEqualTo("augusti 2026");
         assertThat(t.bilar().get(0).antal()).isEqualTo(731);
+    }
+
+    // --- Reserven i databasen: 2026-10-12 gav YouTubes kanalflöden 404 för alla kanaler, och
+    // efter uppvakningen var minnescachen tom - kortet försvann fast listan fanns dagen innan.
+
+    /** Tjänst vars flöde antingen svarar med {@code xml} eller, om den är null, är nere. */
+    private static VroomTopCarsService tjanst(VroomTopplistaRepository repo, String xml) {
+        return new VroomTopCarsService(repo) {
+            @Override String hamta() {
+                if (xml == null) throw new IllegalStateException("HTTP 404");
+                return xml;
+            }
+        };
+    }
+
+    @Test
+    void lyckadHamtningSparasSomReserv() {
+        VroomTopplistaRepository repo = mock(VroomTopplistaRepository.class);
+
+        VroomTopCarsService.Topplista t = tjanst(repo, flode(LISTA)).senaste();
+
+        ArgumentCaptor<VroomTopplistaSnapshot> sparad = ArgumentCaptor.forClass(VroomTopplistaSnapshot.class);
+        verify(repo).save(sparad.capture());
+        assertThat(sparad.getValue().getId()).isEqualTo(VroomTopplistaSnapshot.ENDA_ID);
+        assertThat(sparad.getValue().getJson()).contains("\"manad\":\"augusti 2026\"", "EX40");
+        assertThat(t.bilar()).hasSize(VroomTopCarsService.TOPP_ANTAL);
+    }
+
+    @Test
+    void flodetNereEfterOmstartVisarDenSparadeListan() {
+        // Spara via en tjänst vars flöde fungerade, läs sedan med en ny (= omstartad) tjänst.
+        VroomTopplistaRepository repo = mock(VroomTopplistaRepository.class);
+        ArgumentCaptor<VroomTopplistaSnapshot> sparad = ArgumentCaptor.forClass(VroomTopplistaSnapshot.class);
+        VroomTopCarsService.Topplista fore = tjanst(repo, flode(LISTA)).senaste();
+        verify(repo).save(sparad.capture());
+        when(repo.findById(VroomTopplistaSnapshot.ENDA_ID)).thenReturn(Optional.of(sparad.getValue()));
+
+        VroomTopCarsService.Topplista efter = tjanst(repo, null).senaste();
+
+        assertThat(efter).isEqualTo(fore);
+    }
+
+    @Test
+    void reservenProvasInteOmPaVarjeAnrop() {
+        VroomTopplistaRepository repo = mock(VroomTopplistaRepository.class);
+        when(repo.findById(VroomTopplistaSnapshot.ENDA_ID)).thenReturn(Optional.of(
+                new VroomTopplistaSnapshot("{\"manad\":\"Q3 2026\",\"kalla\":\"Vroom\",\"bilar\":"
+                        + "[{\"plats\":1,\"modell\":\"EX40\",\"marke\":\"Volvo\",\"antal\":null}]}", Instant.now())));
+        VroomTopCarsService s = tjanst(repo, null);
+
+        s.senaste();
+        s.senaste();
+
+        verify(repo, times(1)).findById(VroomTopplistaSnapshot.ENDA_ID);
+    }
+
+    @Test
+    void utanReservOchUtanFlodeBlirListanTom() {
+        VroomTopplistaRepository repo = mock(VroomTopplistaRepository.class);
+        when(repo.findById(VroomTopplistaSnapshot.ENDA_ID)).thenReturn(Optional.empty());
+
+        assertThat(tjanst(repo, null).senaste().bilar()).isEmpty();
+    }
+
+    @Test
+    void databasfelFallerAldrigSvaret() {
+        VroomTopplistaRepository repo = mock(VroomTopplistaRepository.class);
+        when(repo.save(any())).thenThrow(new IllegalStateException("db nere"));
+        when(repo.findById(any())).thenThrow(new IllegalStateException("db nere"));
+
+        assertThat(tjanst(repo, flode(LISTA)).senaste().bilar()).hasSize(VroomTopCarsService.TOPP_ANTAL);
+        assertThat(tjanst(repo, null).senaste().bilar()).isEmpty();
     }
 }
