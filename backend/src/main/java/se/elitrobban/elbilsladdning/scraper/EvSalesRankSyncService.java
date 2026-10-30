@@ -35,6 +35,13 @@ import java.util.regex.Pattern;
  * Tabellen ersätts i sin helhet varje körning (delete + save) — ingen historik sparas,
  * bara senaste kända ranking.
  *
+ * <p><b>Sedan 2026-10-30 läses CarAdvice först.</b> elbilsvaruhuset.se slutade uppdatera sitt
+ * inlägg efter juni 2026 ({@code modified 2026-07-02}), så kortet stod på "januari–juni" i
+ * fyra månader. CarAdvice läser redan Mobility Swedens månadsrapport (xlsx) och lämnar
+ * topp tio hittills i år på {@code /api/elbil-ranking} — samma siffror, direkt ur källan.
+ * elbilsvaruhuset ligger kvar som reserv när CarAdvice inte svarar. Priset finns bara där;
+ * rader ur CarAdvice har {@code priceKr = null}, och ingen vy läser det fältet.
+ *
  * @author Robert Andersson Kopler
  */
 @Service
@@ -44,6 +51,9 @@ public class EvSalesRankSyncService {
 
     @Value("${elbilsvaruhuset.api.url:https://elbilsvaruhuset.se/wp-json/wp/v2/posts?slug=popularaste-elbilarna&_fields=id,content,modified}")
     private String apiUrl;
+
+    @Value("${caradvice.api.url:https://caradvice.onrender.com}")
+    private String caradviceUrl = "https://caradvice.onrender.com";
 
     private static final String USER_AGENT =
             "Mozilla/5.0 (compatible; ElbilsladdningBot/1.0; +https://elbilsladdning.onrender.com)";
@@ -59,9 +69,57 @@ public class EvSalesRankSyncService {
         this.repo = repo;
     }
 
-    /** Hämtar senaste inlägget och ersätter rankingtabellen. Returnerar körsammanfattning. */
+    /** Hämtar senaste rankingen och ersätter tabellen. Returnerar körsammanfattning. */
     @Transactional
     public Map<String, Object> syncNow() {
+        List<EvSalesRankEntry> franCarAdvice = hamtaFranCarAdvice();
+        if (!franCarAdvice.isEmpty()) return ersatt(franCarAdvice, "Mobility Sweden via CarAdvice");
+        return syncFranElbilsvaruhuset();
+    }
+
+    /** CarAdvice-rankingen, eller tom lista när den inte går att få — då tar reserven över. */
+    List<EvSalesRankEntry> hamtaFranCarAdvice() {
+        try {
+            List<EvSalesRankEntry> rader = parseCarAdvice(fetchJson(caradviceUrl + "/api/elbil-ranking"));
+            if (rader.isEmpty()) log.warn("CarAdvice elbil-ranking gav inga rader — provar elbilsvaruhuset");
+            return rader;
+        } catch (Exception e) {
+            log.warn("CarAdvice elbil-ranking svarade inte ({}) — provar elbilsvaruhuset", e.getMessage());
+            return List.of();
+        }
+    }
+
+    /** {@code {"period":"januari–september 2026","rader":[{"plats":1,"modell":"Volvo EX40","antal":8897}]}} */
+    List<EvSalesRankEntry> parseCarAdvice(String json) {
+        JsonNode rot = mapper.readTree(json);
+        String period = rot.path("period").asString("");
+        List<EvSalesRankEntry> ut = new ArrayList<>();
+        for (JsonNode rad : rot.path("rader")) {
+            int plats = rad.path("plats").asInt(0);
+            String modell = rad.path("modell").asString("").trim();
+            int antal = rad.path("antal").asInt(0);
+            if (plats <= 0 || modell.isEmpty() || antal <= 0) continue;
+            ut.add(new EvSalesRankEntry(plats, modell, antal, null, period.isEmpty() ? null : period));
+        }
+        return ut;
+    }
+
+    private Map<String, Object> ersatt(List<EvSalesRankEntry> rows, String kalla) {
+        repo.deleteAll();
+        repo.saveAll(rows);
+
+        Map<String, Object> result = new LinkedHashMap<>();
+        result.put("status", "OK");
+        result.put("source", kalla);
+        result.put("imported", rows.size());
+        result.put("period", rows.get(0).getPeriodLabel());
+        result.put("top3", rows.stream().limit(3)
+                .map(r -> r.getRank() + ". " + r.getModel() + " (" + r.getUnits() + " st)").toList());
+        log.info("Elbilsrankingen synkad ur {}: {} modeller, period {}", kalla, rows.size(), rows.get(0).getPeriodLabel());
+        return result;
+    }
+
+    private Map<String, Object> syncFranElbilsvaruhuset() {
         try {
             String json = fetchJson(apiUrl);
             JsonNode arr = mapper.readTree(json);
@@ -73,17 +131,7 @@ public class EvSalesRankSyncService {
             if (rows.isEmpty())
                 return Map.of("status", "ERROR", "error", "Kunde inte tolka rankingtabellen ur sidan");
 
-            repo.deleteAll();
-            repo.saveAll(rows);
-
-            Map<String, Object> result = new LinkedHashMap<>();
-            result.put("status", "OK");
-            result.put("imported", rows.size());
-            result.put("period", rows.get(0).getPeriodLabel());
-            result.put("top3", rows.stream().limit(3)
-                    .map(r -> r.getRank() + ". " + r.getModel() + " (" + r.getUnits() + " st)").toList());
-            log.info("elbilsvaruhuset sync: {} modeller, period {}", rows.size(), rows.get(0).getPeriodLabel());
-            return result;
+            return ersatt(rows, "elbilsvaruhuset.se");
         } catch (Exception e) {
             log.error("elbilsvaruhuset sync misslyckades: {}", e.getMessage(), e);
             return Map.of("status", "ERROR", "error", String.valueOf(e.getMessage()));

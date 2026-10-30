@@ -59,6 +59,60 @@ class EvSalesRankSyncServiceHttpTest {
         service = new EvSalesRankSyncService(repo);
         ReflectionTestUtils.setField(service, "apiUrl",
                 "http://127.0.0.1:" + server.getAddress().getPort() + "/");
+        // CarAdvice pekas mot samma stubbe: dess svar är då WordPress-arrayen, som inte är en
+        // ranking, så de gamla proven går vidare till reserven precis som förut.
+        ReflectionTestUtils.setField(service, "caradviceUrl",
+                "http://127.0.0.1:" + server.getAddress().getPort());
+        server.createContext("/api/elbil-ranking", exchange -> {
+            byte[] bytes = caradviceBody.getBytes(StandardCharsets.UTF_8);
+            exchange.getResponseHeaders().set("Content-Type", "application/json; charset=utf-8");
+            exchange.sendResponseHeaders(caradviceStatus, bytes.length);
+            try (OutputStream os = exchange.getResponseBody()) { os.write(bytes); }
+        });
+    }
+
+    private volatile int caradviceStatus = 503;
+    private volatile String caradviceBody = "{\"error\":\"nere\"}";
+
+    @Test
+    void carAdviceGarForeElbilsvaruhuset() throws Exception {
+        caradviceStatus = 200;
+        caradviceBody = """
+                {"period":"januari–september 2026","kalla":"Mobility Sweden","rader":[
+                  {"plats":1,"modell":"Volvo EX40","antal":8897},
+                  {"plats":2,"modell":"Tesla Model Y","antal":7100}]}""";
+        stubPostResponse(TABLE_HTML);
+
+        Map<String, Object> result = service.syncNow();
+
+        assertThat(result.get("status")).isEqualTo("OK");
+        assertThat(result.get("source")).isEqualTo("Mobility Sweden via CarAdvice");
+        assertThat(result.get("period")).isEqualTo("januari–september 2026");
+        @SuppressWarnings("unchecked")
+        ArgumentCaptor<List<EvSalesRankEntry>> captor = ArgumentCaptor.forClass(List.class);
+        verify(repo).saveAll(captor.capture());
+        assertThat(captor.getValue().get(0).getUnits()).isEqualTo(8897);
+        assertThat(captor.getValue().get(0).getPriceKr()).isNull();
+    }
+
+    @Test
+    void carAdviceNereGerReservenElbilsvaruhuset() throws Exception {
+        stubPostResponse(TABLE_HTML);
+
+        Map<String, Object> result = service.syncNow();
+
+        assertThat(result.get("status")).isEqualTo("OK");
+        assertThat(result.get("source")).isEqualTo("elbilsvaruhuset.se");
+        assertThat(result.get("period")).isEqualTo("januari-juni 2026");
+    }
+
+    @Test
+    void carAdviceUtanRaderGerReserven() throws Exception {
+        caradviceStatus = 200;
+        caradviceBody = "{\"period\":\"januari–september 2026\",\"rader\":[]}";
+        stubPostResponse(TABLE_HTML);
+
+        assertThat(service.syncNow().get("source")).isEqualTo("elbilsvaruhuset.se");
     }
 
     @AfterEach
