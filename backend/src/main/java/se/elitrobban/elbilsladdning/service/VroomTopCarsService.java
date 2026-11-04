@@ -350,6 +350,9 @@ public class VroomTopCarsService {
     /** Taket på ingressen: ett stycke, inte hela beskrivningen. */
     static final int INGRESS_TAK = 420;
 
+    /** Där videons presentatör börjar tala om sig själv: "Jag tittar också på ...". Det hör inte hemma i appen. */
+    private static final Pattern EGNA_ORD = Pattern.compile("(?<=[.!?])\\s+(?:Jag|Vi|Dessutom)\\s");
+
     /**
      * Stycket i beskrivningen som säger vem som sålde mest ("Tesla Model Y blev septembers mest
      * sålda bil…"). Det är just det en namnlista utan antal inte kan säga själv. Stycken som
@@ -360,6 +363,8 @@ public class VroomTopCarsService {
             String s = stycke.strip().replaceAll("\\s+", " ");
             if (!s.matches("(?iu).*mest\\s+sål.*")) continue;
             if (s.matches("(?iu).*(topp\\s+\\d|https?://).*")) continue;
+            Matcher egna = EGNA_ORD.matcher(s);
+            if (egna.find()) s = s.substring(0, egna.start());
             return s.length() <= INGRESS_TAK ? s : s.substring(0, s.lastIndexOf(' ', INGRESS_TAK)) + " …";
         }
         return null;

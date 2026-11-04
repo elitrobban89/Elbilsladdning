@@ -199,7 +199,7 @@ class VroomTopCarsServiceTest {
     private static final String OKTOBER = """
             Elbilsandelen i Sverige är nu över 50 procent. I oktober 2026 landade den på 51,6 %.
 
-            Mest sålda elbil i oktober 2026 var Volvo EX40 med 909 bilar. Tvåa var Volvo EX30 och trea BMW iX3. Volvo vann även märkeskampen före Kia och Volkswagen.
+            Mest sålda elbil i oktober 2026 var Volvo EX40 med 909 bilar. Tvåa var Volvo EX30 och trea BMW iX3. Volvo vann även märkeskampen före Kia och Volkswagen. Jag tittar också på Kia EV2, EV3 och EV5. Dessutom går jag igenom de mest sålda transportbilarna.
 
             Siffrorna kommer från http://vroom.nu och är rensade från hyrbilsbolag.
             """;
@@ -212,7 +212,8 @@ class VroomTopCarsServiceTest {
                 new VroomTopCarsService.Bil(1, "EX40", "Volvo", 909),
                 new VroomTopCarsService.Bil(2, "EX30", "Volvo", null),
                 new VroomTopCarsService.Bil(3, "iX3", "BMW", null));
-        assertThat(lista.ingress()).startsWith("Mest sålda elbil i oktober 2026");
+        assertThat(lista.ingress()).isEqualTo("Mest sålda elbil i oktober 2026 var Volvo EX40 med 909 bilar. "
+                + "Tvåa var Volvo EX30 och trea BMW iX3. Volvo vann även märkeskampen före Kia och Volkswagen.");
     }
 
     @Test
