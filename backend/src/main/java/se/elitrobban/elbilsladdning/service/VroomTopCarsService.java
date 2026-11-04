@@ -249,8 +249,40 @@ public class VroomTopCarsService {
             Element titel = entry.selectFirst("title");
             Topplista namn = namnlista(titel == null ? "" : titel.text(), text, href);
             if (namn != null) return namn;
+            Topplista tre = treIBeskrivningen(text, href);
+            if (tre != null) return tre;
         }
         return TOM;
+    }
+
+    /**
+     * "Mest sålda elbil i oktober 2026 var Volvo EX40 med 909 bilar. Tvåa var Volvo EX30 och trea
+     * BMW iX3." Hela meningen krävs, med månad och år: en bilnyhet kan säga "mest såld" utan att
+     * vara månadens försäljning. Punkten måste följas av mellanslag eller slut, annars bryter
+     * "VW ID.7" meningen mitt i modellnamnet.
+     */
+    private static final Pattern TRE_I_TEXT = Pattern.compile(
+            "(?iu)Mest\\s+sålda\\s+elbil\\s+i\\s+(\\p{L}+)\\s+(20\\d{2})\\s+var\\s+([^\\r\\n]+?)\\s+med\\s+"
+            + "(\\d[\\d\\s\\u00a0\\u202f]*?)\\s+bilar\\.\\s+Tvåa\\s+var\\s+([^\\r\\n]+?)\\s+och\\s+trea\\s+"
+            + "([^\\r\\n]+?)\\.(?:\\s|$)");
+
+    /**
+     * Reservvägen när beskrivningen bara berättar: oktobervideon 2026-11-04 hade ingen lista alls,
+     * bara de tre första i löptext, och hela listan låg i själva videon. Då visade appen Q3 fast
+     * oktober var redovisad. Tre rätta rader för rätt månad är nyare kunskap än en äldre lista.
+     * Antalet finns bara för ettan, så tvåan och trean får {@code null} i stället för ett påhittat tal.
+     */
+    static Topplista treIBeskrivningen(String text, String lank) {
+        Matcher m = TRE_I_TEXT.matcher(text);
+        if (!m.find() || !List.of(MANADER).contains(m.group(1).toLowerCase(Locale.ROOT))) return null;
+        Bil etta = bilUrNamn(1, m.group(3).trim());
+        Bil tvaa = bilUrNamn(2, m.group(5).trim());
+        Bil trea = bilUrNamn(3, m.group(6).trim());
+        if (etta == null || tvaa == null || trea == null) return null;
+        int antal = Integer.parseInt(m.group(4).replaceAll("[\\s\\u00a0\\u202f]", ""));
+        List<Bil> bilar = List.of(new Bil(1, etta.modell(), etta.marke(), antal), tvaa, trea);
+        varnaOmListanByttInnebord(bilar);
+        return new Topplista(manadsEtikett(m.group(1), m.group(2)), "Vroom", "Studio Esse", lank, bilar, ingress(text));
     }
 
     /** "Topp 10: Volvo EX40, Tesla Model Y, …" — en uppräkning med kolon, inte "Topp 25 personbilar,". */

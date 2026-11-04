@@ -195,6 +195,52 @@ class VroomTopCarsServiceTest {
                 .contains("Tesla Model Y blev septembers mest sålda bil");
     }
 
+    /** Ordagrant ur oktobervideons beskrivning (hämtad 2026-11-04). */
+    private static final String OKTOBER = """
+            Elbilsandelen i Sverige är nu över 50 procent. I oktober 2026 landade den på 51,6 %.
+
+            Mest sålda elbil i oktober 2026 var Volvo EX40 med 909 bilar. Tvåa var Volvo EX30 och trea BMW iX3. Volvo vann även märkeskampen före Kia och Volkswagen.
+
+            Siffrorna kommer från http://vroom.nu och är rensade från hyrbilsbolag.
+            """;
+
+    @Test
+    void oktoberbeskrivningenGerDeTreForstaOchManaden() {
+        VroomTopCarsService.Topplista lista = VroomTopCarsService.parse(flode(OKTOBER));
+        assertThat(lista.manad()).isEqualTo("oktober 2026");
+        assertThat(lista.bilar()).containsExactly(
+                new VroomTopCarsService.Bil(1, "EX40", "Volvo", 909),
+                new VroomTopCarsService.Bil(2, "EX30", "Volvo", null),
+                new VroomTopCarsService.Bil(3, "iX3", "BMW", null));
+        assertThat(lista.ingress()).startsWith("Mest sålda elbil i oktober 2026");
+    }
+
+    @Test
+    void treIBeskrivningenVinnerOverEnAldreLista() {
+        assertThat(VroomTopCarsService.parse(flode(OKTOBER, LISTA)).manad()).isEqualTo("oktober 2026");
+    }
+
+    @Test
+    void enFullListaVinnerNarDenLaggsTillIBeskrivningen() {
+        VroomTopCarsService.Topplista lista = VroomTopCarsService.parse(flode(OKTOBER + LISTA));
+        assertThat(lista.manad()).isEqualTo("augusti 2026");
+        assertThat(lista.bilar()).hasSize(10);
+    }
+
+    @Test
+    void modellMedPunktBryterInteMeningen() {
+        VroomTopCarsService.Topplista lista = VroomTopCarsService.treIBeskrivningen(
+                "Mest sålda elbil i maj 2026 var VW ID.7 med 1 204 bilar. Tvåa var Kia EV3 och trea Volvo EX30.", null);
+        assertThat(lista.bilar().getFirst()).isEqualTo(new VroomTopCarsService.Bil(1, "ID.7", "Volkswagen", 1204));
+    }
+
+    @Test
+    void beskrivningUtanMeningenEllerMedOkandManadRaknasInte() {
+        assertThat(VroomTopCarsService.treIBeskrivningen("Mest sålda elbil var Volvo EX40.", null)).isNull();
+        assertThat(VroomTopCarsService.treIBeskrivningen(
+                "Mest sålda elbil i världen 2026 var Tesla Model Y med 909 bilar. Tvåa var Volvo EX30 och trea BMW iX3.", null)).isNull();
+    }
+
     @Test
     void namnlistaUtanPeriodRaknasInte() {
         // "Topp 5: billigaste elbilarna" i en testvideo är ingen försäljningslista.
