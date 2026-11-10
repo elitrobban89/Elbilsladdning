@@ -85,9 +85,15 @@ public class BilvideoService {
 
     /**
      * Handplockade videor (2026-10-30, på användarens begäran). Visas efter flödets senaste.
-     * Står en av dem redan bland de senaste visas den bara där.
+     * Står en av dem redan bland de senaste visas den bara där. Studio Esses två videor om
+     * oktoberförsäljningen lades till 2026-11-10: samma källa som Vroom-flikens topplista, men
+     * där står bara de tre första i år, och i videon går hela listan igenom.
      */
     static final List<Video> UTVALDA = List.of(
+            new Video("3dHcq44U1q8", "Nu får Volvo lugna ner sig – elbilsförsäljningen oktober 2026",
+                    "Studio Esse", "2026-11-04", true),
+            new Video("XqZfWbcOSco", "Historiskt! Över hälften av alla nya bilar i Sverige är nu elbilar",
+                    "Studio Esse", "2026-11-02", true),
             new Video("z1AENQtVddg", "Test: BÄSTA FAMILJE-ELBILEN? Uppdaterad version med ny ekonomirond.",
                     "Alriks Bilar", "2026-08-31", true),
             new Video("G4SfUar-MVw", "Allt fler upptäcker fördelarna med elbilar! Perstad Presenterar: TrafikMagasinet, BilTV med Perstad",
