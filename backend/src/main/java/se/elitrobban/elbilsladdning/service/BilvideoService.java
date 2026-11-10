@@ -10,7 +10,9 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import se.elitrobban.elbilsladdning.model.BilvideoSnapshot;
 import se.elitrobban.elbilsladdning.repository.BilvideoRepository;
+import tools.jackson.databind.DeserializationFeature;
 import tools.jackson.databind.ObjectMapper;
+import tools.jackson.databind.json.JsonMapper;
 
 import java.net.URI;
 import java.net.http.HttpClient;
@@ -18,6 +20,7 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.time.Duration;
 import java.time.Instant;
+import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.time.ZoneId;
 import java.util.ArrayList;
@@ -38,8 +41,16 @@ import java.util.regex.Pattern;
  * av dem, så de står i {@link #UTVALDA} med titel och datum utskrivna — och visas efter de
  * senaste, märkta som utvalda, så att det nya alltid kommer först.
  *
+ * <p><b>Månadens försäljningsvideor kommer av sig själva (2026-11-10).</b> Studio Esse går
+ * igenom elbilsförsäljningen varje månad, med Vroom som källa. Förut lades de in för hand i
+ * {@link #UTVALDA}, och oktobers hamnade där först sedan användaren frågat efter dem. Nu läses
+ * Studio Esses flöde också, och de videor vars titel handlar om försäljningen
+ * ({@link #FORSALJNING}) visas efter Alriks senaste, högst {@link #ANTAL_FORSALJNING} och inte
+ * äldre än {@link #FORSALJNING_MAX_DAGAR} dagar.
+ *
  * <p>Fail-soft precis som Vroom-korten: ett misslyckande cachas aldrig, senaste lyckade
- * listan sparas i databasen och visas när flödet inte svarar.
+ * listan sparas i databasen och visas när flödet inte svarar. Försäljningsflödet har ingen
+ * egen reserv: svarar det inte visas kortet utan försäljningsvideorna.
  *
  * @author Robert Andersson Kopler
  */
@@ -52,11 +63,32 @@ public class BilvideoService {
     @Value("${bilvideor.rss.url:https://www.youtube.com/feeds/videos.xml?channel_id=UCU-4UJDGqQWK5Iv4wXDlzGQ}")
     private String rssUrl;
 
+    /** Studio Esses kanalflöde, samma som {@link VroomTopCarsService} läser topplistan ur. */
+    @Value("${bilvideor.forsaljning.rss.url:https://www.youtube.com/feeds/videos.xml?channel_id=UCYYC16tUQxICZIfqrbfjPfw}")
+    private String forsaljningRssUrl;
+
     static final String KANAL = "Alriks Bilar";
     static final String KANAL_LANK = "https://www.youtube.com/@alriksbilar";
+    static final String FORSALJNING_KANAL = "Studio Esse";
 
     /** Så många av de senaste videorna visas. Fler blir en karusell man aldrig bläddrar igenom. */
     static final int ANTAL_SENASTE = 5;
+
+    /** Månadsvideon och ibland en om marknaden i stort; fler är gamla månader. */
+    static final int ANTAL_FORSALJNING = 2;
+
+    /** En försäljningsvideo är inaktuell när nästa månads siffror kommit, alltså efter ~en månad. */
+    static final int FORSALJNING_MAX_DAGAR = 40;
+
+    /**
+     * Titlar som handlar om försäljningen. Avsiktligt snävt: "Sveriges mest sålda pickup blir
+     * elektrifierad" är en provkörning, inte statistik, så ordet "sålda" ensamt räcker inte.
+     * Träffar (2026-10/11): "elbilsförsäljningen oktober 2026", "Alla bilar sålda i Sverige
+     * Q3 2026", "Över hälften av alla nya bilar i Sverige är nu elbilar".
+     */
+    static final Pattern FORSALJNING = Pattern.compile(
+            "försäljningen|bilar sålda|nyregistrer|bilmarknaden|alla nya bilar|\\bQ[1-4] 20\\d{2}\\b",
+            Pattern.CASE_INSENSITIVE | Pattern.UNICODE_CASE);
 
     private static final Duration CACHE_TTL = Duration.ofHours(6);
     static final Duration RESERV_TTL = Duration.ofMinutes(30);
@@ -75,25 +107,25 @@ public class BilvideoService {
      * @param kanal  kanalens namn — utvalda videor kan komma från andra kanaler än Alriks
      * @param datum  publiceringsdag i svensk tid, "2026-10-29"
      * @param utvald handplockad, inte ur flödet
+     * @param forsaljning månadens försäljningsvideo ur Studio Esses flöde
      */
-    public record Video(String id, String titel, String kanal, String datum, boolean utvald) {
+    public record Video(String id, String titel, String kanal, String datum, boolean utvald, boolean forsaljning) {
+        /** Utan försäljningsflaggan, som alla videor hade före 2026-11-10 (och den sparade reserven). */
+        public Video(String id, String titel, String kanal, String datum, boolean utvald) {
+            this(id, titel, kanal, datum, utvald, false);
+        }
         public String lank() { return "https://www.youtube.com/watch?v=" + id; }
     }
 
-    /** @param videor de senaste först, sedan de utvalda */
+    /** @param videor de senaste först, sedan försäljningsvideorna, sist de utvalda */
     public record Videolista(String kanal, String kanalLank, List<Video> videor) {}
 
     /**
-     * Handplockade videor (2026-10-30, på användarens begäran). Visas efter flödets senaste.
-     * Står en av dem redan bland de senaste visas den bara där. Studio Esses två videor om
-     * oktoberförsäljningen lades till 2026-11-10: samma källa som Vroom-flikens topplista, men
-     * där står bara de tre första i år, och i videon går hela listan igenom.
+     * Handplockade videor (2026-10-30, på användarens begäran). Visas sist. Står en av dem
+     * redan bland de senaste visas den bara där. Försäljningsvideor hör inte hemma här, de
+     * kommer av sig själva ur Studio Esses flöde.
      */
     static final List<Video> UTVALDA = List.of(
-            new Video("3dHcq44U1q8", "Nu får Volvo lugna ner sig – elbilsförsäljningen oktober 2026",
-                    "Studio Esse", "2026-11-04", true),
-            new Video("XqZfWbcOSco", "Historiskt! Över hälften av alla nya bilar i Sverige är nu elbilar",
-                    "Studio Esse", "2026-11-02", true),
             new Video("z1AENQtVddg", "Test: BÄSTA FAMILJE-ELBILEN? Uppdaterad version med ny ekonomirond.",
                     "Alriks Bilar", "2026-08-31", true),
             new Video("G4SfUar-MVw", "Allt fler upptäcker fördelarna med elbilar! Perstad Presenterar: TrafikMagasinet, BilTV med Perstad",
@@ -105,18 +137,45 @@ public class BilvideoService {
             .build();
 
     private final BilvideoRepository reserv;
-    private final ObjectMapper json = new ObjectMapper();
+    /**
+     * Reserven i databasen kan vara sparad före fältet {@code forsaljning} fanns (2026-11-10).
+     * Jackson 3 vägrar då som standard läsa in den saknade boolean:en, och hela reserven hade
+     * tappats tyst. Ett saknat fält ska bli false.
+     */
+    private final ObjectMapper json = JsonMapper.builder()
+            .disable(DeserializationFeature.FAIL_ON_NULL_FOR_PRIMITIVES)
+            .build();
 
     private volatile List<Video> cache;
     private volatile long cachadVid;
+    private volatile List<Video> forsaljningCache;
+    private volatile long forsaljningCachadVid;
 
     public BilvideoService(BilvideoRepository reserv) {
         this.reserv = reserv;
     }
 
-    /** Senaste videorna plus de utvalda. Flödet läses om när cachen åldrats. */
+    /** Senaste videorna, månadens försäljningsvideor och de utvalda. Flödena läses om när cachen åldrats. */
     public Videolista senaste() {
-        return new Videolista(KANAL, KANAL_LANK, medUtvalda(senasteUrFlodet()));
+        List<Video> forst = new ArrayList<>(senasteUrFlodet());
+        for (Video v : forsaljningsvideor()) {
+            if (forst.stream().noneMatch(s -> s.id().equals(v.id()))) forst.add(v);
+        }
+        return new Videolista(KANAL, KANAL_LANK, medUtvalda(forst));
+    }
+
+    private List<Video> forsaljningsvideor() {
+        List<Video> cachad = forsaljningCache;
+        if (cachad != null && System.currentTimeMillis() - forsaljningCachadVid < CACHE_TTL.toMillis()) return cachad;
+        try {
+            List<Video> fardig = parseForsaljning(hamtaForsaljning(), LocalDate.now(SVERIGE));
+            forsaljningCache = fardig;
+            forsaljningCachadVid = System.currentTimeMillis();
+            return fardig;
+        } catch (Exception e) {
+            log.warn("Kunde inte hämta Studio Esses kanalflöde: {}", e.toString());
+            return cachad != null ? cachad : List.of();
+        }
     }
 
     private List<Video> senasteUrFlodet() {
@@ -174,8 +233,16 @@ public class BilvideoService {
     }
 
     String hamta() throws Exception {
+        return hamtaFlode(rssUrl);
+    }
+
+    String hamtaForsaljning() throws Exception {
+        return hamtaFlode(forsaljningRssUrl);
+    }
+
+    private String hamtaFlode(String url) throws Exception {
         HttpRequest req = HttpRequest.newBuilder()
-                .uri(URI.create(rssUrl))
+                .uri(URI.create(url))
                 .header("User-Agent", USER_AGENT)
                 .header("Accept", "application/atom+xml, application/xml")
                 .timeout(Duration.ofSeconds(15))
@@ -194,6 +261,26 @@ public class BilvideoService {
      * tecknet — titeltaggen är kanalens egen vana och kan utebli.
      */
     static List<Video> parse(String xml) {
+        return vanligaVideor(xml, KANAL).stream().limit(ANTAL_SENASTE).toList();
+    }
+
+    /**
+     * Studio Esses flöde till månadens försäljningsvideor: titeln matchar {@link #FORSALJNING},
+     * högst {@link #FORSALJNING_MAX_DAGAR} dagar gamla räknat från {@code idag}, nyast först,
+     * högst {@link #ANTAL_FORSALJNING}.
+     */
+    static List<Video> parseForsaljning(String xml, LocalDate idag) {
+        LocalDate grans = idag.minusDays(FORSALJNING_MAX_DAGAR);
+        return vanligaVideor(xml, FORSALJNING_KANAL).stream()
+                .filter(v -> FORSALJNING.matcher(v.titel()).find())
+                .filter(v -> !LocalDate.parse(v.datum()).isBefore(grans))
+                .limit(ANTAL_FORSALJNING)
+                .map(v -> new Video(v.id(), v.titel(), v.kanal(), v.datum(), false, true))
+                .toList();
+    }
+
+    /** Flödets alla vanliga videor (inga shorts) i flödets ordning, nyast först. */
+    private static List<Video> vanligaVideor(String xml, String kanal) {
         Document doc = Jsoup.parse(xml, "", Parser.xmlParser());
         List<Video> ut = new ArrayList<>();
         for (Element entry : doc.select("entry")) {
@@ -216,8 +303,7 @@ public class BilvideoService {
             } catch (Exception e) {
                 continue;
             }
-            ut.add(new Video(id, titel, KANAL, datum, false));
-            if (ut.size() == ANTAL_SENASTE) break;
+            ut.add(new Video(id, titel, kanal, datum, false));
         }
         return ut;
     }
