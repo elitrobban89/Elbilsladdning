@@ -7,6 +7,7 @@ import se.elitrobban.elbilsladdning.repository.BilvideoRepository;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 
@@ -106,6 +107,7 @@ class BilvideoServiceTest {
         when(repo.findById(BilvideoSnapshot.ENDA_ID)).thenReturn(Optional.empty());
         BilvideoService service = new BilvideoService(repo) {
             @Override String hamta() { throw new IllegalStateException("HTTP 404"); }
+            @Override String hamtaForsaljning() { throw new IllegalStateException("HTTP 404"); }
         };
 
         BilvideoService.Videolista lista = service.senaste();
@@ -121,9 +123,92 @@ class BilvideoServiceTest {
                         + "\"datum\":\"2026-10-29\",\"utvald\":false}]", Instant.parse("2026-10-30T08:00:00Z"))));
         BilvideoService service = new BilvideoService(repo) {
             @Override String hamta() { throw new IllegalStateException("HTTP 404"); }
+            @Override String hamtaForsaljning() { throw new IllegalStateException("HTTP 404"); }
         };
 
-        assertThat(service.senaste().videor().get(0).id()).isEqualTo("rcq_ny8kZrA");
+        BilvideoService.Video forsta = service.senaste().videor().get(0);
+        assertThat(forsta.id()).isEqualTo("rcq_ny8kZrA");
+        // Reserven sparades före 2026-11-10 och saknar försäljningsflaggan: den ska läsas som false.
+        assertThat(forsta.forsaljning()).isFalse();
+    }
+
+    // ---------- Månadens försäljningsvideor ur Studio Esses flöde (2026-11-10) ----------
+
+    private static String studioEsse(String datum) throws Exception {
+        try (InputStream in = BilvideoServiceTest.class.getResourceAsStream("/studio-esse-rss-" + datum + ".xml")) {
+            return new String(in.readAllBytes(), StandardCharsets.UTF_8);
+        }
+    }
+
+    @Test
+    void oktobersForsaljningsvideorHittasIRiktigaFlodet() throws Exception {
+        List<BilvideoService.Video> videor = BilvideoService.parseForsaljning(studioEsse("2026-11-10"), LocalDate.of(2026, 11, 10));
+
+        assertThat(videor).extracting(BilvideoService.Video::id).containsExactly("3dHcq44U1q8", "XqZfWbcOSco");
+        assertThat(videor.get(0).titel()).isEqualTo("Nu får Volvo lugna ner sig – elbilsförsäljningen oktober 2026");
+        assertThat(videor.get(0).datum()).isEqualTo("2026-11-04");
+        assertThat(videor).allSatisfy(v -> {
+            assertThat(v.kanal()).isEqualTo("Studio Esse");
+            assertThat(v.forsaljning()).isTrue();
+            assertThat(v.utvald()).isFalse();
+        });
+    }
+
+    @Test
+    void kvartalsvideonHittasOchProvkorningarInte() throws Exception {
+        // Flödet 2026-10-11: Q3-videon är statistik, "Sveriges mest sålda pickup" är en provkörning.
+        assertThat(BilvideoService.parseForsaljning(studioEsse("2026-10-11"), LocalDate.of(2026, 10, 11)))
+                .extracting(BilvideoService.Video::id).containsExactly("lCeDshCo5XY");
+        assertThat(BilvideoService.FORSALJNING.matcher("Sveriges mest sålda pickup blir elektrifierad (och POV-körs)").find()).isFalse();
+        assertThat(BilvideoService.FORSALJNING.matcher("Kia EV 5 – bäst är billigast").find()).isFalse();
+        assertThat(BilvideoService.FORSALJNING.matcher("Rekord för elbilar! Alla bilar sålda i Sverige Q3 2026, från etta till nolla").find()).isTrue();
+    }
+
+    @Test
+    void forsaljningsvideonFallerBortNarDenBlivitGammal() throws Exception {
+        String xml = studioEsse("2026-11-10");
+        // 2026-11-04 + 40 dagar = 2026-12-14: dagen efter står den inte kvar.
+        assertThat(BilvideoService.parseForsaljning(xml, LocalDate.of(2026, 12, 14))).extracting(BilvideoService.Video::id).contains("3dHcq44U1q8");
+        assertThat(BilvideoService.parseForsaljning(xml, LocalDate.of(2026, 12, 15))).extracting(BilvideoService.Video::id).doesNotContain("3dHcq44U1q8");
+    }
+
+    @Test
+    void forsaljningsvideornaKommerEfterDeSenasteOchForeDeUtvalda() throws Exception {
+        String alriks = fixtur();
+        String esse = studioEsse("2026-11-10");
+        BilvideoService service = new BilvideoService(mock(BilvideoRepository.class)) {
+            @Override String hamta() { return alriks; }
+            @Override String hamtaForsaljning() { return esse; }
+        };
+
+        List<BilvideoService.Video> videor = service.senaste().videor();
+        int n = BilvideoService.ANTAL_SENASTE;
+        assertThat(videor.subList(0, n)).noneMatch(BilvideoService.Video::forsaljning).noneMatch(BilvideoService.Video::utvald);
+        // Fixturen är från 2026-11-10 men klockan är verklig: efter 2026-12-12 har båda åldrats ut.
+        List<BilvideoService.Video> forsaljning = videor.stream().filter(BilvideoService.Video::forsaljning).toList();
+        assertThat(forsaljning).hasSizeLessThanOrEqualTo(BilvideoService.ANTAL_FORSALJNING);
+        assertThat(videor.subList(n, n + forsaljning.size())).isEqualTo(forsaljning);
+        assertThat(videor.subList(n + forsaljning.size(), videor.size())).allMatch(BilvideoService.Video::utvald);
+    }
+
+    @Test
+    void forsaljningsflodetNereGerKortetUtanDem() throws Exception {
+        String alriks = fixtur();
+        BilvideoService service = new BilvideoService(mock(BilvideoRepository.class)) {
+            @Override String hamta() { return alriks; }
+            @Override String hamtaForsaljning() { throw new IllegalStateException("HTTP 500"); }
+        };
+
+        assertThat(service.senaste().videor())
+                .hasSize(BilvideoService.ANTAL_SENASTE + BilvideoService.UTVALDA.size())
+                .noneMatch(BilvideoService.Video::forsaljning);
+    }
+
+    @Test
+    void ingenForsaljningsvideoLiggerKvarSomUtvald() {
+        // De två oktobervideorna stod för hand i UTVALDA några timmar 2026-11-10. Nu kommer de ur
+        // flödet, och en utvald dubblett hade legat kvar i månader efter att den blivit gammal.
+        assertThat(BilvideoService.UTVALDA).noneMatch(v -> BilvideoService.FORSALJNING.matcher(v.titel()).find());
     }
 
     @Test
@@ -132,6 +217,7 @@ class BilvideoServiceTest {
         String xml = fixtur();
         BilvideoService service = new BilvideoService(repo) {
             @Override String hamta() { return xml; }
+            @Override String hamtaForsaljning() { throw new IllegalStateException("HTTP 404"); }
         };
 
         assertThat(service.senaste().videor()).hasSize(BilvideoService.ANTAL_SENASTE + BilvideoService.UTVALDA.size());

@@ -76,6 +76,13 @@ prov("senaste och utvald märks olika", () => {
   if (!h.includes("Utvald · Alriks Bilar · 2026-08-31")) throw new Error("etiketten för utvald saknas");
 });
 
+prov("försäljningsvideon märks Försäljning, inte Senaste", () => {
+  const h = bygg({ bilvideor: { ...LISTA, videor: [
+    { id: "3dHcq44U1q8", titel: "Elbilsförsäljningen oktober 2026", kanal: "Studio Esse", datum: "2026-11-04", utvald: false, forsaljning: true } ] } });
+  if (!h.includes("Försäljning · Studio Esse · 2026-11-04")) throw new Error("etiketten för försäljning saknas");
+  if (h.includes("Senaste · Studio Esse")) throw new Error("försäljningsvideon märktes Senaste");
+});
+
 prov("ett id som inte ser ut som YouTubes slängs — inget främmande i src", () => {
   const h = bygg({ bilvideor: { ...LISTA, videor: [
     { id: '"><script>x</script>', titel: "Ond", kanal: "X", datum: "2026-10-30", utvald: false },
