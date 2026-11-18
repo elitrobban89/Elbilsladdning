@@ -141,10 +141,9 @@ public class ChargingController {
             times.addLast(now);
         }
 
-        @SuppressWarnings("unchecked")
-        List<Map<String, String>> messages = (List<Map<String, String>>) req.get("messages");
+        List<Map<String, String>> messages = se.elitrobban.elbilsladdning.config.ChatInput.messages(req.get("messages"));
         if (messages == null || messages.isEmpty()) return Map.of("reply", "Inga meddelanden.");
-        String context = (String) req.get("context");
+        String context = se.elitrobban.elbilsladdning.config.ChatInput.context(req.get("context"));
         return Map.of("reply", groq.chat(messages, carSpecService.getCars(), context));
     }
 
@@ -159,11 +158,10 @@ public class ChargingController {
                 return ResponseEntity.status(429).build();
             times.addLast(now);
         }
-        @SuppressWarnings("unchecked")
-        List<Map<String, String>> messages = (List<Map<String, String>>) req.get("messages");
+        List<Map<String, String>> messages = se.elitrobban.elbilsladdning.config.ChatInput.messages(req.get("messages"));
         if (messages == null || messages.isEmpty())
             return ResponseEntity.badRequest().build();
-        String context = (String) req.get("context");
+        String context = se.elitrobban.elbilsladdning.config.ChatInput.context(req.get("context"));
 
         StreamingResponseBody body = outputStream -> {
             try (InputStream is = groq.chatStream(messages, carSpecService.getCars(), context);
