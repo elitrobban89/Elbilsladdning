@@ -129,9 +129,7 @@ public class ChargingController {
 
     @PostMapping("/chat")
     public Map<String, String> chat(@RequestBody Map<String, Object> req, HttpServletRequest httpReq) {
-        String ip = httpReq.getHeader("X-Forwarded-For");
-        if (ip == null || ip.isBlank()) ip = httpReq.getRemoteAddr();
-        String clientIp = ip.split(",")[0].trim();
+        String clientIp = se.elitrobban.elbilsladdning.config.ClientIp.of(httpReq);
 
         long now = System.currentTimeMillis();
         Deque<Long> times = chatTimestamps.computeIfAbsent(clientIp, k -> new ArrayDeque<>());
@@ -152,9 +150,7 @@ public class ChargingController {
 
     @PostMapping(value = "/chat/stream", produces = "text/event-stream")
     public ResponseEntity<StreamingResponseBody> chatStream(@RequestBody Map<String, Object> req, HttpServletRequest httpReq) {
-        String ip = httpReq.getHeader("X-Forwarded-For");
-        if (ip == null || ip.isBlank()) ip = httpReq.getRemoteAddr();
-        String clientIp = ip.split(",")[0].trim();
+        String clientIp = se.elitrobban.elbilsladdning.config.ClientIp.of(httpReq);
         long now = System.currentTimeMillis();
         Deque<Long> times = chatTimestamps.computeIfAbsent(clientIp, k -> new ArrayDeque<>());
         synchronized (times) {
@@ -225,9 +221,7 @@ public class ChargingController {
             @RequestParam(defaultValue = "") String city,
             HttpServletRequest httpReq) {
 
-        String ip = httpReq.getHeader("X-Forwarded-For");
-        if (ip == null || ip.isBlank()) ip = httpReq.getRemoteAddr();
-        String clientIp = ip.split(",")[0].trim();
+        String clientIp = se.elitrobban.elbilsladdning.config.ClientIp.of(httpReq);
         long now = System.currentTimeMillis();
         Deque<Long> times = stationTimestamps.computeIfAbsent(clientIp, k -> new ArrayDeque<>());
         synchronized (times) {
@@ -368,9 +362,7 @@ public class ChargingController {
             @RequestParam(required = false) Double lon,
             HttpServletRequest httpReq) {
 
-        String ip = httpReq.getHeader("X-Forwarded-For");
-        if (ip == null || ip.isBlank()) ip = httpReq.getRemoteAddr();
-        String clientIp = ip.split(",")[0].trim();
+        String clientIp = se.elitrobban.elbilsladdning.config.ClientIp.of(httpReq);
         long now = System.currentTimeMillis();
         Deque<Long> times = priceTimestamps.computeIfAbsent(clientIp, k -> new ArrayDeque<>());
         synchronized (times) {

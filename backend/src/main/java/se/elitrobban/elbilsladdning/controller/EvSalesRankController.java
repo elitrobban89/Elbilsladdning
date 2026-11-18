@@ -44,6 +44,6 @@ public class EvSalesRankController {
     }
 
     private boolean isAdminUnauthorized(String key) {
-        return key == null || adminKey == null || adminKey.isBlank() || !adminKey.equals(key);
+        return se.elitrobban.elbilsladdning.config.ClientIp.isAdminUnauthorized(adminKey, key);
     }
 }

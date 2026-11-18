@@ -73,7 +73,7 @@ class ChargingControllerTest {
         when(carSpecService.getCars()).thenReturn(CARS);
 
         mvc.perform(get("/api/stations")
-                .header("X-Forwarded-For", "10.1.1.1")
+                .header("CF-Connecting-IP", "10.1.1.1")
                 .param("lat", "59.33").param("lon", "18.06").param("carIndex", "99"))
            .andExpect(status().isBadRequest())
            .andExpect(jsonPath("$.error").value("Ogiltigt bilindex: 99"));
@@ -91,7 +91,7 @@ class ChargingControllerTest {
                 .thenReturn(new GroqService.GroqResult("Ladda på Ionity Arlanda.", "Visste du att..."));
 
         mvc.perform(get("/api/stations")
-                .header("X-Forwarded-For", "10.2.2.2")
+                .header("CF-Connecting-IP", "10.2.2.2")
                 .param("lat", "59.33").param("lon", "18.06").param("carIndex", "0"))
            .andExpect(status().isOk())
            .andExpect(jsonPath("$.carName").value("Tesla Model 3"))
@@ -120,7 +120,7 @@ class ChargingControllerTest {
                 .thenReturn(new GroqService.GroqResult("Ladda på Ionity Arlanda.", "Visste du att..."));
 
         mvc.perform(get("/api/stations")
-                .header("X-Forwarded-For", "10.9.9.9")
+                .header("CF-Connecting-IP", "10.9.9.9")
                 .param("lat", "59.33").param("lon", "18.06").param("carIndex", "0"))
            .andExpect(status().isOk())
            .andExpect(jsonPath("$.stations.length()").value(1))
@@ -143,7 +143,7 @@ class ChargingControllerTest {
                 .thenReturn(new GroqService.GroqResult("Inga laddare hittades.", ""));
 
         mvc.perform(get("/api/stations")
-                .header("X-Forwarded-For", "10.9.9.10")
+                .header("CF-Connecting-IP", "10.9.9.10")
                 .param("lat", "59.33").param("lon", "18.06").param("carIndex", "0"))
            .andExpect(status().isOk())
            .andExpect(jsonPath("$.stations.length()").value(0))
@@ -164,7 +164,7 @@ class ChargingControllerTest {
                 .thenReturn(new GroqService.GroqResult("Inga laddare i närheten.", ""));
 
         mvc.perform(get("/api/stations")
-                .header("X-Forwarded-For", "10.9.9.11")
+                .header("CF-Connecting-IP", "10.9.9.11")
                 .param("lat", "59.33").param("lon", "18.06").param("carIndex", "0"))
            .andExpect(status().isOk())
            .andExpect(jsonPath("$.stations.length()").value(0))
@@ -186,11 +186,31 @@ class ChargingControllerTest {
     @Test
     void chattUtanMeddelandenGerInfoSvar() throws Exception {
         mvc.perform(post("/api/chat")
-                .header("X-Forwarded-For", "10.3.3.3")
+                .header("CF-Connecting-IP", "10.3.3.3")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("{\"messages\":[]}"))
            .andExpect(status().isOk())
            .andExpect(jsonPath("$.reply").value("Inga meddelanden."));
+    }
+
+    @Test
+    void forfalskadXForwardedForGerIngenNyPott() throws Exception {
+        // X-Forwarded-For släpps igenom från klienten på Render — förr räckte en ny påhittad
+        // IP per anrop för att aldrig nå taket. Potten följer nu CF-Connecting-IP.
+        for (int i = 0; i < 10; i++) {
+            mvc.perform(post("/api/chat")
+                    .header("CF-Connecting-IP", "10.4.4.9")
+                    .header("X-Forwarded-For", "203.0.113." + i)
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content("{\"messages\":[]}"))
+               .andExpect(status().isOk());
+        }
+        mvc.perform(post("/api/chat")
+                .header("CF-Connecting-IP", "10.4.4.9")
+                .header("X-Forwarded-For", "203.0.113.99")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"messages\":[]}"))
+           .andExpect(status().isTooManyRequests());
     }
 
     // --- /api/charging-price (konsumeras av Bilresas kalkylator) ---
@@ -212,7 +232,7 @@ class ChargingControllerTest {
         when(operatorPrices.nationalAverageKr()).thenReturn(4.72);
 
         mvc.perform(get("/api/charging-price")
-                .header("X-Forwarded-For", "10.5.5.5")
+                .header("CF-Connecting-IP", "10.5.5.5")
                 .param("lat", "59.33").param("lon", "18.06"))
            .andExpect(status().isOk())
            .andExpect(jsonPath("$.source").value("nearest-station"))
@@ -234,7 +254,7 @@ class ChargingControllerTest {
         when(operatorPrices.nationalAverageKr()).thenReturn(4.75);
 
         mvc.perform(get("/api/charging-price")
-                .header("X-Forwarded-For", "10.8.8.8")
+                .header("CF-Connecting-IP", "10.8.8.8")
                 .param("lat", "57.5").param("lon", "12.1"))
            .andExpect(status().isOk())
            .andExpect(jsonPath("$.source").value("nearest-station"))
@@ -245,7 +265,7 @@ class ChargingControllerTest {
     void laddprisUtanKoordinaterGerRiksgenomsnitt() throws Exception {
         when(operatorPrices.nationalAverageKr()).thenReturn(4.72);
 
-        mvc.perform(get("/api/charging-price").header("X-Forwarded-For", "10.6.6.6"))
+        mvc.perform(get("/api/charging-price").header("CF-Connecting-IP", "10.6.6.6"))
            .andExpect(status().isOk())
            .andExpect(jsonPath("$.source").value("national-average"))
            .andExpect(jsonPath("$.priceKr").value(4.72));
@@ -258,7 +278,7 @@ class ChargingControllerTest {
         when(operatorPrices.nationalAverageKr()).thenReturn(4.72);
 
         mvc.perform(get("/api/charging-price")
-                .header("X-Forwarded-For", "10.7.7.7")
+                .header("CF-Connecting-IP", "10.7.7.7")
                 .param("lat", "59.33").param("lon", "18.06"))
            .andExpect(status().isOk())
            .andExpect(jsonPath("$.source").value("national-average"))
@@ -273,13 +293,13 @@ class ChargingControllerTest {
         String body = "{\"messages\":[{\"role\":\"user\",\"content\":\"hej\"}]}";
         for (int i = 0; i < 10; i++) {
             mvc.perform(post("/api/chat")
-                    .header("X-Forwarded-For", "10.4.4.4")
+                    .header("CF-Connecting-IP", "10.4.4.4")
                     .contentType(MediaType.APPLICATION_JSON)
                     .content(body))
                .andExpect(status().isOk());
         }
         mvc.perform(post("/api/chat")
-                .header("X-Forwarded-For", "10.4.4.4")
+                .header("CF-Connecting-IP", "10.4.4.4")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(body))
            .andExpect(status().isTooManyRequests());
